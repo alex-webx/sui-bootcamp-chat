@@ -1,10 +1,3 @@
 <template lang="pug">
-q-page.row.items-center.justify-evenly
-  
+h1 HOME PAGE
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue';
-
-
-</script>

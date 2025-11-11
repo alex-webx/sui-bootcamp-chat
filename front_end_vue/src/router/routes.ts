@@ -1,29 +1,35 @@
 import type { RouteRecordRaw } from 'vue-router';
+import { useWalletStore } from '../stores/walletStore';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [{ 
-      path: '', 
-      component: () => import('pages/IndexPage.vue')
-    }]
+    redirect: { name: 'chat' }
+    //component: () => import('pages/IndexPage.vue')
   },
   {
-    path: '/whatsapp',
-    component: () => import('pages/Whatsapp/Index.vue'),
-    children: [{
-      name: 'chat-room',
-      path: '/chat/:user',
-      component: () => import('pages/Whatsapp/ChatRoom.vue')
-    }]
+    path: '/login',
+    name: 'login',
+    component: () => import('pages/Login/Index.vue')
+  },
+  {
+    path: '/create-profile',
+    name: 'create-profile',
+    component: () => import('pages/CreateProfile/Index.vue')
+  },
+  {
+    path: '/chat',
+    name: 'chat',
+    component: () => import('pages/Chat/Index.vue'),
+    meta: { requiresWallet: true, requiresProfile: true }
   },
 
   // Always leave this as last one,
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    // component: () => import('pages/ErrorNotFound.vue'),
+    redirect: '/'
   },
 ];
 

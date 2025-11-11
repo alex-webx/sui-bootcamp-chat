@@ -1,0 +1,125 @@
+<template lang="pug">
+q-layout.bg-sea(view="lHh Lpr fff")
+  q-page-container.text-white
+    q-page.row.items-center.justify-center
+      WavesBackground(:top="screenHeight / 1.3" :height="150")
+
+      q-card.text-ocean.shadow-20.card-login
+        q-card-section
+          q-form(@submit="submit()" ref="myForm")
+            .colum.q-gutter-y-md
+              .text-center.text-h4.q-mt-lg Sui Chat
+
+              .col.text-center
+                q-chip(color="primary" outline) {{ shortAddress }}
+                q-btn(
+                  no-caps flat color="primary" rounded dense
+                  @click="disconnect()"
+                )
+                  .text-caption Trocar carteira
+
+              .col.text-center
+                div Você ainda não possui um perfil.
+                div Informe seus dados e confirme a transação.
+
+              .col
+                q-input(
+                  label="Nome de usuário *" outlined maxlength="50" stack-label
+                  v-model="form.username" :max="50" :maxlength="50"
+                  :rules=`[
+                    val => val.length < 50 || 'Máximo de 50 caracteres',
+                    val => val.length || '* Campo obrigatório'
+                  ]`
+                )
+              .col
+                q-input(
+                  label="Avatar (URL ou data:image)" outlined stack-label
+                  v-model="form.avatarUrl"
+                )
+              .col
+                .flex
+                  q-btn(
+                    label="Desconectar" flat rounded
+                    color="medium-sea" @click="disconnect()"
+                  )
+                  q-space
+                  div
+                    q-btn(
+                      label="Acessar" icon-right="mdi-chevron-right"
+                      color="medium-sea" push rounded type="submit"
+                    )
+
+      .absolute-bottom.text-center.text-caption
+        div
+          | 2025 | Powered by SUI
+        div
+          span Desenvolvido por
+          q-btn(
+            flat dense no-caps
+            href="https://github.com/alex-webx" target="_blank"
+            label="alex-webx" icon-right="mdi-github" size="md"
+          )
+
+      .absolute-top-right.q-ma-md
+        SettingsMenu
+
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
+import { useUserStore } from '../../stores/userStore';
+import { useWalletStore } from '../../stores/walletStore';
+import { Screen, QForm, Loading, Notify } from 'quasar';
+import WavesBackground from '../../components/WavesBackground.vue';
+import SettingsMenu from '../../components/SettingsMenu.vue';
+
+const router = useRouter();
+const userStore = useUserStore();
+const walletStore = useWalletStore();
+
+const { account, address, shortAddress } = storeToRefs(walletStore);
+
+const form = ref({ username: '', avatarUrl: '' });
+const myForm = ref<InstanceType<typeof QForm>>();
+const screenHeight = computed(() => Screen.height);
+
+const disconnect = async () => {
+  router.push({ name: 'login' });
+  walletStore.disconnect();
+}
+
+const submit = async () => {
+  if (myForm.value?.validate(true)) {
+    try {
+      Loading.show();
+      if (!await userStore.fetchCurrentUserProfile()) {
+        await userStore.createUserProfile(form.value);
+      }
+
+      if (userStore.profile) {
+        router.push({ name: 'chat' });
+      }
+    } catch (exc: any) {
+      console.log({ exc });
+      Notify.create({
+        message: exc?.message || exc?.name,
+        caption: JSON.stringify(exc),
+        color: 'negative'
+      });
+    } finally {
+      Loading.hide();
+    }
+  }
+}
+
+</script>
+<style lang="scss" scoped>
+.card-login {
+  border-radius: 16px;
+  min-width: 450px;
+  min-height: 300px;
+  border-top: 8px solid $medium-sea;
+}
+</style>

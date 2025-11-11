@@ -4,5 +4,7 @@ declare namespace NodeJS {
     VUE_ROUTER_MODE: 'hash' | 'history' | 'abstract' | undefined;
     VUE_ROUTER_BASE: string | undefined;
     PACKAGE_ID: string;
+    USER_PROFILE_REGISTRY_ID: string;
+    CHAT_ROOM_REGISTRY_ID: string;
   }
 }

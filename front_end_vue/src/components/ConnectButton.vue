@@ -1,19 +1,18 @@
 <template lang="pug">
 .connect-button
   q-btn(
-    v-if="!walletStore.isConnected" 
+    v-if="!walletStore.isConnected"
     @click="handleConnect"
     :disabled="walletStore.isConnecting"
-    outline
+    v-bind="$attrs"
   )
-    | {{ walletStore.isConnecting ? 'Conectando...' : 'Conectar Carteira' }}
+    | {{ walletStore.isConnecting ? 'Conectando...' : 'Conectar Carteira SUI' }}
 
   .wallet-info(v-else)
     q-btn(
       @click="handleDisconnect()"
       push rounded color="primary" no-caps
     )
-      | {{ userProfiles.length }}
       | {{ shortenAddress(walletStore.address) }}
       q-icon(name="logout" right)
 
@@ -29,24 +28,24 @@
             )
               img(v-if="wallet.icon" :src="wallet.icon" :alt="wallet.name")
               span {{ wallet.name }}
-              
+
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" inherit-attrs="true">
 import { ref, computed, onMounted } from 'vue';
 import { useWalletStore } from '../stores/walletStore';
-import { useUserProfileStore } from '../stores/userProfileStore';
+import { useUserStore } from '../stores/userStore';
+import { useRouter } from 'vue-router';
 
 const walletStore = useWalletStore();
-const userProfileStore = useUserProfileStore();
+const userStore = useUserStore();
+const router = useRouter();
 const showModal = ref(false);
-
-const userProfiles = computed(() => Object.keys(userProfileStore.profiles));
 
 const handleConnect = async () => {
   if (walletStore.wallets.length === 1) {
     await walletStore.connect(walletStore.wallets[0]?.name);
-    await checkUserProfile();
+    router.push({ name: 'chat' });
   } else {
     showModal.value = true;
   }
@@ -54,7 +53,7 @@ const handleConnect = async () => {
 
 const handleDisconnect = () => {
   walletStore.disconnect();
-  walletStore.detectWallets();
+  router.push({ name: 'login' });
 };
 
 const selectWallet = async (walletName: string) => {
@@ -62,25 +61,6 @@ const selectWallet = async (walletName: string) => {
   await walletStore.connect(walletName);
 };
 
-const shortenAddress = (addr: string) => {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
+const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-const checkUserProfile = async () => {
-  const profiles = await userProfileStore.fetchUserProfiles();
-  if (!profiles.length) {
-    await userProfileStore.createProfile(prompt('username?') || 'Usuário');
-  } else {
-  }
-}
-
-onMounted(async () => {
-  await walletStore.detectWallets();
-  
-  const connected = await walletStore.autoConnect();
-  if (connected) {
-    await checkUserProfile();
-  }
-
-});
 </script>
