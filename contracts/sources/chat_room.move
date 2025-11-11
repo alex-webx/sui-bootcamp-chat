@@ -210,8 +210,6 @@ public fun send_message(
     let edit_capability_uid = object::new(ctx);
     let edit_capability_id = edit_capability_uid.uid_to_inner();
 
-    let username = user_profile::get_user_profile_username(profile);
-
     let edit_cap = MessageEditCap {
         id: edit_capability_uid,
         message_id
