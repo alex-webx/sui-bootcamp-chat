@@ -29,6 +29,9 @@ Os IDs dos objetos singletons `UserProfileRegistry` e `ChatRoomRegistry` são ex
 
 O arquivo `Move.lock` é movido para a pasta `./_pubhistory/{ENV}`, junto com uma cópia do arquivo `./env` gerado.
 
+# Front-End Live DEMO
+[Live demo](https://sui-chat.netlify.app)
+
 # TODO
 Para as próximas versões:
 - Lógica para adicionar e remover moderadores a um chat (contrato OK, falta implementação no front-end)

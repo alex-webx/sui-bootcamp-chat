@@ -5,7 +5,6 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: { name: 'chat' }
-    //component: () => import('pages/IndexPage.vue')
   },
   {
     path: '/login',
@@ -15,13 +14,19 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/create-profile',
     name: 'create-profile',
-    component: () => import('pages/CreateProfile/Index.vue')
+    component: () => import('pages/CreateProfile/Index.vue'),
+    meta: { requiresWallet: true }
   },
   {
     path: '/chat',
     name: 'chat',
     component: () => import('pages/Chat/Index.vue'),
     meta: { requiresWallet: true, requiresProfile: true }
+  },
+  {
+    path: '/config',
+    name: 'config',
+    component: () => import('../ChangeEnvironment.vue')
   },
 
   // Always leave this as last one,

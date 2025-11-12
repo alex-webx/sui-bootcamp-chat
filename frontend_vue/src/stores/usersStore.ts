@@ -18,11 +18,25 @@ export const useUsersStore = defineStore('usersStore', () => {
     profiles.value = _(users).keyBy(user => user.id).value();
   };
 
+  const checkUserProfilesRegistry = async() => {
+    try {
+      return !(await userProfileSvc.getUserProfileRegistry())?.error;
+    } catch {
+      return false;
+    }
+  };
+
+
 
   return {
     profiles,
     addressToProfileMap,
 
-    fetchAllUsersProfiles
+    fetchAllUsersProfiles,
+    checkUserProfilesRegistry,
+
+    resetState: async () => {
+      profiles.value = {};
+    }
   };
 });

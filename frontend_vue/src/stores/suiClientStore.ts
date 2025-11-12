@@ -23,7 +23,7 @@ export const useSuiClientStore = defineStore('suiClient', () => {
 
   return {
     client,
-    network,
+    network: computed(() => network.value),
     setNetwork,
   };
 });

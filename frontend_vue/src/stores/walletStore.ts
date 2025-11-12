@@ -117,6 +117,12 @@ export const useWalletStore = defineStore('wallet', () => {
     disconnect,
     detectWallets,
     autoConnect,
-    getConnectedWallet
+    getConnectedWallet,
+
+    resetState: async () => {
+      account.value = null;
+      wallets.value = [];
+      isConnecting.value = false;
+    }
   };
 });

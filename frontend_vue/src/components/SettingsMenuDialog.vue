@@ -36,7 +36,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" full-width)
 
 </template>
 <script setup lang="ts">
-import { defineEmits, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { Loading, QForm, useDialogPluginComponent } from 'quasar';
 import { getAllConstants, resetAllConstants, setConstant } from '../constants';
 

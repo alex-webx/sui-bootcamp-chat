@@ -19,6 +19,11 @@ export function useUserProfileContractService() {
   const suiClientStore = useSuiClientStore();
   const signer = useSignerContractService();
 
+  const getUserProfileRegistry = async () => {
+    const userProfileRegistry = await suiClientStore.client.getObject({ id: Constants('USER_PROFILE_REGISTRY_ID'), options: { showContent: true }});
+    return userProfileRegistry;
+  };
+
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
     const tx = new Transaction();
     tx.moveCall({
@@ -96,7 +101,7 @@ export function useUserProfileContractService() {
   }
 
   const getAllUsersProfiles = async () => {
-    const userProfileRegistry = await suiClientStore.client.getObject({ id: Constants('USER_PROFILE_REGISTRY_ID'), options: { showContent: true }});
+    const userProfileRegistry = await getUserProfileRegistry();
     const userProfileRegistryTableId = (userProfileRegistry.data?.content as any).fields?.users?.fields?.id?.id as string;
 
     const dynamicFieldPage = await suiClientStore.client.getDynamicFields({ parentId: userProfileRegistryTableId });
@@ -123,6 +128,7 @@ export function useUserProfileContractService() {
     deleteUserProfile,
     getUserProfile,
     getAllUsersProfiles,
-    parseUserProfile
+    parseUserProfile,
+    getUserProfileRegistry
   };
 }

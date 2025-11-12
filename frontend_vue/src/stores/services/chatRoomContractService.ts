@@ -42,6 +42,11 @@ export function useChatRoomContractService() {
   const suiClientStore = useSuiClientStore();
   const signer = useSignerContractService();
 
+  const getChatRoomRegistry = async () => {
+    const chatRoomRegistry = await suiClientStore.client.getObject({ id: Constants('CHAT_ROOM_REGISTRY_ID'), options: { showContent: true }});
+    return chatRoomRegistry;
+  };
+
   const createRoom = async (userProfileId: string, room: Pick<ChatRoom, 'name' | 'imageUrl'>) => {
     const tx = new Transaction();
     tx.moveCall({
@@ -104,7 +109,7 @@ export function useChatRoomContractService() {
   };
 
   const getAllChatRooms = async () => {
-    const chatRoomRegistry = await suiClientStore.client.getObject({ id: Constants('CHAT_ROOM_REGISTRY_ID'), options: { showContent: true }});
+    const chatRoomRegistry = await getChatRoomRegistry();
 
     const roomsObjsRes = await suiClientStore.client.multiGetObjects({
       ids: (chatRoomRegistry.data?.content as any).fields?.rooms,
@@ -212,7 +217,8 @@ export function useChatRoomContractService() {
     editMessage,
     getAllChatRooms,
     getChatRoomMessageBlocks,
-    getChatRoomMessagesFromBlock
+    getChatRoomMessagesFromBlock,
+    getChatRoomRegistry
   };
 }
 

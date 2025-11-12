@@ -42,7 +42,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide")
 
 </template>
 <script setup lang="ts">
-import { defineEmits, ref } from 'vue';
+import { ref } from 'vue';
 import { Loading, QForm, useDialogPluginComponent } from 'quasar';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
 

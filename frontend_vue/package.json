@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "sui-chat bootcamp",
   "productName": "Sui Chat",
-  "author": "Alexandre Shiroma <aleshiroma@gmail.com>",
+  "author": "Alexandre S.",
   "type": "module",
   "private": true,
   "scripts": {

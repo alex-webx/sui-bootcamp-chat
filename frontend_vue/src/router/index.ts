@@ -8,6 +8,7 @@ import {
 import routes from './routes';
 import { useWalletStore } from '../stores/walletStore';
 import { useUserStore } from '../stores/userStore';
+import { useAppStore } from '../stores/appStore';
 
 /*
  * If not building with SSR mode, you can
@@ -18,7 +19,7 @@ import { useUserStore } from '../stores/userStore';
  * with the Router instance.
  */
 
-export default defineRouter(function ({ store }) {
+export default defineRouter(async ({ store }) => {
   // const createHistory = process.env.SERVER
   //   ? createMemoryHistory
   //   : (process.env.VUE_ROUTER_MODE === 'history' ? createWebHistory : createWebHashHistory);
@@ -34,23 +35,29 @@ export default defineRouter(function ({ store }) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach(async (to, from, next) => {
-    const walletStore = useWalletStore(store);
-    const userStore = useUserStore();
-    await walletStore.detectWallets();
-    await walletStore.autoConnect();
-    await userStore.fetchCurrentUserProfile();
 
-    if (to.name === 'login' && walletStore.isConnected) {
-      next({ name: 'chat' });
-    } else if (to.meta.requiresWallet && !walletStore.isConnected) {
-      next({ name: 'login' });
-    } else if (to.name === 'create-profile' && userStore.profile?.id) {
-      next({ name: 'chat' });
-    } else if (to.meta.requiresProfile && !userStore.profile?.id) {
-      next({ name: 'create-profile' });
-    } else {
-      next();
+  Router.beforeEach(async (to, from, next) => {
+    try {
+      const walletStore = useWalletStore(store);
+      const userStore = useUserStore(store);
+
+      await walletStore.detectWallets();
+      await walletStore.autoConnect();
+      await userStore.fetchCurrentUserProfile();
+
+      const { requiresWallet, requiresProfile } = to.meta;
+
+      if (!!requiresWallet && !walletStore.isConnected) {
+        return next({ name: 'login' });
+      }
+
+      if (!!requiresProfile && !userStore.profile?.id) {
+        return next({ name: 'create-profile' });
+      }
+
+      return next();
+    } catch {
+      return next({ name: 'config' });
     }
   });
 

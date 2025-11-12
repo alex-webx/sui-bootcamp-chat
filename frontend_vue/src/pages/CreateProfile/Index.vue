@@ -4,7 +4,7 @@ q-layout.bg-sea(view="lHh Lpr fff")
     q-page.row.items-center.justify-center
       WavesBackground(:top="screenHeight / 1.3" :height="150")
 
-      q-card.text-ocean.shadow-20.card-login
+      q-card.text-ocean.shadow-20.card-box
         q-card-section
           q-form(@submit="submit()" ref="myForm")
             .colum.q-gutter-y-md
@@ -116,7 +116,7 @@ const submit = async () => {
 
 </script>
 <style lang="scss" scoped>
-.card-login {
+.card-box {
   border-radius: 16px;
   min-width: 450px;
   min-height: 300px;

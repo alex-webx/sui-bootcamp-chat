@@ -37,16 +37,30 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     return await chatRoomSvc.getChatRoomMessagesFromBlock(messageBlock);
   };
 
+  const checkChatRoomRegistry = async() => {
+    try {
+      return !(await chatRoomSvc.getChatRoomRegistry())?.error;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     createChatRoom,
     fetchChatRooms,
     sendMessage,
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,
+    checkChatRoomRegistry,
 
     chatRooms,
     activeChatRoomId,
-    activeChatRoom: computed(() => chatRooms.value.find(chatRoom => chatRoom.id === activeChatRoomId.value))
+    activeChatRoom: computed(() => chatRooms.value.find(chatRoom => chatRoom.id === activeChatRoomId.value)),
+
+    resetState: async () => {
+      chatRooms.value = [];
+      activeChatRoomId.value = undefined;
+    }
   };
 });
 

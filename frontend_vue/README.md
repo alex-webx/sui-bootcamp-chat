@@ -1,2 +1,3 @@
-# Sui Chat (sui_chat_frontend)
-sui-chat bootcamp
+# Sui Chat - FrontEnd
+
+Ver arquivo [README.md](../README.md)

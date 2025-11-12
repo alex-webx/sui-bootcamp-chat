@@ -38,6 +38,10 @@ export const useUserStore = defineStore('userStore', () => {
 
     fetchCurrentUserProfile,
     createUserProfile,
-    deleteUserProfile
+    deleteUserProfile,
+
+    resetState: async () => {
+      profile.value = undefined;
+    }
   };
 });

@@ -4,7 +4,6 @@
     borderless hide-dropdown-icon dark
     v-model="network" outlined dense color="white"
     :options="['devnet', 'testnet', 'mainnet']"
-    @update:modelValue="reload()"
     :readonly="props.readonly"
     v-if="props.showNetwork"
   )
@@ -23,7 +22,9 @@
 import { useSuiClientStore } from '../stores/suiClientStore';
 import { Dialog } from 'quasar';
 import SettingsMenuDialog from './SettingsMenuDialog.vue';
-import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useAppStore } from '../stores/appStore';
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
   readonly: { type: Boolean, default: false },
@@ -32,8 +33,26 @@ const props = defineProps({
 });
 
 const suiClientStore = useSuiClientStore();
+const appStore = useAppStore();
+const router = useRouter();
 
-const { network } = storeToRefs(suiClientStore);
+const network = computed({
+  get() {
+    return suiClientStore.network;
+  },
+  async set(value) {
+    await suiClientStore.setNetwork(value);
+
+    const deployOk = await appStore.checkDeploy();
+    if (!deployOk) {
+      router.push({ name: 'config' });
+      return;
+    }
+
+    await appStore.resetState();
+    reload();
+  }
+});
 
 const configureSettings = () => {
   Dialog.create({
