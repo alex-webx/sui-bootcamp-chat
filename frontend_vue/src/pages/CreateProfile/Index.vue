@@ -39,13 +39,13 @@ q-layout.bg-sea(view="lHh Lpr fff")
                   v-model="form.avatarUrl"
                 )
               .col
-                .flex
-                  q-btn(
-                    label="Desconectar" flat rounded
-                    color="medium-sea" @click="disconnect()"
-                  )
-                  q-space
-                  div
+                .row.justify-between
+                  .col-xs-12.col-sm.text-center
+                    q-btn(
+                      label="Desconectar" flat rounded
+                      color="medium-sea" @click="disconnect()"
+                    )
+                  .col-xs-12.col-sm.text-center
                     q-btn(
                       label="Acessar" icon-right="mdi-chevron-right"
                       color="medium-sea" push rounded type="submit"
@@ -120,8 +120,9 @@ const submit = async () => {
 <style lang="scss" scoped>
 .card-box {
   border-radius: 16px;
-  min-width: 450px;
-  min-height: 300px;
+  min-width: 260px;
+  max-width: 80vw;
   border-top: 8px solid $medium-sea;
+  padding: 8px 16px;
 }
 </style>

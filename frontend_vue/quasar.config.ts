@@ -2,6 +2,8 @@
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
 import { defineConfig } from '#q-app/wrappers';
+import path from 'path';
+import fs from 'fs';
 
 export default defineConfig((/* ctx */) => {
   return {
@@ -74,8 +76,12 @@ export default defineConfig((/* ctx */) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
-      // https: true,
-      open: true // opens browser window automatically
+      https: {
+        key: fs.readFileSync(path.resolve('E:/Projetos/certs/server.key')),
+        cert: fs.readFileSync(path.resolve('E:/Projetos/certs/server.crt'))
+      },
+      port: 9700,
+      open: false
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
@@ -104,7 +110,7 @@ export default defineConfig((/* ctx */) => {
 
     // animations: 'all', // --- includes all animations
     // https://v2.quasar.dev/options/animations
-    animations: [],
+    animations: 'all',
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
     // sourceFiles: {

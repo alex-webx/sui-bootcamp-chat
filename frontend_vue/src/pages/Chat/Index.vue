@@ -9,23 +9,27 @@
   )
     q-header(elevated dark)
       q-toolbar.bg-deep-sea.text-white
-        q-btn.WAL__drawer-open.q-mr-sm(
+        q-btn.q-mr-sm(
           round flat
           icon="keyboard_arrow_left"
           @click="toggleLeftDrawer"
+          v-if="!desktopMode"
         )
 
-        template(v-if="activeChatRoom")
+        div.cursor-pointer(
+          v-if="activeChatRoom"
+          @click="toggleRighttDrawer()"
+        )
           q-btn(round flat)
             q-avatar
-              img(:src="activeChatRoom.imageUrl || '/logo.png'")
+              img(:src="activeChatRoom.imageUrl || '/logo_sui_chat.png'")
 
           span.q-subtitle-1.q-pl-md
             | {{ activeChatRoom.name }}
 
         q-space
 
-        q-btn(round flat icon="more_vert")
+        //- q-btn(round flat icon="more_vert")
           q-menu(auto-close :offset="[110, 0]")
             q-list(style="min-width: 150px")
               q-item(clickable)
@@ -44,12 +48,12 @@
     q-drawer.bg-grey-2(
       v-model="leftDrawerOpen"
       show-if-above
-      :breakpoint="690" dark
-      :width="350"
+      :breakpoint="breakpoint" dark
+      :width="drawerWidth"
     )
       q-toolbar.bg-deep-sea
         q-avatar
-          q-img(:src="profile?.avatarUrl || '/logo.png'" error-src="/logo.png")
+          q-img(:src="profile?.avatarUrl || '/logo_sui_chat.png'" error-src="/logo_sui_chat.png")
         .q-ml-md
           .text-weight-bold
             | {{ profile?.username }}
@@ -78,10 +82,7 @@
                   q-icon(name="mdi-exit-to-app" color="sea")
 
         q-btn.WAL__drawer-close(
-          round
-          flat
-          icon="close"
-          @click="toggleLeftDrawer"
+          round flat icon="close" @click="toggleLeftDrawer"
         )
 
       q-scroll-area.bg-grey-2(style="height: calc(100% - 50px)")
@@ -97,17 +98,23 @@
 
     q-drawer.bg-grey-3.text-dark(
       v-if="activeChatRoom"
-      v-model="leftDrawerOpen"
-      show-if-above side="right"
-      :breakpoint="690" dark
-      :width="350"
+      :modelValue="activeChatRoom && rightDrawerOpen"
+      side="right" style="border-left: 2px solid rgba(0, 0, 0, 0.05) !important"
+      :breakpoint="breakpoint" dark
+      :width="drawerWidth"
     )
+      .absolute.q-pa-sm
+        q-btn(
+          round flat icon="mdi-chevron-right"
+          @click="toggleRighttDrawer()"
+        )
 
       .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box
         div
           q-avatar(size="80px")
             q-img(:src="activeChatRoom.imageUrl")
         .text-center
+          div {{ screenWidth }} - {{desktopMode}} - {{rightDrawerOpen}}
           .text-subtitle2 {{ activeChatRoom.name }}
           .text-caption {{ activeChatRoom.messageCount }} {{activeChatRoom.messageCount > 1 ? 'mensagens' : 'mensagem' }}
 
@@ -140,6 +147,13 @@
         v-if="activeChatRoom" ref="chatRoomComponent"
         :key="activeChatRoom.id"
       )
+      .q-pa-md.row.justify-center.full-width(v-else style="margin-top: auto; margin-bottom: auto")
+        transition(
+          appear
+          enter-active-class="animated jello slower"
+          leave-active-class="animated fadeOut"
+        )
+          img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
 
     q-footer(v-if="activeChatRoom")
       q-form(@submit="sendMessage()" ref="form")
@@ -156,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { Dialog, Notify, QForm, useQuasar } from 'quasar';
+import { Dialog, Notify, Screen, useQuasar } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
@@ -180,7 +194,13 @@ const chatRoomStore = useChatRoomStore();
 const $q = useQuasar();
 const router = useRouter();
 
-const leftDrawerOpen = ref(false);
+const breakpoint = 800;
+const screenWidth = computed(() => Screen.width);
+const desktopMode = computed(() => Screen.width > breakpoint);
+const drawerWidth = computed(() => desktopMode.value ? 350 : Screen.width);
+
+const leftDrawerOpen = ref(true);
+const rightDrawerOpen = ref(false);
 const message = ref('');
 const chatRoomComponent = ref<InstanceType<typeof ChatRoom>>();
 
@@ -190,14 +210,9 @@ const tab = ref<'chats' | 'users'>('chats');
 const { activeChatRoom } = storeToRefs(chatRoomStore);
 const { addressToProfileMap } = storeToRefs(usersStore);
 
-const style = computed(() => ({
-  height: $q.screen.height + 'px'
-}));
-
-const toggleLeftDrawer = () => {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
-};
-
+const style = computed(() => ({ height: $q.screen.height + 'px' }));
+const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
+const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
 const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 const formatDate = (date: string) => moment(Number(date)).format('DD/MM/YYYY [às] HH:MM:ss')
 
@@ -377,14 +392,6 @@ $heightBanner: 260px;
     &__layout {
       width: 100%;
       border-radius: 0;
-    }
-  }
-}
-
-@media (min-width: 691px) {
-  .WAL {
-    &__drawer-open {
-      display: none;
     }
   }
 }

@@ -47,9 +47,11 @@ const screenHeight = computed(() => Screen.height);
 </script>
 <style lang="scss" scoped>
 .card-box {
+  margin: 8px;
   border-radius: 16px;
-  min-width: 450px;
-  min-height: 250px;
+  min-width: 260px;
+  max-width: 80vw;
   border-top: 8px solid $medium-sea;
+  padding: 16px;
 }
 </style>

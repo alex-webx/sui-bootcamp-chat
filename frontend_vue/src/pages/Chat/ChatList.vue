@@ -14,7 +14,7 @@ q-list.text-dark
     mixin chat-room-item-content()
       q-item-section(avatar)
         q-avatar
-          img(:src="room.imageUrl || '/logo.png'")
+          img(:src="room.imageUrl || '/logo_sui_chat.png'")
 
       q-item-section
         q-item-label(lines="1") {{ room.name }}

@@ -1,52 +1,62 @@
 <template lang="pug">
-.q-pa-md.row.justify-end.full-width(style="margin-top: auto")
+.q-pa-md.row.justify-center.full-width(
+  v-if="loading"
+  style="margin-top: auto; margin-bottom: auto"
+)
+  transition(
+    appear
+    enter-active-class="animated tada slower"
+    leave-active-class="animated tada slower"
+  )
+    .flex.flex-center.column
+      img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 1;")
+
+.q-pa-md.row.justify-end.full-width(
+  style="margin-top: auto"
+  v-else
+)
   div(style="width: 100%; max-width: 60%")
-    div(v-if="loading")
-      q-inner-loading(:showing="true")
-        q-spinner-comment(size="150px" color="grey-4")
+    template(v-for="msgBlock in messageBlocks")
 
-    template(v-else)
-      template(v-for="msgBlock in messageBlocks")
+      template(v-for="messageGroup in groupByTimestamp(messages[msgBlock.blockNumber] || [], 1)")
+        q-chat-message(
+          v-if="messageGroup.messages[0].sender === profile?.owner"
+          :avatar="profile.avatarUrl"
+          :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
+          :sent="true"
+          bg-color="primary"
+          text-color="white"
+        )
+          template(#name)
+            | {{ addressToProfileMap[messageGroup.sender]?.username }}
+            q-badge.q-ml-sm.q-mb-xs(
+              v-if="messageGroup.sender === activeChatRoom.owner"
+              color="medium-sea" outline
+            ) admin
 
-        template(v-for="messageGroup in groupByTimestamp(messages[msgBlock.blockNumber] || [], 1)")
-          q-chat-message(
-            v-if="messageGroup.messages[0].sender === profile?.owner"
-            :avatar="profile.avatarUrl"
-            :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
-            :sent="true"
-            bg-color="primary"
-            text-color="white"
-          )
-            template(#name)
-              | {{ addressToProfileMap[messageGroup.sender]?.username }}
-              q-badge.q-ml-sm.q-mb-xs(
-                v-if="messageGroup.sender === activeChatRoom.owner"
-                color="medium-sea" outline
-              ) admin
+          div(v-for="message in messageGroup.messages")
+            span(v-for="(line, iLine) in message.content.split('\\n')")
+              <br v-if="iLine > 0" />
+              | {{ line }}
 
-            div(v-for="message in messageGroup.messages")
-              span(v-for="(line, iLine) in message.content.split('\\n')")
-                <br v-if="iLine > 0" />
-                | {{ line }}
+        q-chat-message(
+          v-else
+          :avatar="addressToProfileMap[messageGroup.sender]?.avatarUrl"
+          :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
+          bg-color="white"
+          text-color="dark"
+        )
+          template(#name)
+            | {{ addressToProfileMap[messageGroup.sender]?.username }}
+            q-badge.q-ml-sm.q-mb-xs(
+              v-if="messageGroup.sender === activeChatRoom.owner"
+              color="medium-sea" outline
+            ) admin
 
-          q-chat-message(
-            v-else
-            :avatar="addressToProfileMap[messageGroup.sender]?.avatarUrl"
-            :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
-            bg-color="white"
-            text-color="dark"
-          )
-            template(#name)
-              | {{ addressToProfileMap[messageGroup.sender]?.username }}
-              q-badge.q-ml-sm.q-mb-xs(
-                v-if="messageGroup.sender === activeChatRoom.owner"
-                color="medium-sea" outline
-              ) admin
-
-            div(v-for="message in messageGroup.messages")
-              span(v-for="(line, iLine) in message.content.split('\\n')")
-                <br v-if="iLine > 0" />
-                | {{ line }}
+          div(v-for="message in messageGroup.messages")
+            span(v-for="(line, iLine) in message.content.split('\\n')")
+              <br v-if="iLine > 0" />
+              | {{ line }}
 
 </template>
 

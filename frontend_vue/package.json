@@ -10,6 +10,7 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "build": "quasar build",
+    "serve": "quasar serve --port 9500 --https --cert E:/Projetos/certs/server.crt --key E:/Projetos/certs/server.key --micro --history --index --hostname 0.0.0.0 --cors dist/spa",
     "postinstall": "quasar prepare"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@quasar/app-vite": "^2.1.0",
+    "@quasar/cli": "^2.5.0",
     "@types/lodash": "^4.17.20",
     "@types/node": "^20.5.9",
     "autoprefixer": "^10.4.2",
