@@ -75,7 +75,7 @@ export default defineConfig((/* ctx */) => {
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
-    devServer: {
+    devServer: process.env.NETLIFY ? { } : {
       https: {
         key: fs.readFileSync(path.resolve('E:/Projetos/certs/server.key')),
         cert: fs.readFileSync(path.resolve('E:/Projetos/certs/server.crt'))
