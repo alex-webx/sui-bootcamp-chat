@@ -4,17 +4,6 @@ q-layout.bg-sea
     q-page.row.items-center.justify-evenly
       WavesBackground(:top="screenHeight / 1.3" :height="150")
 
-      .flex.flex-center.column
-        q-card.flex.flex-center.text-ocean.shadow-20.card-box
-          q-card-section
-            .rows.flex-center.q-gutter-y-lg
-              .flex.flex-center.items-center
-                q-img(src="/logo_sui_chat_bordered.png" width="78px")
-                .text-h3.text-ocean.q-ml-sm SuiChat
-
-              .text-center
-                ConnectButton(glossy push color="medium-sea" rounded)
-
       .absolute-bottom.text-center.text-caption
         div
           | 2025 | Powered by SUI
@@ -25,6 +14,17 @@ q-layout.bg-sea
             href="https://github.com/alex-webx" target="_blank"
             label="alex-webx" icon-right="mdi-github" size="md"
           )
+
+      .flex.flex-center.column
+        q-card.flex.flex-center.text-ocean.shadow-20.card-box
+          q-card-section
+            .rows.flex-center.q-gutter-y-lg
+              .flex.flex-center.items-center
+                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                .text-h3.text-ocean.q-ml-sm SuiChat
+
+              .text-center
+                ConnectButton(glossy push color="medium-sea" rounded)
 
       .absolute-top-right.q-ma-md
         SettingsMenu

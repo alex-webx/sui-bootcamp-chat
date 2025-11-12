@@ -341,7 +341,6 @@ onMounted(async () => {
 
   $q.loading.show();
   try {
-    await walletStore.detectWallets();
     const connected = await walletStore.autoConnect();
     if (connected) {
       await userStore.fetchCurrentUserProfile();
