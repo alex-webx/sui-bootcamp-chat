@@ -8,7 +8,9 @@ q-layout.bg-sea(view="lHh Lpr fff")
         q-card-section
           q-form(@submit="submit()" ref="myForm")
             .colum.q-gutter-y-md
-              .text-center.text-h4.q-mt-lg Sui Chat
+              .flex.flex-center.items-center
+                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                .text-h3.text-ocean.q-ml-sm SuiChat
 
               .col.text-center
                 q-chip(color="primary" outline) {{ shortAddress }}

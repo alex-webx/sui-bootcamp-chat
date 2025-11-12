@@ -7,9 +7,10 @@ q-layout.bg-sea
       .flex.flex-center.column
         q-card.flex.flex-center.text-ocean.shadow-20.card-box
           q-card-section
-            .rows.flex-center
-              .flex.flex-center
-                .text-h3.q-mb-lg Sui Chat
+            .rows.flex-center.q-gutter-y-lg
+              .flex.flex-center.items-center
+                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                .text-h3.text-ocean.q-ml-sm SuiChat
 
               .text-center
                 ConnectButton(glossy push color="medium-sea" rounded)
