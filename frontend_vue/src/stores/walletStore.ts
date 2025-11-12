@@ -95,7 +95,7 @@ export const useWalletStore = defineStore('wallet', () => {
     const wallet = walletName
       ? allSuiWallets.find(w => w.name === walletName)
       : allSuiWallets[0];
-
+debugger
     (wallet?.features['standard:disconnect'] as any).disconnect();
   };
 

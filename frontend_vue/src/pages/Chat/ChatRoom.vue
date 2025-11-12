@@ -21,7 +21,7 @@
       template(v-for="messageGroup in groupByTimestamp(messages[msgBlock.blockNumber] || [], 1)")
         q-chat-message(
           v-if="messageGroup.messages[0].sender === profile?.owner"
-          :avatar="profile.avatarUrl"
+          :avatar="profile.avatarUrl || './logo_sui_chat_bordered.png'"
           :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
           :sent="true"
           bg-color="primary"
@@ -41,8 +41,8 @@
 
         q-chat-message(
           v-else
-          :avatar="addressToProfileMap[messageGroup.sender]?.avatarUrl"
           :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
+          :avatar="addressToProfileMap[messageGroup.sender]?.avatarUrl || '/user-circles-set-sm.png'"
           bg-color="white"
           text-color="dark"
         )
