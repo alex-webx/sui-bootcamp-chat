@@ -45,12 +45,12 @@ const network = computed({
 
     const deployOk = await appStore.checkDeploy();
     if (!deployOk) {
-      router.push({ name: 'config' });
-      return;
+      await appStore.resetState();
+      setTimeout(() => { router.push({ name: 'config' }) });
+    } else {
+      await appStore.resetState();
+      reload();
     }
-
-    await appStore.resetState();
-    reload();
   }
 });
 
