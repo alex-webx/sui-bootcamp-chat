@@ -18,8 +18,7 @@ q-list
     )
       q-item-section(avatar)
         q-avatar
-          img(v-if="profile.avatarUrl" :src="profile.avatarUrl" error-src="/logo_sui_chat.png")
-          q-icon(v-else name="mdi-account-circle" :style="{ color: randomColor(profile.owner) }" size="lg")
+          img(:src="profile.avatarUrl || '/user-circles-set-sm.png'" error-src="/user-circles-set-sm.png")
 
       q-item-section
         q-item-label(lines="1")

@@ -101,10 +101,11 @@ const selectWallet = async (walletName: string) => {
         dialog?.update({
           message: `A solicitação será cancelada em (${countdown}s)`
         })
-      }
-      else {
+      } else {
         clearInterval(timer);
-        dialog?.hide();
+        if (dialog) {
+          dialog.hide();
+        }
       }
     }, 1000);
 

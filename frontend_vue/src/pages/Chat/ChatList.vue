@@ -19,7 +19,7 @@ q-list.text-dark
       q-item-section
         q-item-label(lines="1") {{ room.name }}
         q-item-label(caption)
-          | todo {{ !!roomsJoined[room.id] }}
+          | todo
 
       q-item-section(side)
         q-item-label(caption)

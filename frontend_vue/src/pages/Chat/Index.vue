@@ -114,7 +114,6 @@
           q-avatar(size="80px")
             q-img(:src="activeChatRoom.imageUrl")
         .text-center
-          div {{ screenWidth }} - {{desktopMode}} - {{rightDrawerOpen}}
           .text-subtitle2 {{ activeChatRoom.name }}
           .text-caption {{ activeChatRoom.messageCount }} {{activeChatRoom.messageCount > 1 ? 'mensagens' : 'mensagem' }}
 
@@ -241,7 +240,7 @@ const disconnect = async (silently = false) => {
 
   if (shouldDisconnect) {
     await walletStore.disconnect();
-    router.push({ name: 'login' });
+    await router.push({ name: 'login' });
   }
 }
 
