@@ -1,50 +1,63 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { getWallets, StandardEvents, StandardConnect, StandardFeatures, StandardConnectFeature } from '@mysten/wallet-standard';
-import type { WalletAccount, Wallet, StandardEventsFeature } from '@mysten/wallet-standard';
-import { useSuiClientStore } from './suiClientStore';
+import type { WalletAccount, Wallet, StandardEventsFeature, Wallets } from '@mysten/wallet-standard';
+
+const getSuiWallets = (walletsApi: Wallets) => {
+  return walletsApi.get().filter(wallet => !!wallet.chains.find(chain => chain.startsWith('sui:')));
+}
 
 export const useWalletStore = defineStore('wallet', () => {
 
-  const suiClientStore = useSuiClientStore();
-  const account = ref<WalletAccount | null>(null);
   const wallets = ref<Wallet[]>([]);
+
+  const account = ref<WalletAccount | null>(null);
   const isConnecting = ref(false);
   const isConnected = computed(() => !!account.value);
   const address = computed(() => account.value?.address);
 
+  const storedSuiWallet = computed({
+    get() { return localStorage.getItem('sui_wallet') as string || ''; },
+    set(value) { localStorage.setItem('sui_wallet', value); }
+  });
+  const storedSuiAccount = computed({
+    get() { return localStorage.getItem('sui_account') as string || ''; },
+    set(value) { localStorage.setItem('sui_account', value); }
+  });
+
   const detectWallets = () => {
     const walletsApi = getWallets();
-    wallets.value = walletsApi.get() as Wallet[];
+    wallets.value = getSuiWallets(walletsApi);
 
     walletsApi.on('register', () => {
-      wallets.value = walletsApi.get() as Wallet[];
+      console.log('wallet registed')
+      wallets.value = getSuiWallets(walletsApi);
     });
   };
 
-  const connect = async (walletName?: string) => {
+  const connect = async (walletName: string, abortSignal?: AbortSignal, timeout: number = 0) => {
     isConnecting.value = true;
 
     try {
       const walletsApi = getWallets();
-      const availableWallets = walletsApi.get();
+      const allSuiWallets = getSuiWallets(walletsApi);
 
-      const wallet = walletName ? availableWallets.find(w => w.name === walletName) : availableWallets[0];
+      const wallet = walletName ? allSuiWallets.find(w => w.name === walletName) : allSuiWallets[0];
 
       if (!wallet) {
         throw new Error('Nenhuma carteira encontrada');
       }
 
-      const connectionRes = await (wallet.features as StandardConnectFeature)[StandardConnect].connect({
-        //chains: [suiClientStore.network]
-        silent: false
-      });
+      const abortPromise = new Promise((_, reject) => abortSignal?.addEventListener('abort', reject));
+      const timeoutPromise = new Promise((_, reject) => timeout ? setTimeout(reject, timeout) : null);
+      const connectionResPromise = (wallet.features as StandardConnectFeature)[StandardConnect].connect();
+      const connectionRes = await Promise.race([ abortPromise, timeoutPromise, connectionResPromise ]) as Awaited<typeof connectionResPromise>;
 
       if (connectionRes?.accounts.length > 0) {
         account.value = connectionRes?.accounts[0]!;
 
-        localStorage.setItem('sui_wallet', wallet.name);
-        localStorage.setItem('sui_account', account.value?.address);
+        storedSuiWallet.value = wallet.name;
+        storedSuiAccount.value = account.value?.address;
 
         // (wallet.features as StandardEventsFeature)[StandardEvents].on('change', (newAccounts: any) => {
         //   console.log('mudou', newAccounts);
@@ -60,10 +73,9 @@ export const useWalletStore = defineStore('wallet', () => {
 
   const getConnectedWallet = () => {
     const walletsApi = getWallets();
-    const availableWallets = walletsApi.get();
-    const walletName = localStorage.getItem('sui_wallet');
-    const wallet = walletName
-      ? availableWallets.find(w => w.name === walletName)
+    const availableWallets = getSuiWallets(walletsApi);
+    const wallet = storedSuiWallet.value
+      ? availableWallets.find(w => w.name === storedSuiWallet.value)
       : availableWallets[0];
 
     return wallet;
@@ -71,25 +83,25 @@ export const useWalletStore = defineStore('wallet', () => {
 
   const disconnect = () => {
     account.value = null;
-    const walletName = localStorage.getItem('sui_wallet');
-    localStorage.removeItem('sui_wallet');
-    localStorage.removeItem('sui_account');
+
+    const walletName = storedSuiWallet.value;
+
+    storedSuiWallet.value = '';
+    storedSuiAccount.value = '';
 
     const walletsApi = getWallets();
-    const availableWallets = walletsApi.get();
+    const allSuiWallets = getSuiWallets(walletsApi);
 
     const wallet = walletName
-      ? availableWallets.find(w => w.name === walletName)
-      : availableWallets[0];
+      ? allSuiWallets.find(w => w.name === walletName)
+      : allSuiWallets[0];
 
     (wallet?.features['standard:disconnect'] as any).disconnect();
-
-    account.value = null;
-    wallets.value = [];
   };
 
   const autoConnect = async () => {
-    const savedWallet = localStorage.getItem('sui_wallet');
+    await detectWallets();
+    const savedWallet = storedSuiWallet.value;
     if (savedWallet) {
       try {
         await connect(savedWallet);
@@ -115,7 +127,6 @@ export const useWalletStore = defineStore('wallet', () => {
     // Actions
     connect,
     disconnect,
-    detectWallets,
     autoConnect,
     getConnectedWallet,
 

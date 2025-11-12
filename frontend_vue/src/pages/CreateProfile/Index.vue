@@ -4,6 +4,17 @@ q-layout.bg-sea(view="lHh Lpr fff")
     q-page.row.items-center.justify-center
       WavesBackground(:top="screenHeight / 1.3" :height="150")
 
+      .absolute-bottom.text-center.text-caption
+        div
+          | 2025 | Powered by SUI
+        div
+          span Desenvolvido por
+          q-btn(
+            flat dense no-caps
+            href="https://github.com/alex-webx" target="_blank"
+            label="alex-webx" icon-right="mdi-github" size="md"
+          )
+
       q-card.text-ocean.shadow-20.card-box
         q-card-section
           q-form(@submit="submit()" ref="myForm")
@@ -51,17 +62,6 @@ q-layout.bg-sea(view="lHh Lpr fff")
                       color="medium-sea" push rounded type="submit"
                     )
 
-      .absolute-bottom.text-center.text-caption
-        div
-          | 2025 | Powered by SUI
-        div
-          span Desenvolvido por
-          q-btn(
-            flat dense no-caps
-            href="https://github.com/alex-webx" target="_blank"
-            label="alex-webx" icon-right="mdi-github" size="md"
-          )
-
       .absolute-top-right.q-ma-md
         SettingsMenu
 
@@ -88,8 +88,8 @@ const myForm = ref<InstanceType<typeof QForm>>();
 const screenHeight = computed(() => Screen.height);
 
 const disconnect = async () => {
+  await walletStore.disconnect();
   router.push({ name: 'login' });
-  walletStore.disconnect();
 }
 
 const submit = async () => {

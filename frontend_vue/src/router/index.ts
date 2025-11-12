@@ -41,7 +41,6 @@ export default defineRouter(async ({ store }) => {
       const walletStore = useWalletStore(store);
       const userStore = useUserStore(store);
 
-      await walletStore.detectWallets();
       await walletStore.autoConnect();
       await userStore.fetchCurrentUserProfile();
 

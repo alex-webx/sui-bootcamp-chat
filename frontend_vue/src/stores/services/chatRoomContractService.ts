@@ -14,6 +14,7 @@ export type ChatRoom = {
   currentBlockNumber: number;
   bannedUsers: string[];
   moderators: string[];
+  adminCapabilityId: string;
 };
 
 export type Message = {
@@ -36,6 +37,7 @@ export type MessageBlock = {
   messageIds: string[];
   createdAt: number;
 };
+
 
 export function useChatRoomContractService() {
 
@@ -83,7 +85,8 @@ export function useChatRoomContractService() {
       messageCount: Number(fields.message_count),
       createdAt: Number(fields.created_at),
       bannedUsers: fields.banned_users || [],
-      moderators: fields.moderators || []
+      moderators: fields.moderators || [],
+      adminCapabilityId: fields.admin_capability_id
     };
   };
 
@@ -162,6 +165,41 @@ export function useChatRoomContractService() {
     return signer.signAndExecuteTransaction(tx);
   };
 
+  const deleteMessage = async (chatRoom: Pick<ChatRoom, 'id'>, message: Pick<Message, 'id' | 'editCapabilityId'>) => {
+
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${Constants('PACKAGE_ID')}::chat_room::delete_message`,
+      arguments: [
+        tx.object(chatRoom.id),
+        tx.object(message.id)
+      ],
+    });
+
+    tx.moveCall({
+      target: `${Constants('PACKAGE_ID')}::chat_room::delete_message_edit_cap`,
+      arguments: [
+        tx.object(chatRoom.id),
+        tx.object(message.editCapabilityId)
+      ],
+    });
+
+    return signer.signAndExecuteTransaction(tx);
+  };
+
+  const addModerator = async (chatRoom: Pick<ChatRoom, 'adminCapabilityId' | 'id'>, newModerator: string) => {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${Constants('PACKAGE_ID')}::chat_room::add_moderator`,
+      arguments: [
+        tx.object(chatRoom.adminCapabilityId),
+        tx.object(chatRoom.id),
+        tx.pure.string(newModerator)
+      ]
+    });
+
+  };
+
   const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: number | null = null) => {
     const chatRoom = await suiClientStore.client.getObject({
       id: chatRoomId, options: { showContent: true }}
@@ -215,122 +253,14 @@ export function useChatRoomContractService() {
     createRoom,
     sendMessage,
     editMessage,
+    deleteMessage,
+    addModerator,
     getAllChatRooms,
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,
     getChatRoomRegistry
   };
 }
-
-
-// public struct ChatRoomAdminCap has key, store {
-//     id: UID,
-//     room_id: ID,
-// }
-
-
-// public struct MessageBlockEvent has copy, drop {
-//     event_type: String,
-//     room_id: ID,
-//     block_number: u64
-// }
-
-
-//  public struct MessageEditCap has key, store {
-//     id: UID,
-//     message_id: ID,
-// }
-
-// public struct MessageEvent has copy, drop {
-//     event_type: String,
-//     message_id: ID,
-//     room_id: ID,
-//     sender: address,
-// }
-
-// public struct RoomEvent has copy, drop {
-//     event_type: String,
-//     room_id: ID,
-//     name: String,
-//     owner: address,
-//     timestamp: u64
-// }
-
-// public struct UserBannedEvent has copy, drop {
-//     event_type: String,
-//     room_id: ID,
-//     user: address,
-// }
-
-// public fun edit_message(
-//     _edit_cap: &MessageEditCap,
-//     message: &mut Message,
-//     new_content: String,
-//     ctx: &mut TxContext
-// ) {
-//     message.content = new_content;
-//     message.edited = true;
-
-//     event::emit(MessageEvent {
-//         event_type: "edited",
-//         message_id: message.id.to_inner(),
-//         room_id: message.room_id,
-//         sender: tx_context::sender(ctx)
-//     });
-// }
-
-// public fun delete_message(
-//     room: &ChatRoom,
-//     message: Message,
-//     messageEditCap: MessageEditCap,
-//     ctx: &mut TxContext
-// ) {
-//     let sender = tx_context::sender(ctx);
-//     let is_authorized = message.sender == sender ||
-//                         room.owner == sender ||
-//                         vector::contains(&room.moderators, &sender);
-
-//     assert!(is_authorized, ENotAuthorized);
-
-//     let message_id = message.id.uid_to_inner();
-//     let room_id = message.room_id;
-
-//     // Destruir a mensagem
-//     let Message {
-//         id,
-//         room_id: _,
-//         block_number: _,
-//         message_number: _,
-//         sender: _,
-//         username: _,
-//         content: _,
-//         created_at: _,
-//         reply_to: _,
-//         edited: _,
-//     } = message;
-
-//     object::delete(id);
-
-//     event::emit(MessageEvent {
-//         event_type: "deleted",
-//         message_id,
-//         room_id,
-//         sender
-//     });
-// }
-
-// public fun add_moderator(
-//     _admin_cap: &ChatRoomAdminCap,
-//     room: &mut ChatRoom,
-//     moderator: address,
-//     ctx: &mut TxContext
-// ) {
-//     assert!(room.owner == tx_context::sender(ctx), ENotAuthorized);
-
-//     if (!vector::contains(&room.moderators, &moderator)) {
-//         vector::push_back(&mut room.moderators, moderator);
-//     };
-// }
 
 // public fun ban_user(
 //     room: &mut ChatRoom,
