@@ -1,5 +1,6 @@
 [package]
 name = "chat"
+version = "0.1.0"
 edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 
 [dependencies]
