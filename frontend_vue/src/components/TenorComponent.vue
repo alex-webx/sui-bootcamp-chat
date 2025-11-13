@@ -10,7 +10,7 @@
   .row
     .col-xs-6(v-for="item in results" :key="item.id" style="min-height: 100px")
       video.cursor-pointer.fit(autoplay loop muted playisline @click="select(item)")
-        source(:src="item.media_formats.tinymp4.url")
+        source(:src="item.media_formats.nanomp4.url")
 
 .flex.flex-center.q-pt-md.q-px-xs.q-pb-xs(v-if="cursor")
   q-btn.full-width(
@@ -53,7 +53,6 @@ const searchGif = async () => {
   const page = await tenorSvc.searchGif(searchText.value, pageSize);
   results.value = page.results;
   cursor.value = page.next;
-  console.log(results.value)
 };
 
 const showMore = async () => {
