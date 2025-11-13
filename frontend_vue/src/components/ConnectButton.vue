@@ -37,7 +37,7 @@
 
           .col-xs-12
             .q-px-none.q-mt-md
-              q-list
+              q-list(dark)
                 q-item(
                   v-for="wallet in wallets" :key="wallet.name"
                   clickable
@@ -48,12 +48,15 @@
                       q-img.bg-dark(v-if="wallet.icon" :src="wallet.icon")
                   q-item-section
                     q-item-label {{ wallet.name }}
+                    q-item-label.text-right(caption v-if="wallet.name === storedSuiState.wallet")
+                      q-badge.text-italic.bg-deep-ocean utilizada recentemente
+
 
 </template>
 
 <script setup lang="ts" inherit-attrs="true">
 import { ref, computed, onMounted } from 'vue';
-import { useWalletStore } from '../stores/walletStore';
+import { useWalletStore, storedSuiState } from '../stores/walletStore';
 import { useUserStore } from '../stores/userStore';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';

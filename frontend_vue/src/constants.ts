@@ -11,7 +11,8 @@ export const defaultValues = {
   PACKAGE_ID: '',
   CHAT_ROOM_REGISTRY_ID: '',
   USER_PROFILE_REGISTRY_ID: '',
-  SUI_CLOCK_ID: '0x6'
+  SUI_CLOCK_ID: '0x6',
+  VUE_APP_GITHUB_COMMIT_REF: process.env.VUE_APP_GITHUB_COMMIT_REF || '0'
 };
 
 const parseEnvFile = (content: string) => {
