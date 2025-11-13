@@ -15,6 +15,9 @@ q-layout.bg-sea
             label="alex-webx" icon-right="mdi-github" size="md"
           )
 
+      .absolute-bottom-right
+        DeployLabel
+
       .flex.flex-center.column
         q-card.flex.flex-center.text-ocean.shadow-20.card-box
           q-card-section
@@ -34,12 +37,11 @@ q-layout.bg-sea
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRouter  } from 'vue-router';
-import { useSuiClientStore } from '../../stores/suiClientStore';
 import ConnectButton from '../../components/ConnectButton.vue';
 import WavesBackground from '../../components/WavesBackground.vue';
 import { Dialog, Screen } from 'quasar';
 import SettingsMenu from '../../components/SettingsMenu.vue';
-import { storeToRefs } from 'pinia';
+import DeployLabel from '../../components/DeployLabel.vue';
 
 const router = useRouter();
 const screenHeight = computed(() => Screen.height);

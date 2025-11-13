@@ -3,6 +3,8 @@
   WavesBackground(:top="100" :height="200")
   .absolute-top-right.q-ma-md
     SettingsMenu(:readonly="true" :show-settings="false")
+  .absolute-bottom-right
+    DeployLabel
 
   q-layout.WAL__layout.shadow-3(
     view="lHh LpR lFr" container
@@ -184,6 +186,7 @@ import ChatList from './ChatList.vue';
 import ChatRoom from './ChatRoom.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import SettingsMenu from '../../components/SettingsMenu.vue';
+import DeployLabel from '../../components/DeployLabel.vue';
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
@@ -239,8 +242,8 @@ const disconnect = async (silently = false) => {
   });
 
   if (shouldDisconnect) {
-    await walletStore.disconnect();
     await router.push({ name: 'login' });
+    await walletStore.disconnect();
   }
 }
 

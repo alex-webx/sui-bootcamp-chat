@@ -15,6 +15,9 @@ q-layout.bg-sea(view="lHh Lpr fff")
             label="alex-webx" icon-right="mdi-github" size="md"
           )
 
+      .absolute-bottom-right
+        DeployLabel
+
       q-card.text-ocean.shadow-20.card-box
         q-card-section
           q-form(@submit="submit()" ref="myForm")
@@ -76,6 +79,7 @@ import { useWalletStore } from '../../stores/walletStore';
 import { Screen, QForm, Loading, Notify } from 'quasar';
 import WavesBackground from '../../components/WavesBackground.vue';
 import SettingsMenu from '../../components/SettingsMenu.vue';
+import DeployLabel from '../../components/DeployLabel.vue';
 
 const router = useRouter();
 const userStore = useUserStore();
