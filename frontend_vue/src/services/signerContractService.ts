@@ -1,6 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { useSuiClientStore } from '../suiClientStore';
-import { useWalletStore } from '../walletStore';
+import { useSuiClientStore } from '../stores/suiClientStore';
+import { useWalletStore } from '../stores/walletStore';
 
 export function useSignerContractService() {
 

@@ -1,13 +1,13 @@
 <template lang="pug">
-.text-grey.q-mx-sm.text-caption
+.text-grey.q-mx-sm.text-caption(v-if="githubCommitRef")
   | {{ githubCommitRef }}
 
 </template>
 
 <script setup lang="ts">
-import { getAllConstants } from '../constants';
+import { getAllConfigs } from '../../configs';
 
-const githubCommitRef = getAllConstants().VUE_APP_GITHUB_COMMIT_REF;
+const githubCommitRef = getAllConfigs().COMMIT_REF?.substring(0, 7);
 
 </script>
 <style lang="scss" scoped>

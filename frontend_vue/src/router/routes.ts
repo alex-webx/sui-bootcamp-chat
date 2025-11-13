@@ -1,10 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { useWalletStore } from '../stores/walletStore';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: { name: 'chat' }
+    redirect: { name: 'login' }
+    // component: () => import('pages/IndexPage.vue'),
   },
   {
     path: '/login',
@@ -29,12 +29,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../ChangeEnvironment.vue')
   },
 
+  {
+    path: '/playground',
+    name: 'playground',
+    component: () => import('../Playground.vue')
+  },
+
   // Always leave this as last one,
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    // component: () => import('pages/ErrorNotFound.vue'),
-    redirect: '/'
+    component: () => import('pages/IndexPage.vue'),
   },
 ];
 

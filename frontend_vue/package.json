@@ -1,7 +1,7 @@
 {
   "name": "sui_chat_frontend",
   "version": "0.0.1",
-  "description": "sui-chat bootcamp",
+  "description": "Sui Chat",
   "productName": "Sui Chat",
   "author": "Alexandre S.",
   "type": "module",
@@ -24,7 +24,8 @@
     "pinia": "^3.0.1",
     "quasar": "^2.16.0",
     "vue": "^3.5.22",
-    "vue-router": "^4.0.12"
+    "vue-router": "^4.0.12",
+    "vue3-emoji-picker": "^1.1.8"
   },
   "devDependencies": {
     "@quasar/app-vite": "^2.1.0",

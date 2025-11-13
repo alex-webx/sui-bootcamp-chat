@@ -14,8 +14,7 @@ export default defineConfig((/* ctx */) => {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
-      'deploy-checker',
-      'vue3-json-viewer'
+      'components'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -42,6 +41,10 @@ export default defineConfig((/* ctx */) => {
       target: {
         browser: [ 'es2022', 'firefox115', 'chrome115', 'safari14' ],
         node: 'node20'
+      },
+
+      env: {
+        COMMIT_REF: process.env.COMMIT_REF
       },
 
       typescript: {
@@ -80,7 +83,6 @@ export default defineConfig((/* ctx */) => {
         key: fs.readFileSync(path.resolve('E:/Projetos/certs/server.key')),
         cert: fs.readFileSync(path.resolve('E:/Projetos/certs/server.crt'))
       },
-      port: 9700,
       open: false
     },
 
@@ -113,8 +115,8 @@ export default defineConfig((/* ctx */) => {
     animations: 'all',
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
-    // sourceFiles: {
-    //   rootComponent: 'src/App.vue',
+    sourceFiles: {
+      rootComponent: 'src/App.vue',
     //   router: 'src/router/index',
     //   store: 'src/store/index',
     //   pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
@@ -123,7 +125,7 @@ export default defineConfig((/* ctx */) => {
     //   electronMain: 'src-electron/electron-main',
     //   electronPreload: 'src-electron/electron-preload'
     //   bexManifestFile: 'src-bex/manifest.json
-    // },
+    },
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-ssr/configuring-ssr
     ssr: {

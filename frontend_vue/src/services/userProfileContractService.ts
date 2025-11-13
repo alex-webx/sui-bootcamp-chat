@@ -1,7 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { useSuiClientStore } from '../suiClientStore';
+import { useSuiClientStore } from '../stores/suiClientStore';
 import { useSignerContractService } from './signerContractService';
-import Constants from '../../constants';
+import Constants from '../../configs';
 import { SuiObjectResponse } from '@mysten/sui/client';
 
 export type UserProfile = {
@@ -20,19 +20,19 @@ export function useUserProfileContractService() {
   const signer = useSignerContractService();
 
   const getUserProfileRegistry = async () => {
-    const userProfileRegistry = await suiClientStore.client.getObject({ id: Constants('USER_PROFILE_REGISTRY_ID'), options: { showContent: true }});
+    const userProfileRegistry = await suiClientStore.client.getObject({ id: Constants('UserProfileRegistryId')!, options: { showContent: true }});
     return userProfileRegistry;
   };
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
     const tx = new Transaction();
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::user_profile::create_user_profile`,
+      target: `${Constants('PackageId')}::user_profile::create_user_profile`,
       arguments: [
-        tx.object(Constants('USER_PROFILE_REGISTRY_ID')),
+        tx.object(Constants('UserProfileRegistryId')!),
         tx.pure.string(userProfile.username),
         tx.pure.string(userProfile.avatarUrl),
-        tx.object(Constants('SUI_CLOCK_ID'))
+        tx.object(Constants('SuiClockId')!)
       ],
     });
 
@@ -45,12 +45,12 @@ export function useUserProfileContractService() {
   ) => {
     const tx = new Transaction();
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::user_profile::update_user_profile`,
+      target: `${Constants('PackageId')}::user_profile::update_user_profile`,
       arguments: [
         tx.object(userProfileId),
         tx.pure.string(newUserProfile.username),
         tx.pure.string(newUserProfile.avatarUrl),
-        tx.object(Constants('SUI_CLOCK_ID'))
+        tx.object(Constants('SuiClockId')!)
       ],
     });
 
@@ -60,9 +60,9 @@ export function useUserProfileContractService() {
   const deleteUserProfile = (userProfileId: string) => {
    const tx = new Transaction();
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::user_profile::delete_user_profile`,
+      target: `${Constants('PackageId')}::user_profile::delete_user_profile`,
       arguments: [
-        tx.object(Constants('USER_PROFILE_REGISTRY_ID')),
+        tx.object(Constants('UserProfileRegistryId')!),
         tx.object(userProfileId)
       ],
     });
@@ -91,7 +91,7 @@ export function useUserProfileContractService() {
     const response = await suiClientStore.client.getOwnedObjects({
       owner: address,
       filter: {
-        StructType: `${Constants('PACKAGE_ID')}::user_profile::UserProfile`,
+        StructType: `${Constants('PackageId')}::user_profile::UserProfile`,
       },
       options: { showContent: true },
     });
