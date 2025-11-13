@@ -1,7 +1,7 @@
 {
   "name": "sui_chat_frontend",
   "version": "0.0.1",
-  "description": "sui-chat bootcamp",
+  "description": "Sui Chat",
   "productName": "Sui Chat",
   "author": "Alexandre S.",
   "type": "module",
