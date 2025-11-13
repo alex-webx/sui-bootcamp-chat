@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { getAllConstants } from '../constants';
 
-const githubCommitRef = getAllConstants().VUE_APP_GITHUB_COMMIT_REF;
+const githubCommitRef = getAllConstants().COMMIT_REF?.substring(0, 7);
 
 </script>
 <style lang="scss" scoped>
