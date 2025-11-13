@@ -20,7 +20,7 @@ const clientConfigs = {
 const MOVE_EXTRA_KEYS = ['SuiClockId'] as const;
 type MoveExtraConfigKey = typeof MOVE_EXTRA_KEYS[number];
 type MoveConfigKey = keyof typeof configMoveDevnet | MoveExtraConfigKey;
-type ClientConfigKey = keyof typeof configClientDevnet;
+type ClientConfigKey = keyof typeof configClientDevnet | keyof typeof extraClientConfigs;
 type ConfigKey = MoveConfigKey | ClientConfigKey;
 
 const defaultValues: Partial<Record<MoveConfigKey, string>> = {
