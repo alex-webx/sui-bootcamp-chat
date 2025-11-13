@@ -44,6 +44,10 @@ export default defineConfig((/* ctx */) => {
         node: 'node20'
       },
 
+      env: {
+        COMMIT_REF: process.env.COMMIT_REF
+      },
+
       typescript: {
         strict: true,
         vueShim: true
