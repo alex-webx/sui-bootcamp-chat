@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { type ChatRoom, type Message, type MessageBlock, useChatRoomContractService } from './services/chatRoomContractService';
+import { type ChatRoom, type Message, type MessageBlock, useChatRoomContractService } from '../services/chatRoomContractService';
 import { useUserStore } from './userStore';
 
 export const useChatRoomStore = defineStore('chatRoomStore', () => {

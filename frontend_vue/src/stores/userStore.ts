@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { type UserProfile, useUserProfileContractService } from './services/userProfileContractService';
+import { type UserProfile, useUserProfileContractService } from '../services/userProfileContractService';
 import { useWalletStore } from './walletStore';
 
 export const useUserStore = defineStore('userStore', () => {

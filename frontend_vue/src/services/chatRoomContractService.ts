@@ -1,7 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { useSuiClientStore } from '../suiClientStore';
+import { useSuiClientStore } from '../stores/suiClientStore';
 import { useSignerContractService } from './signerContractService';
-import Constants from '../../constants';
+import Config from '../../configs';
 import { SuiObjectResponse } from '@mysten/sui/client';
 
 export type ChatRoom = {
@@ -45,25 +45,25 @@ export function useChatRoomContractService() {
   const signer = useSignerContractService();
 
   const getChatRoomRegistry = async () => {
-    const chatRoomRegistry = await suiClientStore.client.getObject({ id: Constants('CHAT_ROOM_REGISTRY_ID'), options: { showContent: true }});
+    const chatRoomRegistry = await suiClientStore.client.getObject({ id: Config('ChatRoomRegistryId')!, options: { showContent: true }});
     return chatRoomRegistry;
   };
 
   const createRoom = async (userProfileId: string, room: Pick<ChatRoom, 'name' | 'imageUrl'>) => {
     const tx = new Transaction();
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::chat_room::create_room`,
+      target: `${Config('PackageId')}::chat_room::create_room`,
       arguments: [
         tx.object(userProfileId),
-        tx.object(Constants('CHAT_ROOM_REGISTRY_ID')),
+        tx.object(Config('ChatRoomRegistryId')!),
         tx.pure.string(room.name),
         tx.pure.string(room.imageUrl),
-        tx.object(Constants('SUI_CLOCK_ID'))
+        tx.object(Config('SuiClockId')!)
       ],
     });
 
     const result = await signer.signAndExecuteTransaction(tx);
-    const chatRoom = result.objectChanges?.filter(change => change.type === 'created' && change.objectType === `${Constants('PACKAGE_ID')}::chat_room::ChatRoom`)?.[0];
+    const chatRoom = result.objectChanges?.filter(change => change.type === 'created' && change.objectType === `${Config('PackageId')}::chat_room::ChatRoom`)?.[0];
     return {
       chatRoomId: (chatRoom as any)?.objectId as string || undefined,
       ...result
@@ -136,13 +136,13 @@ export function useChatRoomContractService() {
     });
 
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::chat_room::send_message`,
+      target: `${Config('PackageId')}::chat_room::send_message`,
       arguments: [
         tx.object(userProfileId),
         tx.object(message.roomId),
         tx.pure.string(message.content),
         noneOptionId,
-        tx.object(Constants('SUI_CLOCK_ID'))
+        tx.object(Config('SuiClockId')!)
       ],
     });
 
@@ -154,7 +154,7 @@ export function useChatRoomContractService() {
     const tx = new Transaction();
 
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::chat_room::edit_message`,
+      target: `${Config('PackageId')}::chat_room::edit_message`,
       arguments: [
         tx.object(message.editCapabilityId),
         tx.object(message.id),
@@ -169,7 +169,7 @@ export function useChatRoomContractService() {
 
     const tx = new Transaction();
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::chat_room::delete_message`,
+      target: `${Config('PackageId')}::chat_room::delete_message`,
       arguments: [
         tx.object(chatRoom.id),
         tx.object(message.id)
@@ -177,7 +177,7 @@ export function useChatRoomContractService() {
     });
 
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::chat_room::delete_message_edit_cap`,
+      target: `${Config('PackageId')}::chat_room::delete_message_edit_cap`,
       arguments: [
         tx.object(chatRoom.id),
         tx.object(message.editCapabilityId)
@@ -190,7 +190,7 @@ export function useChatRoomContractService() {
   const addModerator = async (chatRoom: Pick<ChatRoom, 'adminCapabilityId' | 'id'>, newModerator: string) => {
     const tx = new Transaction();
     tx.moveCall({
-      target: `${Constants('PACKAGE_ID')}::chat_room::add_moderator`,
+      target: `${Config('PackageId')}::chat_room::add_moderator`,
       arguments: [
         tx.object(chatRoom.adminCapabilityId),
         tx.object(chatRoom.id),
@@ -220,7 +220,7 @@ export function useChatRoomContractService() {
       hasNextPage = messageBlocksResponse.hasNextPage;
 
       const messageBlocksInPage = messageBlocksResponse.data
-        .filter(msgBlock => msgBlock.objectType === `${Constants('PACKAGE_ID')}::chat_room::MessageBlock`)
+        .filter(msgBlock => msgBlock.objectType === `${Config('PackageId')}::chat_room::MessageBlock`)
         .map(msgBlock => msgBlock.objectId);
 
       messageBlocksIds.push(...messageBlocksInPage);

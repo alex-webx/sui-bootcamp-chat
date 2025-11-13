@@ -3,6 +3,5 @@ router-view
 </template>
 
 <script setup lang="ts">
-import Constants, { getAllConstants } from './constants';
-
+import Config, { getAllConfigs } from '../configs';
 </script>

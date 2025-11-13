@@ -5,9 +5,9 @@
 </template>
 
 <script setup lang="ts">
-import { getAllConstants } from '../constants';
+import { getAllConfigs } from '../../configs';
 
-const githubCommitRef = getAllConstants().COMMIT_REF?.substring(0, 7);
+const githubCommitRef = getAllConfigs().COMMIT_REF?.substring(0, 7);
 
 </script>
 <style lang="scss" scoped>

@@ -8,10 +8,10 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" full-width)
       q-card-section.q-dialog__message
 
         .row
-          .col-xs-12(v-for="(constant, key) of constants")
+          .col-xs-12(v-for="(configValue, key) of form")
             q-input(
-              :model-value="constant"
-              @update:modelValue="val => constants[key] = val"
+              :model-value="configValue"
+              @update:modelValue="val => form[key] = val"
               :label="key + ' *'"
               type="text" outlined stack-label
               :rules=`[
@@ -38,25 +38,24 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" full-width)
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Loading, QForm, useDialogPluginComponent } from 'quasar';
-import { getAllConstants, resetAllConstants, setConstant } from '../constants';
+import { getAllNetworkConfigs, resetAllNetworkConfigs, setNetworkConfig } from '../../configs';
 
 const emits = defineEmits({
   ...useDialogPluginComponent.emitsObject
 });
+const { dialogRef, onDialogHide, onDialogCancel, onDialogOK } = useDialogPluginComponent();
 
 const myForm = ref<InstanceType<typeof QForm>>();
-let original = getAllConstants();
-const constants = ref<ReturnType<typeof getAllConstants>>(getAllConstants());
-
-const { dialogRef, onDialogHide, onDialogCancel, onDialogOK } = useDialogPluginComponent();
+let original = getAllNetworkConfigs();
+const form = ref<ReturnType<typeof getAllNetworkConfigs>>(getAllNetworkConfigs());
 
 const submit = async () => {
   if (myForm.value?.validate(true)) {
-    Object.keys(constants.value).map((key) => {
+    Object.keys(form.value).map((key) => {
       const k = key as keyof typeof original;
-      const value = constants.value[k];
+      const value = form.value[k];
       if (value !== original[k]) {
-        setConstant(k, value);
+        setNetworkConfig(k, value);
       }
     });
     onDialogOK();
@@ -64,7 +63,7 @@ const submit = async () => {
 }
 
 const resetToDefault = () => {
-  resetAllConstants();
+  resetAllNetworkConfigs();
   onDialogOK();
 };
 

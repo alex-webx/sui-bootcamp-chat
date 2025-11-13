@@ -35,11 +35,19 @@ export default defineRouter(async ({ store }) => {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-
   Router.beforeEach(async (to, from, next) => {
     try {
+      const appStore = useAppStore(store);
       const walletStore = useWalletStore(store);
       const userStore = useUserStore(store);
+
+      const isConfigRoute = to.name === 'config';
+      if (!isConfigRoute) {
+        const deployOk = await appStore.checkDeploy();
+        if (!deployOk) {
+          return next({ name: 'config' });
+        }
+      }
 
       await walletStore.autoConnect();
       await userStore.fetchCurrentUserProfile();

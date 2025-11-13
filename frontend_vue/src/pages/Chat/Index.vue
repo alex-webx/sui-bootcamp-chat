@@ -159,7 +159,14 @@
     q-footer(v-if="activeChatRoom")
       q-form(@submit="sendMessage()" ref="form")
         q-toolbar.bg-deep-sea.text-white.row.q-py-xs
-          //- q-btn.q-mr-sm(round flat icon="insert_emoticon")
+          q-btn(icon="mdi-file-gif-box" flat round)
+            q-menu
+              q-card.bg-white(style="width: 300px; max-height: 400px")
+                TenorComponent(@select="insertGif")
+
+          q-btn(icon="mdi-sticker-emoji" flat round)
+            q-menu
+              EmojiPicker(:native="true" @select="insertEmoji" theme="light")
           q-input(
             rounded outlined dense class="WAL__field col-grow q-mr-sm" bg-color="white"
             v-model="message" placeholder="Digite uma mensagem..." type="textarea" rows="1"
@@ -187,6 +194,7 @@ import ChatRoom from './ChatRoom.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import SettingsMenu from '../../components/SettingsMenu.vue';
 import DeployLabel from '../../components/DeployLabel.vue';
+import TenorComponent, { type TenorResult }  from '../../components/TenorComponent.vue';
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
@@ -321,6 +329,15 @@ const createRoom = async () => {
     }
   });
 };
+
+const insertGif = async (gif: TenorResult) => {
+  // message.value += gif.media_formats.mp4.url;
+  alert('TODO');
+};
+
+const insertEmoji = (emoji: { i: string }) => {
+  message.value += emoji.i;
+}
 
 const sendMessage = async () => {
   if (profile.value && activeChatRoom.value) {

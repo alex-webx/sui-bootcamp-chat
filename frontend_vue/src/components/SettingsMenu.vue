@@ -1,10 +1,11 @@
 <template lang="pug">
 .flex.q-gutter-x-sm
   q-select(
-    borderless hide-dropdown-icon dark
+    hide-dropdown-icon dark
     v-model="network" outlined dense color="white"
     :options="['devnet', 'testnet', 'mainnet']"
     :readonly="props.readonly"
+    v-bind="$attrs"
     v-if="props.showNetwork"
   )
     template(#selected-item)
