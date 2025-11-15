@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { useSuiClientStore } from '../stores/suiClientStore';
+import { client, network as clientNetwork } from '../move';
 import { Dialog } from 'quasar';
 import SettingsMenuDialog from './SettingsMenuDialog.vue';
 import { computed } from 'vue';
@@ -33,16 +33,13 @@ const props = defineProps({
   showSettings: { type: Boolean, default: true }
 });
 
-const suiClientStore = useSuiClientStore();
 const appStore = useAppStore();
 const router = useRouter();
 
 const network = computed({
-  get() {
-    return suiClientStore.network;
-  },
+  get() { return clientNetwork.value; },
   async set(value) {
-    await suiClientStore.setNetwork(value);
+    clientNetwork.value = value;
 
     const deployOk = await appStore.checkDeploy();
     if (!deployOk) {

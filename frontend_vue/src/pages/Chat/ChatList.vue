@@ -12,19 +12,40 @@ q-list.text-dark
 
   template(v-else)
     mixin chat-room-item-content()
-      q-item-section(avatar)
-        q-avatar
-          img(:src="room.imageUrl || '/logo_sui_chat.png'")
 
-      q-item-section
-        q-item-label(lines="1") {{ room.name }}
-        q-item-label(caption)
-          | todo
+      //- Public Room
+      template(v-if="room.roomType === 1")
+        q-item-section(avatar)
+          q-avatar
+            img(:src="room.imageUrl || '/logo_sui_chat.png'")
 
-      q-item-section(side)
-        q-item-label(caption)
-          | todo
-        q-icon(name="keyboard_arrow_down")
+        q-item-section
+          q-item-label(lines="1") {{ room.name }}
+          q-item-label(caption)
+            | {{room.roomType}}
+
+        q-item-section(side)
+          q-item-label(caption)
+            | todo
+          q-icon(name="keyboard_arrow_down")
+
+      //- DM ROOM
+      template(v-else-if="room.roomType === 2")
+
+        q-item-section(avatar)
+          q-avatar
+            img(:src="room.imageUrl || '/logo_sui_chat.png'")
+
+        q-item-section
+          q-item-label(lines="1") {{ room.name }}
+          q-item-label(caption)
+            | DM
+
+        q-item-section(side)
+          q-item-label(caption)
+            //- vue-json-pretty(:data="room")
+          q-icon(name="keyboard_arrow_down")
+
 
     .flex.text-center.text-dark.q-px-md.q-py-xs.text-caption.bg-grey-3
       template(v-if="myChatRooms.length === 0") Você não participa de nenhuma sala
@@ -61,34 +82,33 @@ q-list.text-dark
 
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
+import { useChatRoomList } from '../../composables/useChatRoomList';
 import _ from 'lodash';
 import { useUserStore } from '../../stores/userStore';
 
 const router = useRouter();
 const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
-const { chatRooms, activeChatRoomId } = storeToRefs(chatRoomStore);
 const roomsJoined = computed(() => _.keyBy(userStore.profile?.roomsJoined || [], roomId => roomId));
 const myChatRooms = computed(() => chatRooms.value.filter(chatRoom => !!roomsJoined.value[chatRoom.id]));
 const publicChatRooms = computed(() => chatRooms.value.filter(chatRoom => !roomsJoined.value[chatRoom.id]));
 const loading = ref(true);
 
-const selectChatRoom = (chatRoom: typeof chatRooms.value[number]) => {
-  if (activeChatRoomId.value === chatRoom.id) {
-    activeChatRoomId.value = undefined;
-  } else {
-    activeChatRoomId.value = chatRoom.id;
-  }
-}
+const chatRoomList = useChatRoomList();
+const {
+  chatRooms, activeChatRoomId,
+  selectChatRoom
+} = toRefs(chatRoomList);
+
 
 const loadChatRooms = async () => {
   loading.value = true;
   try {
-    await chatRoomStore.fetchChatRooms();
+    await chatRoomStore.fetchAllUserJoinedChatRooms();
   } finally {
     loading.value = false;
   }

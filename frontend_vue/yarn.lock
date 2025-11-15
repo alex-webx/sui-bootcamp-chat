@@ -15,11 +15,6 @@
     "@gql.tada/internal" "^1.0.0"
     graphql "^15.5.0 || ^16.0.0 || ^17.0.0"
 
-"@anilkumarthakur/vue3-json-viewer@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@anilkumarthakur/vue3-json-viewer/-/vue3-json-viewer-0.3.0.tgz#7f633f779c427ca6f756f7b6e8234cc94da1bb1d"
-  integrity sha512-fFDmO8CmeTuFv+SAW/tJLCCvacoxEtBfJbm+ZB3XeKtceDb1/LkyRdw5OjdCgkRiCR4UVOGkJ5knUVZdZSfQzg==
-
 "@babel/helper-string-parser@^7.27.1":
   version "7.27.1"
   resolved "https://registry.yarnpkg.com/@babel/helper-string-parser/-/helper-string-parser-7.27.1.tgz#54da796097ab19ce67ed9f88b47bb2ec49367687"
@@ -4246,6 +4241,11 @@ void-elements@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/void-elements/-/void-elements-3.1.0.tgz#614f7fbf8d801f0bb5f0661f5b2f5785750e4f09"
   integrity sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==
+
+vue-json-pretty@^2.6.0:
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/vue-json-pretty/-/vue-json-pretty-2.6.0.tgz#30f865ff59a319bd88ff5ae7461682d07b0775e1"
+  integrity sha512-glz1aBVS35EO8+S9agIl3WOQaW2cJZW192UVKTuGmryx01ZvOVWc4pR3t+5UcyY4jdOfBUgVHjcpRpcnjRhCAg==
 
 vue-router@^4.0.12:
   version "4.6.3"

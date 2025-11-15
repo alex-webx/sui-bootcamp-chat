@@ -1,5 +1,5 @@
 <template lang="pug">
-.WAL.position-relative.bg-ocean(:style="style")
+.WAL.position-relative.bg-ocean(:style="style" v-if="profile")
   WavesBackground(:top="100" :height="200")
   .absolute-top-right.q-ma-md
     SettingsMenu(:readonly="true" :show-settings="false")
@@ -54,9 +54,11 @@
       :width="drawerWidth"
     )
       q-toolbar.bg-deep-sea
-        q-avatar
-          q-img(:src="profile?.avatarUrl || '/logo_sui_chat.png'" error-src="/logo_sui_chat.png")
-        .q-ml-md
+
+        q-avatar.cursor-pointer(@click="editProfile()")
+          q-img(:src="profile.avatarUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
+
+        .q-ml-md.cursor-pointer(@click="editProfile()")
           .text-weight-bold
             | {{ profile?.username }}
           .text-caption.text-aqua
@@ -72,6 +74,10 @@
                   q-icon(name="mdi-forum-plus" color="sea")
                 q-item-section Criar nova sala
               q-separator
+              q-item(clickable @click="editProfile()")
+                q-item-section(avatar)
+                  q-icon(name="mdi-account-edit" color="sea")
+                q-item-section Editar perfil
               q-item(clickable @click="deleteProfile()")
                 q-item-section(avatar)
                   q-icon(name="mdi-account-cancel" color="sea")
@@ -115,12 +121,13 @@
         div
           q-avatar(size="80px")
             q-img(:src="activeChatRoom.imageUrl")
+
         .text-center
           .text-subtitle2 {{ activeChatRoom.name }}
           .text-caption {{ activeChatRoom.messageCount }} {{activeChatRoom.messageCount > 1 ? 'mensagens' : 'mensagem' }}
 
       .q-ma-none.flex.column.q-px-md.q-py-md.q-gutter-y-sm.card-box.text-caption(style="line-height: 11px")
-        div Criado em: {{ formatDate(activeChatRoom.createdAt) }}
+        div Criado em: {{ formatFullDate(activeChatRoom.createdAt) }}
         div ID do chat: {{ shortenAddress(activeChatRoom.id) }}
         div Bloco de mensagens atual: {{ activeChatRoom.currentBlockNumber }}
 
@@ -182,6 +189,7 @@ import { Dialog, Notify, Screen, useQuasar } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
+import formatters from '../../utils/formatters';
 import { useWalletStore } from '../../stores/walletStore';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
@@ -192,6 +200,7 @@ import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
 import ChatRoom from './ChatRoom.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
+import EditProfileDialog from './EditProfileDialog.vue';
 import SettingsMenu from '../../components/SettingsMenu.vue';
 import DeployLabel from '../../components/DeployLabel.vue';
 import TenorComponent, { type TenorResult }  from '../../components/TenorComponent.vue';
@@ -223,8 +232,7 @@ const { addressToProfileMap } = storeToRefs(usersStore);
 const style = computed(() => ({ height: $q.screen.height + 'px' }));
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
 const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
-const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-const formatDate = (date: string) => moment(Number(date)).format('DD/MM/YYYY [às] HH:MM:ss')
+const { shortenAddress, formatFullDate } = formatters;
 
 const disconnect = async (silently = false) => {
   const shouldDisconnect = await new Promise((resolve) => {
@@ -250,8 +258,8 @@ const disconnect = async (silently = false) => {
   });
 
   if (shouldDisconnect) {
-    await router.push({ name: 'login' });
     await walletStore.disconnect();
+    await router.push({ name: 'login' });
   }
 }
 
@@ -279,12 +287,12 @@ const deleteProfile = async () => {
   });
 };
 
-const createRoom = async () => {
+const editProfile = async () => {
   Dialog.create({
-    component: CreateRoomDialog
-  }).onOk(async (newChatRoom: Parameters<typeof chatRoomStore.createChatRoom>[0]) => {
+    component: EditProfileDialog
+  }).onOk(async (updatedUserProfile: Parameters<typeof userStore.updateUserProfile>[0]) => {
     const notif = Notify.create({
-      message: 'Criando sala de chat...',
+      message: 'Atualizando dados do seu perfil...',
       caption: 'Por favor, assine a transação em sua carteira.',
       color: 'primary',
       spinner: true,
@@ -293,22 +301,20 @@ const createRoom = async () => {
     });
 
     try {
-      const response = await chatRoomStore.createChatRoom(newChatRoom);
-      if (response?.chatRoomId) {
+      const response = await userStore.updateUserProfile(updatedUserProfile);
+      if (response) {
         notif({
-          message: 'Sala de chat criada com sucesso',
+          message: 'Perfil atualizado com sucesso!',
           caption: '',
           timeout: 2500,
           spinner: false,
           icon: 'done',
           color: 'positive'
         });
-        await chatRoomStore.fetchChatRooms();
         await userStore.fetchCurrentUserProfile();
-        chatRoomStore.activeChatRoomId = response.chatRoomId;
       } else {
         notif({
-          message: 'Não foi possível criar a sala de chat',
+          message: 'Não foi possível atualizar o seu perfil.',
           caption: '',
           timeout: 2500,
           spinner: false,
@@ -319,7 +325,7 @@ const createRoom = async () => {
     } catch (exc) {
       console.log({exc});
       notif({
-        message: 'Não foi possível criar a sala de chat',
+        message: 'Não foi possível atualizar o seu perfil.',
         caption: 'Ocorreu um erro: ' + exc,
         timeout: 2500,
         spinner: false,
@@ -327,6 +333,12 @@ const createRoom = async () => {
         color: 'negative'
       });
     }
+  });
+};
+
+const createRoom = async () => {
+  Dialog.create({
+    component: CreateRoomDialog
   });
 };
 
@@ -363,8 +375,8 @@ onMounted(async () => {
     const connected = await walletStore.autoConnect();
     if (connected) {
       await userStore.fetchCurrentUserProfile();
-      await chatRoomStore.fetchChatRooms();
-      await usersStore.fetchAllUsersProfiles();
+      // await chatRoomStore.fetchAllChatRooms();
+      // await usersStore.fetchAllUsersProfiles();
     }
   } finally {
     $q.loading.hide();

@@ -13,69 +13,65 @@ q-list
   template(v-else)
 
     q-item.text-dark(
-      v-for="(profile, index) in profiles" :key="index"
+      v-for="(user, userId) in users" :key="userId"
       clickable v-ripple
+      @click="selectUser(user)"
+      :class="{ 'active-item': user.owner !== profile.owner && !!activeChatRoom?.participants?.[user.owner] }"
     )
       q-item-section(avatar)
         q-avatar
-          img(:src="profile.avatarUrl || '/user-circles-set-sm.png'" error-src="/user-circles-set-sm.png")
+          q-img(:src="user.avatarUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
 
       q-item-section
         q-item-label(lines="1")
-          | {{ profile.username }}
+          | {{ user.username }}
         q-item-label.conversation__summary(caption)
-          | {{ shortAddress(profile.owner) }}
+          | {{ shortenAddress(user.owner) }}
+          q-badge.q-ml-sm(v-if="user.owner === profile.owner" color="medium-sea") você
 
       q-item-section(side)
         q-item-label(caption)
           .text-right
             div
               | entrou em
-            div {{ formatDate(profile.createdAt) }}
-            div {{ formatTime(profile.createdAt) }}
+            div {{ formatDate(users.createdAt) }}
+            div {{ formatTime(users.createdAt) }}
 
     .text-center.text-dark.q-px-sm.q-py-xs.text-caption.bg-grey-3
-      | {{ profilesLength }} {{profilesLength > 1 ? 'usuários cadastrados' : 'usuário cadastrado'}}
+      | {{ usersLength }} {{usersLength > 1 ? 'usuários cadastrados' : 'usuário cadastrado'}}
       q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="loadUserProfiles()")
         q-tooltip Recarregar lista de usuários
 
+
+  q-dialog(:modelValue="!!selectedUserId" @hide="selectedUserId = 0")
+    q-card
+      | {{ selectedUserId }}
+
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useUsersStore } from '../../stores/usersStore';
-import _ from 'lodash';
-import moment from 'moment';
+import { ref, onMounted, computed, toRefs } from 'vue';
+import { Dialog, Notify } from 'quasar';
 import { storeToRefs } from 'pinia';
+import { useUsersStore } from '../../stores/usersStore';
+import { useUserStore } from '../../stores/userStore';
+import formatters from '../../utils/formatters';
+import { useChatRoomStore } from 'src/stores/chatRoomStore';
+import { ERoomType } from '../../move';
+import { useChatRoomList } from '../../composables/useChatRoomList';
 
 const usersStore = useUsersStore();
-const { profiles } = storeToRefs(usersStore);
-const profilesLength = computed(() => Object.keys(profiles.value!).length);
+const userStore = useUserStore();
+const chatRoomStore = useChatRoomStore();
+const chatRoomList = useChatRoomList();
+
+const { users } = storeToRefs(usersStore);
+const { profile } = storeToRefs(userStore);
+const usersLength = computed(() => Object.keys(users.value!).length);
 const loading = ref(false);
+const { formatDate, formatTime, shortenAddress } = formatters;
+const { selectChatRoom, activeChatRoom } = toRefs(chatRoomList);
 
-const formatDate = (date: number) => moment(date).format('DD/MM/YYYY');
-const formatTime = (date: number) => moment(date).format('HH[h]mm');
-const shortAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
-const randomColor = (address: string) => {
-  let min = 30;
-  let max = 225;
-
-  let hash = 0;
-  for (let i = 0; i < address.length; i++) {
-    hash = address.charCodeAt(i) + ((hash << 5) - hash);
-    hash |= 0;
-  }
-
-  const range = max - min;
-
-  let color = '#';
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xFF;
-    const softValue = Math.floor((value / 255) * range) + min;
-    color += softValue.toString(16).padStart(2, '0');
-  }
-
-  return color;
-};
+const selectedUserId = ref<string>();
 
 const loadUserProfiles = async () => {
   loading.value = true;
@@ -86,7 +82,54 @@ const loadUserProfiles = async () => {
   }
 };
 
+const selectUser = async (user: typeof users.value[number]) => {
+  if (user.owner === profile.value?.owner) {
+    selectedUserId.value = undefined;
+    return;
+  }
+
+  const rooms = await chatRoomStore.fetchAllUserJoinedChatRooms();
+  const dmRoom = rooms
+    .filter(room => room.roomType === ERoomType.DirectMessage)
+    .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
+
+  if (dmRoom) {
+    await selectChatRoom.value(dmRoom);
+  } else {
+    Dialog.create({
+      title: `Você ainda não possui um chat com ${user.username}.`,
+      message: `Deseja iniciar a conversa com ${user.username}?`,
+      cancel: {
+        label: 'Cancelar',
+        color: 'grey',
+        flat: true
+      },
+      ok: {
+        label: 'Iniciar conversa',
+        color: 'primary'
+      }
+    }).onOk(async () => {
+      const res = await chatRoomStore.createDmRoom({
+        inviteeUserProfile: user
+      });
+      alert('todo: strong type retorno');
+      if (res) {
+        Notify.create({
+          message: 'Sala criada com sucesso!',
+          color: 'positive'
+        })
+        await chatRoomStore.fetchAllChatRooms();
+      }
+    });
+  }
+};
+
 onMounted(async () => {
   await loadUserProfiles();
 });
 </script>
+<style lang="scss" scoped>
+.active-item {
+  background-color: rgba($sea, 0.2);
+}
+</style>

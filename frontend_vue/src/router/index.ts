@@ -36,6 +36,8 @@ export default defineRouter(async ({ store }) => {
   });
 
   Router.beforeEach(async (to, from, next) => {
+    console.log(`[router.beforeEach:${String(from.name)}:${String(to.name)}]`);
+
     try {
       const appStore = useAppStore(store);
       const walletStore = useWalletStore(store);
@@ -45,7 +47,9 @@ export default defineRouter(async ({ store }) => {
       if (!isConfigRoute) {
         const deployOk = await appStore.checkDeploy();
         if (!deployOk) {
-          return next({ name: 'config' });
+          console.log(`[router] deployNOK`);
+          next({ name: 'config' });
+          return;
         }
       }
 
@@ -53,18 +57,30 @@ export default defineRouter(async ({ store }) => {
       await userStore.fetchCurrentUserProfile();
 
       const { requiresWallet, requiresProfile } = to.meta;
+      const isConnected = walletStore.isConnected;
+      const hasProfile = userStore.profile?.owner === walletStore.address;
 
-      if (!!requiresWallet && !walletStore.isConnected) {
-        return next({ name: 'login' });
+      if (requiresWallet && !isConnected && to.name !== 'login') {
+        next({ name: 'login' });
+        return;
       }
 
-      if (!!requiresProfile && !userStore.profile?.id) {
-        return next({ name: 'create-profile' });
+      if (requiresProfile && !hasProfile && isConnected && to.name !== 'create-profile') {
+        next({ name: 'create-profile' });
+        return;
       }
 
-      return next();
-    } catch {
-      return next({ name: 'config' });
+      if ((to.name === 'login' || to.name === 'create-profile') && isConnected && hasProfile) {
+        next({ name: 'chat' });
+        return;
+      }
+
+      next();
+      return;
+    } catch (ex) {
+      console.log(`[router] catch`, ex);
+      next({ name: 'config' });
+      return;
     }
   });
 

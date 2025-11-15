@@ -10,3 +10,7 @@
   scrollbar-width: thin; /* auto | thin | none */
   scrollbar-color: $medium-sea rgba(255, 255, 255, 0.1); /* cor_do_thumb cor_da_trilha */
 }
+
+.dialog-top-bordered {
+  border-top: 8px solid $medium-sea;
+}

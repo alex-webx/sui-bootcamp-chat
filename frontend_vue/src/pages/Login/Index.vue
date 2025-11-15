@@ -19,7 +19,7 @@ q-layout.bg-sea
         DeployLabel
 
       .flex.flex-center.column
-        q-card.flex.flex-center.text-ocean.shadow-20.card-box
+        q-card.flex.flex-center.text-ocean.shadow-20.card-box.dialog-top-bordered
           q-card-section
             .rows.flex-center.q-gutter-y-lg
               .flex.flex-center.items-center
@@ -53,7 +53,6 @@ const screenHeight = computed(() => Screen.height);
   border-radius: 16px;
   min-width: 260px;
   max-width: 80vw;
-  border-top: 8px solid $medium-sea;
   padding: 16px;
 }
 </style>

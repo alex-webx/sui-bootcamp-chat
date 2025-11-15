@@ -67,15 +67,12 @@ import { storeToRefs } from 'pinia';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
-import { useSuiClientStore } from '../../stores/suiClientStore';
 import moment from 'moment';
-import 'moment/dist/locale/pt-br';
 
 const route = useRoute();
 const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
-const suiClientStore = useSuiClientStore();
 const { activeChatRoom } = storeToRefs(chatRoomStore);
 const { profile } = storeToRefs(userStore);
 const { addressToProfileMap } = storeToRefs(usersStore);

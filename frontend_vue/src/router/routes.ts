@@ -30,6 +30,18 @@ const routes: RouteRecordRaw[] = [
   },
 
   {
+    path: '/explorer',
+    name: 'explorer',
+    component: () => import('../Explorer.vue')
+  },
+
+  {
+    path: '/package-explorer',
+    name: 'package-explorer',
+    component: () => import('../PackageExplorer.vue')
+  },
+
+  {
     path: '/playground',
     name: 'playground',
     component: () => import('../Playground.vue')

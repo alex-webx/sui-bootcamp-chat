@@ -1,42 +1,39 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { type UserProfile, useUserProfileContractService } from '../services/userProfileContractService';
-import { useWalletStore } from './walletStore';
+import { type UserProfile, userProfileModule } from '../move';
+import { useWalletStore } from './';
 import _, { Dictionary } from 'lodash';
 
 export const useUsersStore = defineStore('usersStore', () => {
-  const userProfileSvc = useUserProfileContractService();
   const walletStore = useWalletStore();
 
-  const profiles = ref<Dictionary<UserProfile>>({});
+  const users = ref<Dictionary<UserProfile>>({});
   const addressToProfileMap = computed(() => {
-    return _.keyBy(profiles.value, profile => profile.owner);
+    return _.keyBy(users.value, profile => profile.owner);
   });
 
   const fetchAllUsersProfiles = async () => {
-    const users = await userProfileSvc.getAllUsersProfiles();
-    profiles.value = _(users).keyBy(user => user.id).value();
+    const usersProfiles = await userProfileModule.getAllUsersProfiles();
+    users.value = _(usersProfiles).keyBy(user => user.id).value();
   };
 
   const checkUserProfilesRegistry = async() => {
     try {
-      return !(await userProfileSvc.getUserProfileRegistry())?.error;
+      return !(await userProfileModule.getUserProfileRegistry())?.error;
     } catch {
       return false;
     }
   };
 
-
-
   return {
-    profiles,
+    users,
     addressToProfileMap,
 
     fetchAllUsersProfiles,
     checkUserProfilesRegistry,
 
     resetState: async () => {
-      profiles.value = {};
+      users.value = {};
     }
   };
 });
