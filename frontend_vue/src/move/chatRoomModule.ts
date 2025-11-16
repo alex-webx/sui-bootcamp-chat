@@ -2,13 +2,15 @@ import _ from 'lodash';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiObjectResponse } from '@mysten/sui/client';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import Config from '../../configs';
+import { useConfig } from '../../configs';
 import { client } from './useClient';
 import type * as Models from '.';
 import { EPermission } from './chatRoomModels';
 
+export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
+
 export const getChatRoomRegistry = async () => {
-  const chatRoomRegistry = await client.getObject({ id: Config('ChatRoomRegistryId')!, options: { showContent: true }});
+  const chatRoomRegistry = await client.getObject({ id: config('ChatRoomRegistryId')!, options: { showContent: true }});
   return chatRoomRegistry;
 };
 
@@ -21,10 +23,10 @@ export const createRoom = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::create_room`,
+    target: `${config('PackageId')}::chat_room::create_room`,
     arguments: [
       tx.object(data.userProfile.id),
-      tx.object(Config('ChatRoomRegistryId')!),
+      tx.object(config('ChatRoomRegistryId')!),
       tx.pure.string(data.room.name),
       tx.pure.string(data.room.imageUrl),
       tx.pure.u64(data.room.maxParticipants),
@@ -33,7 +35,7 @@ export const createRoom = async (
       tx.pure.vector('u8', data.userRoomKey),
       tx.pure.u8(data.room.permissionInvite),
       tx.pure.u8(data.room.permissionSendMessage),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
 
@@ -117,13 +119,13 @@ export const createDmRoom = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::create_dm_room`,
+    target: `${config('PackageId')}::chat_room::create_dm_room`,
     arguments: [
-      tx.object(Config('ChatRoomRegistryId')!),
+      tx.object(config('ChatRoomRegistryId')!),
       tx.object(data.userProfile.id),
       tx.pure.address(data.inviteeAddress),
       tx.pure.vector('u8', data.inviteeRoomKey),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
 
@@ -146,12 +148,12 @@ export const acceptDmRoom = async(
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::accept_dm_room`,
+    target: `${config('PackageId')}::chat_room::accept_dm_room`,
     arguments: [
       tx.object(data.room.id),
       tx.object(data.profile.id),
       tx.pure.vector('u8', data.inviterRoomKey),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
 
@@ -285,13 +287,13 @@ export const sendMessage = async (
   });
 
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::send_message`,
+    target: `${config('PackageId')}::chat_room::send_message`,
     arguments: [
       tx.object(userProfileId),
       tx.object(message.roomId),
       tx.pure.string(message.content),
       noneOptionId,
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
 
@@ -306,7 +308,7 @@ export const editMessage = (
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::edit_message`,
+    target: `${config('PackageId')}::chat_room::edit_message`,
     arguments: [
       tx.object(message.id),
       tx.pure.string(newMessage.content),
@@ -323,7 +325,7 @@ export const deleteMessage = async (
 
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::delete_message`,
+    target: `${config('PackageId')}::chat_room::delete_message`,
     arguments: [
       tx.object(chatRoom.id),
       tx.object(message.id)
@@ -341,12 +343,12 @@ export const inviteParticipant = async (
 
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::invite_participant`,
+    target: `${config('PackageId')}::chat_room::invite_participant`,
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(inviteeAddress),
       tx.pure.vector('u8', inviteeRoomKey),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
 
@@ -359,11 +361,11 @@ export const addModerator = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::add_moderator`,
+    target: `${config('PackageId')}::chat_room::add_moderator`,
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(newModeratorAddress),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ]
   });
 
@@ -376,11 +378,11 @@ export const removeModerator = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::remove_moderator`,
+    target: `${config('PackageId')}::chat_room::remove_moderator`,
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(moderatorAddress),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ]
   });
 
@@ -393,11 +395,11 @@ export const banUser = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::ban_user`,
+    target: `${config('PackageId')}::chat_room::ban_user`,
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(userAddress),
-      tx.object(Config('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ]
   });
 
@@ -410,7 +412,7 @@ export const unbanUser = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Config('PackageId')}::chat_room::unban_user`,
+    target: `${config('PackageId')}::chat_room::unban_user`,
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(userAddress)
@@ -440,7 +442,7 @@ export const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: n
     hasNextPage = messageBlocksResponse.hasNextPage;
 
     const messageBlocksInPage = messageBlocksResponse.data
-      .filter(msgBlock => msgBlock.objectType === `${Config('PackageId')}::chat_room::MessageBlock`)
+      .filter(msgBlock => msgBlock.objectType === `${config('PackageId')}::chat_room::MessageBlock`)
       .map(msgBlock => msgBlock.objectId);
 
     messageBlocksIds.push(...messageBlocksInPage);

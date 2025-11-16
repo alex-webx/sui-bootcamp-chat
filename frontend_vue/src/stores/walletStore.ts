@@ -4,7 +4,7 @@ import { getWallets, StandardConnect, StandardConnectFeature } from '@mysten/wal
 import type { WalletAccount, Wallet, Wallets } from '@mysten/wallet-standard';
 import formatters from '../utils/formatters';
 import { Transaction } from '@mysten/sui/transactions';
-import { client, network } from '../move';
+import { client, getNetwork } from '../move';
 
 const getSuiWallets = (walletsApi: Wallets) => {
   return walletsApi.get().filter(wallet => !!wallet.chains.find(chain => chain.startsWith('sui:')));
@@ -121,7 +121,7 @@ export const useWalletStore = defineStore('wallet', () => {
     const wallet = getConnectedWallet()!;
     const { bytes, digest, effects, signature } = await (wallet.features['sui:signAndExecuteTransaction'] as any).signAndExecuteTransaction({
       account: account.value,
-      chain: `sui:${network}`,
+      chain: `sui:${getNetwork()}`,
       transaction: tx,
       options: {
         showEffects: true,

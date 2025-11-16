@@ -1,4 +1,4 @@
-import { client, network } from '../src/move';
+import { getNetwork } from '../src/move';
 import configMoveDevnet from './.move.devnet.json';
 import configMoveTestnet from './.move.testnet.json';
 import configMoveMainnet from './.move.mainnet.json';
@@ -8,82 +8,94 @@ import configClientMainnet from './.client.mainnet.json';
 
 export type Network = 'mainnet' | 'testnet' | 'devnet';
 
-const extraClientConfigs = {
-  CommitRef: process.env.COMMIT_REF!
-};
-const clientConfigs = {
-  devnet: { ...configClientDevnet, ...extraClientConfigs, network: 'devnet' },
-  testnet: { ...configClientTestnet, ...extraClientConfigs, network: 'testnet' },
-  mainnet: { ...configClientMainnet, ...extraClientConfigs, network: 'mainnet' },
-};
+export function useConfig() {
 
-const MOVE_EXTRA_KEYS = ['SuiClockId'] as const;
-type MoveExtraConfigKey = typeof MOVE_EXTRA_KEYS[number];
-type MoveConfigKey = keyof typeof configMoveDevnet | MoveExtraConfigKey;
-type ClientConfigKey = keyof typeof configClientDevnet | keyof typeof extraClientConfigs;
-type ConfigKey = MoveConfigKey | ClientConfigKey;
+  const network = getNetwork();
 
-const defaultValues: Partial<Record<MoveConfigKey, string>> = {
-  SuiClockId: '0x6'
-};
+  const extraClientConfigs = {
+    CommitRef: process.env.COMMIT_REF!
+  };
+  const clientConfigs = {
+    devnet: { ...configClientDevnet, ...extraClientConfigs, network: 'devnet' },
+    testnet: { ...configClientTestnet, ...extraClientConfigs, network: 'testnet' },
+    mainnet: { ...configClientMainnet, ...extraClientConfigs, network: 'mainnet' },
+  };
 
-const networkConfigs: Record<Network, Partial<Record<MoveConfigKey, any>>> = {
-  devnet: { ...defaultValues, ...configMoveDevnet },
-  testnet: { ...defaultValues, ...configMoveTestnet },
-  mainnet: { ...defaultValues, ...configMoveMainnet },
-};
+  const MOVE_EXTRA_KEYS = ['SuiClockId'] as const;
+  type MoveExtraConfigKey = typeof MOVE_EXTRA_KEYS[number];
+  type MoveConfigKey = keyof typeof configMoveDevnet | MoveExtraConfigKey;
+  type ClientConfigKey = keyof typeof configClientDevnet | keyof typeof extraClientConfigs;
+  type ConfigKey = MoveConfigKey | ClientConfigKey;
 
-const getConfig = (key: ConfigKey): string | undefined => {
-  const valueFromLocalStorage = localStorage.getItem(`${network.value}::${key}`);
-  if (valueFromLocalStorage !== null) {
-    return valueFromLocalStorage;
-  }
+  const defaultValues: Partial<Record<MoveConfigKey, string>> = {
+    SuiClockId: '0x6'
+  };
 
-  if (key in clientConfigs[network.value]) {
-    return clientConfigs[network.value][key as ClientConfigKey];
-  }
+  const networkConfigs: Record<Network, Partial<Record<MoveConfigKey, any>>> = {
+    devnet: { ...defaultValues, ...configMoveDevnet },
+    testnet: { ...defaultValues, ...configMoveTestnet },
+    mainnet: { ...defaultValues, ...configMoveMainnet },
+  };
 
-  if (key in networkConfigs[network.value]) {
-    return networkConfigs[network.value][key as MoveConfigKey];
-  }
+  const getConfig = (key: ConfigKey): string | undefined => {
+    const valueFromLocalStorage = localStorage.getItem(`${network}::${key}`);
+    if (valueFromLocalStorage !== null) {
+      return valueFromLocalStorage;
+    }
 
-  return undefined;
-};
+    if (key in clientConfigs[network]) {
+      return clientConfigs[network][key as ClientConfigKey];
+    }
 
-export const setNetworkConfig = (key: MoveConfigKey, value: string | undefined) => {
-  if (value === undefined) {
-    localStorage.removeItem(`${network.value}::${key}`);
-  } else {
-    localStorage.setItem(`${network.value}::${key}`, value);
-  }
-};
+    if (key in networkConfigs[network]) {
+      return networkConfigs[network][key as MoveConfigKey];
+    }
 
-export const resetAllNetworkConfigs = () => {
-  Object.keys(networkConfigs[network.value]).forEach(key => {
-    localStorage.removeItem(`${network.value}::${key}`);
-  });
-};
+    return undefined;
+  };
 
-export const getAllNetworkConfigs = (): Record<MoveConfigKey, string | undefined> => {
-  const networkConfig = networkConfigs[network.value];
-  const networkKeys: MoveConfigKey[] = Object.keys(networkConfig) as MoveConfigKey[];
-  const networkValues = networkKeys.reduce((acc, key) => {
-    acc[key] = getConfig(key);
-    return acc;
-  }, {} as Record<MoveConfigKey, ReturnType<typeof getConfig>>);
+  const setNetworkConfig = (key: MoveConfigKey, value: string | undefined) => {
+    if (value === undefined) {
+      localStorage.removeItem(`${network}::${key}`);
+    } else {
+      localStorage.setItem(`${network}::${key}`, value);
+    }
+  };
 
-  return networkValues;
-};
+  const resetAllNetworkConfigs = () => {
+    Object.keys(networkConfigs[network]).forEach(key => {
+      localStorage.removeItem(`${network}::${key}`);
+    });
+  };
 
-export const getAllClientConfigs = (): Record<ClientConfigKey, string | undefined> => {
-  return clientConfigs[network.value];
-};
+  const getAllNetworkConfigs = (): Record<MoveConfigKey, string | undefined> => {
+    const networkConfig = networkConfigs[network];
+    const networkKeys: MoveConfigKey[] = Object.keys(networkConfig) as MoveConfigKey[];
+    const networkValues = networkKeys.reduce((acc, key) => {
+      acc[key] = getConfig(key);
+      return acc;
+    }, {} as Record<MoveConfigKey, ReturnType<typeof getConfig>>);
 
-export const getAllConfigs = (): Record<ConfigKey, string | undefined> => {
+    return networkValues;
+  };
+
+  const getAllClientConfigs = (): Record<ClientConfigKey, string | undefined> => {
+    return clientConfigs[network];
+  };
+
+  const getAllConfigs = (): Record<ConfigKey, string | undefined> => {
+    return {
+      ...getAllNetworkConfigs(),
+      ...getAllClientConfigs()
+    };
+  };
+
   return {
-    ...getAllNetworkConfigs(),
-    ...getAllClientConfigs()
+    getConfig,
+    setNetworkConfig,
+    resetAllNetworkConfigs,
+    getAllNetworkConfigs,
+    getAllClientConfigs,
+    getAllConfigs
   };
 };
-
-export default getConfig;

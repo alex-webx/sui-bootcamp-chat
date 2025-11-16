@@ -38,3 +38,27 @@ Para as próximas versões:
 - Lógica para moderadores banirem/desbanirem usuários em um chat (contrato OK, falta implementação no front-end)
 - Utilização de armazemento externo de imagens (no momento está aceitando apenas URL/data:image em um campo String da struct)
 - ...
+
+
+# Criptografia das mensagens
+
+Quando um usuário cria o seu `UserProfile`, a interface gera inicialmente um par de chaves assimétricas ECDH, que irá conter
+as informações `public key (pubkey)`, `iv`, `salt` e `private key (privkey)`.
+
+Os valores de `pubkey`, `iv` e `salt` são armazenados e salvos diretamente no objeto blockchain `UserProfile` do usuário.
+
+Já a `privkey` não pode ser armazenada diretamente na blockchain. Para isso a interface solicita para que o usuário assine uma mensagem de texto fixa(exemplo: `Bem-vindo ao Sui Chat. Carteira: 0x...`), gerando um hash determinístico que somente sua carteira é capaz de gerar. Esse hash resultante será a chave simétrica para criptografar a `privkey`, gerando um novo valor (`derivprivkey`) que será armazenado no `UserProfile` do usuário.
+
+Temos então, no perfil do usuário:
+- `pubkey`: chave pública do usuário, que será utilizada por terceiros para criptografar informações que somente o usuário seja capaz de descriptografar com sua chave privada `privkey` (que está criptografada simetricamente dentro de `derivprivkey`)
+- `iv` e `salt`: initialization vector e salt utilizados na geração da chave privada
+- `derivprivey`: chave privada `privkey` criptografada com a assinatura da mensagem fixa
+- `privkey`: esta informação não é armazenada em blockchain por motivos óbvios, e pode ser recuperada a partir da descriptografia de `derivprivkey`, utilizando o hash da mensagem fixa
+
+## Sala privada entre 2 pessoas (DM)
+- É utilizado criptografia E2EE (end-to-end-encryption) com ECDH (Elliptic Curve Diffie-Hellman) para acordo e geração da chave simétrica que será utilizada para criptografar as mensagens do chat particular.
+- Quando o `Usuário A` inicia uma conversa particular com o `Usuário B`, o `Usuário A` recupera a chave pública do `Usuário B (B.pubkey)`. Com a sua própria `A.privkey` e a chave pública `B.pubkey` do `Usuário B`, o `Usuário A` gera uma `shared AES key`. Essa chave compartilhada é então armazenada no `ParticipantInfo.room_key` do `Usuário B`.
+- Ao aceitar o convite de `Usuário A`, o `Usuário B` irá realizar o mesmo processo (com sua chave privada `B.privkey` e a chave pública `A.pubkey` do `Usuário A`, ele irá gerar o `ParticipantInfo.room_key` para o `Usuário A`)
+- Neste ponto, ambas as partes são capazes de derivar a partir da `shared AES key` armazenada em seu perfil, a chave final que será utilizada para criptografar e descriptografar as mensagens. Graças ao algoritmo ECDH, essa chave final será igual para ambos, e somente eles conseguirão deriva-la utilizando, cada um, sua própria chave privada e shared AES key.
+
+## Sala pública

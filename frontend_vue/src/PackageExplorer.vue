@@ -38,7 +38,7 @@ q-layout.bg-ocean
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { useClient } from './move/useClient';
+import { client } from './move/useClient';
 import _ from 'lodash';
 
 const constants = {
@@ -46,8 +46,6 @@ const constants = {
   "UserProfileRegistryId": "0xba3b027ac129724388022c223d7fab00043dc6f3aa10f27602c1c7782df67738",
   "ChatRoomRegistryId": "0x1cfb9a7973337e13da7379851b366d5f68d6f49f484ab10b1b1fefd3444d927f"
 };
-
-const client = useClient().client.value;
 
 const packageId = ref(constants.PackageId);
 const modules = ref({});

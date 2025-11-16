@@ -20,10 +20,10 @@
 </template>
 
 <script setup lang="ts">
-import { client, network as clientNetwork } from '../move';
+import { client, getNetwork, setNetwork } from '../move';
 import { Dialog } from 'quasar';
 import SettingsMenuDialog from './SettingsMenuDialog.vue';
-import { computed } from 'vue';
+import { computed, watch, toRef } from 'vue';
 import { useAppStore } from '../stores/appStore';
 import { useRouter } from 'vue-router';
 
@@ -37,18 +37,12 @@ const appStore = useAppStore();
 const router = useRouter();
 
 const network = computed({
-  get() { return clientNetwork.value; },
-  async set(value) {
-    clientNetwork.value = value;
-
-    const deployOk = await appStore.checkDeploy();
-    if (!deployOk) {
-      await appStore.resetState();
-      setTimeout(() => { router.push({ name: 'config' }) });
-    } else {
-      await appStore.resetState();
-      reload();
-    }
+  get() {
+    return getNetwork();
+  },
+  set(network) {
+    setNetwork(network);
+    reload();
   }
 });
 

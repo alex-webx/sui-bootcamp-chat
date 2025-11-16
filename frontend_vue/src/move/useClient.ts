@@ -1,7 +1,6 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
-import { useLocalStorage } from '../composables/useLocalStorage';
-import { computed, type Ref } from 'vue';
 import type { Network } from '../../configs';
 
-export const network = useLocalStorage('SUI_NETWORK', 'devnet') as any as Ref<Network>;
-export const client = new SuiClient({ url: getFullnodeUrl(network.value) });
+export const getNetwork = () => (localStorage.getItem('SUI_NETWORK') || 'devnet') as Network;
+export const setNetwork = (network: Network) => localStorage.setItem('SUI_NETWORK', network);
+export const client = new SuiClient({ url: getFullnodeUrl(getNetwork()) });

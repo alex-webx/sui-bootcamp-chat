@@ -1,12 +1,14 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiObjectResponse } from '@mysten/sui/client';
-import Constants from '../../configs';
+import { useConfig } from '../../configs';
 import { client } from './useClient';
 import type * as Models from './';
 import encrypt from '../utils/encrypt';
 
+export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
+
 export const getUserProfileRegistry = async () => {
-  const userProfileRegistry = await client.getObject({ id: Constants('UserProfileRegistryId')!, options: { showContent: true }});
+  const userProfileRegistry = await client.getObject({ id: config('UserProfileRegistryId')!, options: { showContent: true }});
   return userProfileRegistry;
 };
 
@@ -15,16 +17,16 @@ export const createUserProfile = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Constants('PackageId')}::user_profile::create_user_profile`,
+    target: `${config('PackageId')}::user_profile::create_user_profile`,
     arguments: [
-      tx.object(Constants('UserProfileRegistryId')!),
+      tx.object(config('UserProfileRegistryId')!),
       tx.pure.string(userProfile.username),
       tx.pure.string(userProfile.avatarUrl),
       tx.pure.vector('u8', userProfile.keyPub),
       tx.pure.vector('u8', userProfile.keyPrivDerived),
       tx.pure.vector('u8', userProfile.keyIv),
       tx.pure.vector('u8', userProfile.keySalt),
-      tx.object(Constants('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
   return tx;
@@ -36,12 +38,12 @@ export const updateUserProfile = async (
 ) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Constants('PackageId')}::user_profile::update_user_profile`,
+    target: `${config('PackageId')}::user_profile::update_user_profile`,
     arguments: [
       tx.object(userProfileId),
       tx.pure.string(newUserProfile.username),
       tx.pure.string(newUserProfile.avatarUrl),
-      tx.object(Constants('SuiClockId')!)
+      tx.object(config('SuiClockId')!)
     ],
   });
   return tx;
@@ -50,9 +52,9 @@ export const updateUserProfile = async (
 export const deleteUserProfile = (userProfileId: string) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Constants('PackageId')}::user_profile::delete_user_profile`,
+    target: `${config('PackageId')}::user_profile::delete_user_profile`,
     arguments: [
-      tx.object(Constants('UserProfileRegistryId')!),
+      tx.object(config('UserProfileRegistryId')!),
       tx.object(userProfileId)
     ],
   });
@@ -63,9 +65,9 @@ export const deleteUserProfile = (userProfileId: string) => {
 export const joinRoom = (profile: Pick<Models.UserProfile, 'id'>, chatRoom: Pick<Models.ChatRoom, 'id'>) => {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${Constants('PackageId')}::user_profile::add_user_profile_rooms_joined`,
+    target: `${config('PackageId')}::user_profile::add_user_profile_rooms_joined`,
     arguments: [
-      tx.object(Constants('UserProfileRegistryId')!),
+      tx.object(config('UserProfileRegistryId')!),
       tx.object(profile.id),
       tx.pure.id(chatRoom.id)
     ],
@@ -99,7 +101,7 @@ export const getUserProfile = async (address: string) => {
   const response = await client.getOwnedObjects({
     owner: address,
     filter: {
-      StructType: `${Constants('PackageId')}::user_profile::UserProfile`,
+      StructType: `${config('PackageId')}::user_profile::UserProfile`,
     },
     options: { showContent: true },
   });
