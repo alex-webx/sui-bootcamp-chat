@@ -11,6 +11,11 @@ const EUserProfileNotExists         : u64 = 003;
 const EEmptyString                  : u64 = 004;
 const EEmptyVector                  : u64 = 005;
 
+public struct UserProfileRegistry has key {
+    id: UID,
+    users: Table<address, ID>, // mapping wallet address -> profile id
+}
+
 public struct UserProfile has key {
     id: UID,
     owner: address,
@@ -23,11 +28,6 @@ public struct UserProfile has key {
     key_priv_derived: vector<u8>,
     key_iv: vector<u8>,
     key_salt: vector<u8>,
-}
-
-public struct UserProfileRegistry has key {
-    id: UID,
-    users: Table<address, ID>, // mapping wallet address -> profile id
 }
 
 public struct UserProfileCreatedEvent has copy, drop {
