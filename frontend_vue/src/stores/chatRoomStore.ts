@@ -3,63 +3,14 @@ import { computed, ref } from 'vue';
 import { EPermission, chatRoomModule } from '../move';
 import type { ChatRoom, Message, MessageBlock, UserProfile } from '../move';
 import encrypt from '../utils/encrypt';
-import { useUserStore } from './';
+import { useUserStore, useWalletStore } from './';
 
 export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const userStore = useUserStore();
+  const walletStore = useWalletStore();
 
   const chatRooms = ref<ChatRoom[]>([]);
   const activeChatRoomId = ref<string>();
-
-  const createPublicRoom = async (
-    data: {
-      room: Pick<ChatRoom, 'name' | 'imageUrl' | 'maxParticipants'>
-    }
-  ) => {
-    if (userStore.profile?.id) {
-      //const roomKey = await CryptService.generateSymmetricKey();
-
-      return chatRoomModule.createPublicRoom({
-        userProfile: userStore.profile,
-        room: {
-          ...data.room,
-          roomKey: new Uint8Array(),// await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
-        }
-      });
-    }
-  };
-
-   const createPrivateRoom = async (
-    data: {
-      room: Pick<ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'permissionInvite' | 'permissionSendMessage'>
-    }
-  ) => {
-    if (userStore.profile?.id) {
-      const roomKey = new Uint8Array();// await CryptService.generateSymmetricKey();
-
-      return chatRoomModule.createPrivateRoom({
-        userProfile: userStore.profile,
-        room: data.room,
-        userRoomKey: new Uint8Array()//await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
-      });
-    }
-  };
-
-  const createAnnouncementsRoom = async (
-    data: {
-      room: Pick<ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'permissionInvite'>
-    }
-  ) => {
-    if (userStore.profile?.id) {
-      const roomKey = new Uint8Array();// await CryptService.generateSymmetricKey();
-
-      return chatRoomModule.createAnnouncementsRoom({
-        userProfile: userStore.profile,
-        room: data.room,
-        userRoomKey: new Uint8Array()// await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
-      });
-    }
-  };
 
   const createChatRoom = async(roomMetaData: {
     name: string,
@@ -69,8 +20,14 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     isPublic: boolean,
     isAnnouncements: boolean
   }) => {
+    if (!userStore.profile?.id) {
+      throw 'no profile';
+    }
+
     if (roomMetaData.isAnnouncements) {
-      return await createAnnouncementsRoom({
+
+      const tx = chatRoomModule.txCreateAnnouncementsRoom({
+        userProfile: userStore.profile,
         room: {
           name: roomMetaData.name,
           imageUrl: roomMetaData.imageUrl,
@@ -78,18 +35,33 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
           permissionInvite: roomMetaData.isPublic ?
             (EPermission.Admin & EPermission.Moderators & EPermission.Participants & EPermission.Anyone) :
             (EPermission.Admin & EPermission.Moderators)
-        }
+        },
+        userRoomKey: new Uint8Array()// await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
       });
+
+      alert('todo chatRoomModule.txCreateAnnouncementsRoom');
+
+      return await walletStore.signAndExecuteTransaction(tx);
+
     } else if (roomMetaData.isPublic) {
-      return await createPublicRoom({
+
+      const tx = chatRoomModule.txCreatePublicRoom({
+        userProfile: userStore.profile,
         room: {
           name: roomMetaData.name,
           imageUrl: roomMetaData.imageUrl,
-          maxParticipants: roomMetaData.maxParticipants
+          maxParticipants: roomMetaData.maxParticipants,
+          roomKey: new Uint8Array(),// await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
         }
       });
+
+      alert('todo chatRoomModule.txCreatePublicRoom');
+
+      return await walletStore.signAndExecuteTransaction(tx);
     } else {
-      return createPrivateRoom({
+
+      const tx = chatRoomModule.txCreatePrivateRoom({
+        userProfile: userStore.profile,
         room: {
           name: roomMetaData.name,
           imageUrl: roomMetaData.imageUrl,
@@ -98,11 +70,15 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
             (EPermission.Admin & EPermission.Moderators & EPermission.Participants & EPermission.Anyone) :
             (EPermission.Admin & EPermission.Moderators),
           permissionSendMessage: (EPermission.Admin & EPermission.Moderators & EPermission.Participants)
-        }
-      })
+        },
+        userRoomKey: new Uint8Array()//await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
+      });
+
+      alert('todo chatRoomModule.txCreatePrivateRoom');
+
+      return await walletStore.signAndExecuteTransaction(tx);
     }
   };
-
 
   const createDmRoom = async (
     data: {
@@ -114,11 +90,14 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
       const sharedKeyBytes = await window.crypto.subtle.exportKey('raw', sharedAesKey);
       const sharedKeyUint8Array = new Uint8Array(sharedKeyBytes);
 
-      return chatRoomModule.createDmRoom({
+      const tx = chatRoomModule.txCreateDmRoom({
         userProfile: userStore.profile,
         inviteeAddress: data.inviteeUserProfile.owner,
         inviteeRoomKey: sharedKeyUint8Array
       });
+
+      alert('todo chatRoomModule.txCreateDmRoom');
+      return await walletStore.signAndExecuteTransaction(tx);
     }
   };
 
@@ -133,11 +112,12 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
       const sharedKeyBytes = await window.crypto.subtle.exportKey('raw', sharedAesKey);
       const sharedKeyUint8Array = new Uint8Array(sharedKeyBytes);
 
-      return chatRoomModule.acceptDmRoom({
+      const tx = chatRoomModule.txAcceptDmRoom({
         profile: userStore.profile,
         room: data.room,
         inviterRoomKey: sharedKeyUint8Array
       });
+      return walletStore.signAndExecuteTransaction(tx);
     }
   };
 
@@ -155,7 +135,8 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     userProfileId: string,
     message: Pick<Message, 'content' | 'roomId'>
   ) => {
-    return await chatRoomModule.sendMessage(userProfileId, message);
+    const tx = chatRoomModule.txSendMessage(userProfileId, message);
+    return await walletStore.signAndExecuteTransaction(tx);
   };
 
   const getChatRoomMessageBlocks = async (chatRoomId: string) => {

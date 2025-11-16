@@ -8,7 +8,6 @@ export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
 
   const profile = ref<UserProfile>();
-  const profilePrivKey = ref<CryptoKey>();
 
   const fetchCurrentUserProfile = async () => {
     if (walletStore.address) {
@@ -61,13 +60,14 @@ export const useUserStore = defineStore('userStore', () => {
       console.log(keyPrivDecoded);
     }
 
-    await userProfileModule.createUserProfile({
+    const tx = userProfileModule.txCreateUserProfile({
       ...userProfile,
       keyPub: keys.publicKey,
       keyPrivDerived: keys.encryptedKey,
       keyIv: keys.iv,
       keySalt: keys.salt
     });
+    await walletStore.signAndExecuteTransaction(tx);
     await fetchCurrentUserProfile();
 
     return profile.value;
@@ -76,7 +76,8 @@ export const useUserStore = defineStore('userStore', () => {
   const deleteUserProfile = async () => {
     const profile = await fetchCurrentUserProfile();
     if (profile) {
-      await userProfileModule.deleteUserProfile(profile.id);
+      const tx = userProfileModule.txDeleteUserProfile(profile.id);
+      await walletStore.signAndExecuteTransaction(tx);
     }
     return true;
   };
@@ -84,7 +85,8 @@ export const useUserStore = defineStore('userStore', () => {
   const updateUserProfile = async (newProfile: Pick<UserProfile, 'avatarUrl' | 'username'>) => {
     const profile = await fetchCurrentUserProfile();
     if (profile) {
-      await userProfileModule.updateUserProfile(profile.id, newProfile);
+      const tx =  userProfileModule.txUpdateUserProfile(profile.id, newProfile);
+      await walletStore.signAndExecuteTransaction(tx);
     }
     return true;
   };
@@ -100,7 +102,6 @@ export const useUserStore = defineStore('userStore', () => {
 
     resetState: async () => {
       profile.value = undefined;
-      profilePrivKey.value = undefined;
     }
   };
 });
