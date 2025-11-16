@@ -1,4 +1,4 @@
-import Config, { getAllConfigs } from '../../configs';
+import { useConfig } from '../../configs';
 
 export type TenorFileType = 'gifpreview' | 'loopedmp4' | 'nanomp4' | 'tinywebm' | 'mediumgif' | 'webm' | 'nanogifpreview' | 'tinymp4' | 'mp4' | 'nanogif' | 'nanowebm' | 'tinygif' | 'gif' | 'tinygifpreview' | 'webp';
 export type TenorResult = {
@@ -28,8 +28,9 @@ export type TenorResponse = {
   results: TenorResult[]
 };
 
-const tenorApiKey = Config('TenorApiKey');
-const tenorClientKey = Config('TenorClientKey');
+const config = useConfig();
+const tenorApiKey = config.getConfig('TenorApiKey');
+const tenorClientKey = config.getConfig('TenorClientKey');
 
 const getTrendingTerm = async () => {
   const trendingUrl = `https://tenor.googleapis.com/v2/trending_terms?key=${tenorApiKey}&client_key=${tenorClientKey}&country=BR&locale=pt_BR&limit=1`;

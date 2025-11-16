@@ -84,7 +84,6 @@ q-list.text-dark
 <script setup lang="ts">
 import { ref, onMounted, computed, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
-import { storeToRefs } from 'pinia';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
 import { useChatRoomList } from '../../composables/useChatRoomList';
 import _ from 'lodash';
@@ -99,11 +98,7 @@ const publicChatRooms = computed(() => chatRooms.value.filter(chatRoom => !rooms
 const loading = ref(true);
 
 const chatRoomList = useChatRoomList();
-const {
-  chatRooms, activeChatRoomId,
-  selectChatRoom
-} = toRefs(chatRoomList);
-
+const { chatRooms, activeChatRoomId, selectChatRoom } = chatRoomList;
 
 const loadChatRooms = async () => {
   loading.value = true;

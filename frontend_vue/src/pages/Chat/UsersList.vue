@@ -69,7 +69,7 @@ const { profile } = storeToRefs(userStore);
 const usersLength = computed(() => Object.keys(users.value!).length);
 const loading = ref(false);
 const { formatDate, formatTime, shortenAddress } = formatters;
-const { selectChatRoom, activeChatRoom } = toRefs(chatRoomList);
+const { selectChatRoom, activeChatRoom } = chatRoomList;
 
 const selectedUserId = ref<string>();
 
@@ -94,7 +94,7 @@ const selectUser = async (user: typeof users.value[number]) => {
     .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
 
   if (dmRoom) {
-    await selectChatRoom.value(dmRoom);
+    await selectChatRoom(dmRoom);
   } else {
     Dialog.create({
       title: `Você ainda não possui um chat com ${user.username}.`,
