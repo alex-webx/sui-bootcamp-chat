@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@mysten/sui": "^1.44.0",
-    "@mysten/sui.js": "^0.54.1",
     "@mysten/wallet-standard": "^0.19.6",
     "@quasar/extras": "^1.16.4",
     "lodash": "^4.17.21",

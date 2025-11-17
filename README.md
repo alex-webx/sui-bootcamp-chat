@@ -61,4 +61,24 @@ Temos então, no perfil do usuário:
 - Ao aceitar o convite de `Usuário A`, o `Usuário B` irá realizar o mesmo processo (com sua chave privada `B.privkey` e a chave pública `A.pubkey` do `Usuário A`, ele irá gerar o `ParticipantInfo.room_key` para o `Usuário A`)
 - Neste ponto, ambas as partes são capazes de derivar a partir da `shared AES key` armazenada em seu perfil, a chave final que será utilizada para criptografar e descriptografar as mensagens. Graças ao algoritmo ECDH, essa chave final será igual para ambos, e somente eles conseguirão deriva-la utilizando, cada um, sua própria chave privada e shared AES key.
 
-## Sala pública
+## Fluxo Criptográfico Revisado
+1. Ao criar um perfil, para cada usuário, será gerada um par de chaves ECDH associado ao seu perfil.
+   1. A chave pública será armazenada no perfil do usuário, na blockchain
+   2. A chave privada será criptografada com AES utilizando uma derivação da assinatura da carteira de uma mensagem fixa como "senha".
+      1. A chave privada criptografada, junto com o salt e IV do AES são armanados na blockchain junto a public key.
+
+2. A chave pública de cada usuário é utilizada pelos demais usuários para a troca de informações. 
+Sempre que alguém quiser enviar um "segredo", basta obter a public key do usuário e criptografar a mensagem secreta.
+
+3. O comportamento varia conforme o tipo de chat:
+	1. Se for direct message, entre duas pessoas, é utilizado E2EE completo:	
+		1. As mensagens de texto serão criptografas usando uma chave AES derivada a partir das chaves ECDH dos dois usuários
+		2. Usuário A envia mensagem para Usuário B: usuário A precisa derivar a chave AES, então, com sua chave privada e a chave pública de B ele consegue derivar essa chave AES que será utilizada para criptografia da mensagem
+		3. Quando o usuário B quiser ler a mensagem, ele irá derivar a mesma chave AES utilizando sua chave privada e a chave pública de A. Com a chave AES gerada, ele irá descriptografar a mensagem.
+	2. Se for um canal público, a criptografia será apenas para obsfuscar as mensagens.
+		1. Ao criar a sala, será gerada uma chave simétrica AES simples e armazenada no objeto da sala. Esta chave pode estar criptografada por derivação PBKDF2 cnohecido pela aplicação, como o enderço do Administrador. Não garante segurança nem privacidade, mas obsfusca e dificulta o acesso aos dados.
+	3. Se for um chat de grupo privada, será necessária uma abordagem mais complexa.
+		1. A ideia é criar uma chave AES aleatória para a sala, mas o compartilhamento da chave AES será feito utilizando ECDH. Entã é necessário um convite criptográfico obrigatório para a troca de segredos, que sempre acontecerá entre 2 pessoas, utilizando ECDH.
+		2. Ao criar o chat, o administrador gera também uma chave AES aleatória. Esta chave será responsável por criptografar as mensagens trocadas neste chat. Esta chave não será armazenada aberta diretamente na blockchain, e nem deve estar hard-coded na aplicação.
+		3. A ideia é que cada usuário, para cada sala privada, possua armazenado em um objeto mapeado ao seu perfil e à sala. Neste objeto será armazenada a chave AES da sala, porém, criptografada com uma chave AES derivada da chave privada ECDH do usuário inicial (Administrador, em um primeiro instante) ao derivar com a chave pública ECDH do usuário convidado. Neste objeto, a chave pública de quem convida também é armazenada para facilitar ao convidado derivar a chave de descriptografia, utilizando sua própria chave privada e a chave pública de quem o convidou.
+		4. Para enviar e ler mensagens, cada usuário irá obter de seu perfil a chave AES da sala criptografada em seu objeto, e descriptografar utilizando sua própria chave privada e a chave pública de quem o convidou. Com a chave AES em mãos, basta descriptografar/criptografar as mensagens.

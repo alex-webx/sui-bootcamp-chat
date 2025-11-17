@@ -69,7 +69,7 @@ const { profile } = storeToRefs(userStore);
 const usersLength = computed(() => Object.keys(users.value!).length);
 const loading = ref(false);
 const { formatDate, formatTime, shortenAddress } = formatters;
-const { selectChatRoom, activeChatRoom } = chatRoomList;
+const { selectChatRoom, activeChatRoom, chatRooms } = chatRoomList;
 
 const selectedUserId = ref<string>();
 
@@ -88,8 +88,7 @@ const selectUser = async (user: typeof users.value[number]) => {
     return;
   }
 
-  const rooms = await chatRoomStore.fetchAllUserJoinedChatRooms();
-  const dmRoom = rooms
+  const dmRoom = chatRooms.value
     .filter(room => room.roomType === ERoomType.DirectMessage)
     .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
 
@@ -112,7 +111,6 @@ const selectUser = async (user: typeof users.value[number]) => {
       const res = await chatRoomStore.createDmRoom({
         inviteeUserProfile: user
       });
-      alert('todo: strong type retorno');
       if (res) {
         Notify.create({
           message: 'Sala criada com sucesso!',
@@ -125,7 +123,6 @@ const selectUser = async (user: typeof users.value[number]) => {
 };
 
 onMounted(async () => {
-  await loadUserProfiles();
 });
 </script>
 <style lang="scss" scoped>

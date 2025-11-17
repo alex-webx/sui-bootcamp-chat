@@ -14,45 +14,27 @@ q-list.text-dark
     mixin chat-room-item-content()
 
       //- Public Room
-      template(v-if="room.roomType === 1")
-        q-item-section(avatar)
-          q-avatar
-            img(:src="room.imageUrl || '/logo_sui_chat.png'")
-
-        q-item-section
-          q-item-label(lines="1") {{ room.name }}
-          q-item-label(caption)
-            | {{room.roomType}}
-
-        q-item-section(side)
-          q-item-label(caption)
-            | todo
-          q-icon(name="keyboard_arrow_down")
+      ChatListItemRoom(
+        v-if="room.roomType === 1"
+        :room="room"
+        :userAddress="profile.owner"
+        :users="users"
+      )
 
       //- DM ROOM
-      template(v-else-if="room.roomType === 2")
-
-        q-item-section(avatar)
-          q-avatar
-            img(:src="room.imageUrl || '/logo_sui_chat.png'")
-
-        q-item-section
-          q-item-label(lines="1") {{ room.name }}
-          q-item-label(caption)
-            | DM
-
-        q-item-section(side)
-          q-item-label(caption)
-            //- vue-json-pretty(:data="room")
-          q-icon(name="keyboard_arrow_down")
-
+      ChatListItemDmRoom(
+        v-else-if="room.roomType === 2"
+        :room="room"
+        :userAddress="profile.owner"
+        :users="users"
+      )
 
     .flex.text-center.text-dark.q-px-md.q-py-xs.text-caption.bg-grey-3
       template(v-if="myChatRooms.length === 0") Você não participa de nenhuma sala
       template(v-else-if="myChatRooms.length === 1") Você participa de 1 sala
       template(v-else) Voce participa de {{ myChatRooms.length}} salas
       q-space
-      q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="loadChatRooms()")
+      q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="fetchAllChatRooms()")
         q-tooltip Recarregar lista de salas
 
     q-item(
@@ -68,7 +50,7 @@ q-list.text-dark
         template(v-if="publicChatRooms.length === 1") 1 sala pública
         template(v-else) {{ publicChatRooms.length}} salas pública
         q-space
-        q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="loadChatRooms()")
+        q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="fetchAllChatRooms()")
           q-tooltip Recarregar lista de salas
 
       q-item(
@@ -84,33 +66,30 @@ q-list.text-dark
 <script setup lang="ts">
 import { ref, onMounted, computed, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
-import { useChatRoomStore } from '../../stores/chatRoomStore';
+import { useChatRoomStore, useUserStore, useUsersStore } from '../../stores';
 import { useChatRoomList } from '../../composables/useChatRoomList';
 import _ from 'lodash';
-import { useUserStore } from '../../stores/userStore';
+import { storeToRefs } from 'pinia';
+import ChatListItemDmRoom from './ChatListItemDmRoom.vue';
+import ChatListItemRoom from './ChatListItemRoom.vue';
 
 const router = useRouter();
 const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
+const usersStore = useUsersStore();
 const roomsJoined = computed(() => _.keyBy(userStore.profile?.roomsJoined || [], roomId => roomId));
 const myChatRooms = computed(() => chatRooms.value.filter(chatRoom => !!roomsJoined.value[chatRoom.id]));
 const publicChatRooms = computed(() => chatRooms.value.filter(chatRoom => !roomsJoined.value[chatRoom.id]));
 const loading = ref(true);
 
+const { users } = storeToRefs(usersStore);
+const { profile } = storeToRefs(userStore);
+
 const chatRoomList = useChatRoomList();
-const { chatRooms, activeChatRoomId, selectChatRoom } = chatRoomList;
+const { chatRooms, activeChatRoomId, selectChatRoom, fetchAllUserJoinedChatRooms, fetchAllChatRooms } = chatRoomList;
 
-const loadChatRooms = async () => {
-  loading.value = true;
-  try {
-    await chatRoomStore.fetchAllUserJoinedChatRooms();
-  } finally {
-    loading.value = false;
-  }
-};
-
-onMounted(async () => {
-  await loadChatRooms();
+onMounted(() => {
+  loading.value = false;
 });
 </script>
 <style lang="scss" scoped>

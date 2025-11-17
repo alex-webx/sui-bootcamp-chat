@@ -1,50 +1,15 @@
-import _ from 'lodash';
-import { Transaction } from '@mysten/sui/transactions';
 import { SuiObjectResponse } from '@mysten/sui/client';
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { useConfig } from '../../configs';
 import { client } from './useClient';
 import type * as Models from '.';
-import { EPermission } from './chatRoomModels';
+import _ from 'lodash';
 
-export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
+import { config, getFullTable, getMultiObjects } from './useUtils';
 
 export const getChatRoomRegistry = async () => {
   const chatRoomRegistry = await client.getObject({ id: config('ChatRoomRegistryId')!, options: { showContent: true }});
-  return chatRoomRegistry;
+  const content: any = chatRoomRegistry.data?.content;
+  return content?.fields as { id: { id: string }, rooms: string[] };
 };
-
-export const getFullTable = async (field: { fields: { id: { id: string }, size: string }, type: `0x2::table::Table<${string}` }) => {
-
-  if (!field.type.startsWith('0x2::table::Table<')) {
-    throw 'Not a table ' + field.type;
-  }
-
-  let hasNextPage = true;
-  let cursor: string | null = null;
-
-  let items: { key: string, value: string, content?: any }[] = [];
-
-  while(hasNextPage) {
-    const res = await client.getDynamicFields({ parentId: field.fields.id.id, cursor });
-    const rows = res.data.map(row => ({ key: row.name.value as string, value: row.objectId }));
-    hasNextPage = res.hasNextPage;
-    cursor = res.nextCursor;
-    items.push(...rows);
-  }
-
-  for (let chunk of _.chunk(items, 50)) {
-    const objs = await client.multiGetObjects({
-      ids: chunk.map(item => item.value),
-      options: { showContent: true }
-    });
-
-    objs.forEach((obj, index) => {
-      items[index]!.content = (obj.data?.content as any)?.fields?.value?.fields;
-    });
-  }
-  return items;
-}
 
 export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models.ChatRoom> => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
@@ -55,14 +20,12 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
 
   const participantsTable = await getFullTable(fields.participants);
 
-  const participants = participantsTable.reduce<Record<string, Models.ParticipantInfo>>((acc, row) => {
-    acc[row.key] = {
-      addedBy: row.content.added_by,
-      roomKey: new Uint8Array(row.content.room_key),
-      timestamp: row.content.timestamp
-    };
-    return acc;
-  }, {});
+  const participants = _.mapValues(participantsTable, (item: any) => ({
+    addedBy: item.fields.added_by,
+    roomKey: new Uint8Array(item.fields.room_key),
+    timestamp: item.fields.timestamp,
+    inviterKeyPub: new Uint8Array(item.fields.inviter_key_pub)
+  }));
 
   return {
     id: response.data.objectId,
@@ -107,23 +70,13 @@ export const parseMessage = (response: SuiObjectResponse): Models.Message => {
 
 export const getAllChatRooms = async () => {
   const chatRoomRegistry = await getChatRoomRegistry();
-
-  const roomsObjsRes = await client.multiGetObjects({
-    ids: (chatRoomRegistry.data?.content as any).fields?.rooms,
-    options: { showContent: true }
-  });
-
+  const roomsObjsRes = await getMultiObjects(chatRoomRegistry.rooms);
   const rooms = await Promise.all(roomsObjsRes.map(async room => await parseChatRoom(room)));
-
   return rooms;
 };
 
-export const getAllUserJoinedRooms = async (userProfile: Models.UserProfile) => {
-  const roomsObjsRes = await client.multiGetObjects({
-    ids: userProfile.roomsJoined,
-    options: { showContent: true }
-  });
-
+export const getChatRooms = async (chatRoomsIds: string[]) => {
+  const roomsObjsRes = await getMultiObjects(chatRoomsIds);
   const rooms = await Promise.all(roomsObjsRes.map(async room => await parseChatRoom(room)));
   return rooms;
 };

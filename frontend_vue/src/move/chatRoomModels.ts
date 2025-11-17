@@ -14,6 +14,7 @@ export type ParticipantInfo = {
   addedBy: string;
   timestamp: number;
   roomKey: Uint8Array;
+  inviterKeyPub: Uint8Array;
 };
 
 export type ModeratorInfo = {

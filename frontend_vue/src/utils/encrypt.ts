@@ -3,7 +3,7 @@ const ECDH_ALG_NAME = "ECDH";
 const ECDH_CURVE = "P-256"; // Vamos usar P-256 (NIST standard) para compatibilidade ampla primeiro, depois podemos tentar Secp256k1 se necessário.
 
 // A interface StoredEncryptedKey foi ligeiramente ajustada para refletir que os dados da chave pública são agora Uint8Array (para a Move) e a chave privada é um JWK criptografado.
-export interface StoredEncryptedKey {
+export interface UserProfileKey {
   iv: Uint8Array;                 // Initialization Vector (GCM) - Uint8Array
   encryptedKey: Uint8Array;       // Chave privada EC criptografada (JWK format) - Uint8Array
   salt: Uint8Array;               // Salt usado para derivar a chave AES (PBKDF2) - Uint8Array
@@ -13,7 +13,7 @@ export interface StoredEncryptedKey {
 /**
  * Converte um ArrayBuffer (ou Uint8Array) para uma string Base64URL.
  */
-export function arrayBufferToBase64Url(data: ArrayBuffer | Uint8Array): string {
+function arrayBufferToBase64Url(data: ArrayBuffer | Uint8Array): string {
   const bytes = new Uint8Array(data);
   let binary = '';
   bytes.forEach((b) => binary += String.fromCharCode(b));
@@ -26,7 +26,7 @@ export function arrayBufferToBase64Url(data: ArrayBuffer | Uint8Array): string {
 /**
  * Converte uma string Base64URL de volta para um ArrayBuffer.
  */
-export function base64UrlToArrayBuffer(base64url: string): ArrayBuffer {
+function base64UrlToArrayBuffer(base64url: string): ArrayBuffer {
   const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(base64);
   const outputArray = new Uint8Array(raw.length);
@@ -39,9 +39,48 @@ export function base64UrlToArrayBuffer(base64url: string): ArrayBuffer {
 // --- Funções de Criptografia Simétrica (AES) e Derivação de Chave (PBKDF2) ---
 
 /**
+ * Gera uma chave simétrica aleatória usando a Web Crypto API.
+ *
+ * @param length O comprimento da chave em bits (ex: 128, 256).
+ * @param extractable Define se a chave pode ser exportada do armazenamento de chaves (true/false).
+ * @returns Uma Promise que resolve para um objeto CryptoKey.
+ */
+export const generateSymmetricKey = async (
+  length: 128 | 256 = 256,
+  extractable: boolean = true
+): Promise<CryptoKey>  => {
+  // Define o algoritmo a ser usado (AES-CBC é comum para simétricas)
+  const algorithm: AesKeyGenParams = {
+    name: "AES-CBC",
+    length: length,
+  };
+
+  // Usa a API nativa para gerar a chave
+  const key = await window.crypto.subtle.generateKey(
+    algorithm,
+    extractable, // Pode ser exportada/salva depois?
+    ["encrypt", "decrypt"] // Usos permitidos para esta chave
+  );
+
+  return key;
+};
+
+/**
+ * Exporta uma chave simétrica (CryptoKey) para um Uint8Array no formato "raw".
+ * @param symmetricKey A chave simétrica (ex: AES-CBC) a ser exportada.
+ * @returns Uma Promise que resolve para um Uint8Array.
+ */
+export async function exportSymmetricKeyAsUint8Array(symmetricKey: CryptoKey): Promise<Uint8Array> {
+  // Use "raw" para chaves simétricas (AES)
+  const rawBuffer = await window.crypto.subtle.exportKey("raw", symmetricKey);
+
+  return new Uint8Array(rawBuffer);
+}
+
+/**
  * Deriva uma chave AES a partir de uma "senha" (assinatura mestra) E UM SALT ESPECÍFICO (ArrayBuffer).
  */
-export async function deriveAesKeyFromPassword(password: string, saltBuffer: ArrayBuffer): Promise<CryptoKey> {
+async function deriveAesKeyFromPassword(password: string, saltBuffer: ArrayBuffer): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",
@@ -68,7 +107,7 @@ export async function deriveAesKeyFromPassword(password: string, saltBuffer: Arr
 /**
  * Criptografa a chave privada EC (JWK) usando AES-GCM.
  */
-export async function encryptPrivateKey(privateKey: CryptoKey, aesKey: CryptoKey): Promise<{iv: Uint8Array, encryptedKeyJwk: Uint8Array}> {
+async function encryptPrivateKey(privateKey: CryptoKey, aesKey: CryptoKey): Promise<{iv: Uint8Array, encryptedKeyJwk: Uint8Array}> {
   const jwk = await exportPrivateKeyAsJwk(privateKey);
   const jwkString = JSON.stringify(jwk);
   const dataToEncrypt = new TextEncoder().encode(jwkString);
@@ -90,7 +129,7 @@ export async function encryptPrivateKey(privateKey: CryptoKey, aesKey: CryptoKey
 /**
  * Descriptografa a chave privada EC criptografada usando AES-GCM e a senha mestra.
  */
-export async function decryptPrivateKey(encryptedData: StoredEncryptedKey, masterPassword: string): Promise<CryptoKey> {
+export async function decryptPrivateKey(encryptedData: UserProfileKey, masterPassword: string): Promise<CryptoKey> {
   // Use os Uint8Arrays diretamente, sem base64urlToArrayBuffer
   const aesKey = await deriveAesKeyFromPassword(masterPassword, encryptedData.salt.buffer as ArrayBuffer);
 
@@ -112,7 +151,7 @@ export async function decryptPrivateKey(encryptedData: StoredEncryptedKey, maste
 /**
  * Gera um par de chaves ECDH (pública e privada) usando a Web Crypto API (P-256).
  */
-export async function generateEcKeyPair(): Promise<CryptoKeyPair> {
+async function generateEcKeyPair(): Promise<CryptoKeyPair> {
   return window.crypto.subtle.generateKey(
     {
       name: ECDH_ALG_NAME,
@@ -124,25 +163,16 @@ export async function generateEcKeyPair(): Promise<CryptoKeyPair> {
 }
 
 /**
- * Exporta a chave pública ECDH para o formato SPKI e codifica em Base64URL.
- * Este é o formato que você armazenará em `UserProfile.key_pub` (como vector<u8>).
- */
-export async function exportPublicKeyAsUint8Array(publicKey: CryptoKey): Promise<Uint8Array> {
-  const spkiBuffer = await window.crypto.subtle.exportKey("spki", publicKey);
-  return new Uint8Array(spkiBuffer);
-}
-
-/**
  * Exporta a chave privada ECDH para o formato JWK para armazenamento seguro local.
  */
-export async function exportPrivateKeyAsJwk(privateKey: CryptoKey): Promise<JsonWebKey> {
+async function exportPrivateKeyAsJwk(privateKey: CryptoKey): Promise<JsonWebKey> {
   return window.crypto.subtle.exportKey("jwk", privateKey);
 }
 
 /**
  * Importa uma chave pública SPKI (Uint8Array) de volta para um objeto CryptoKey usável.
  */
-export async function importPublicKeyFromUint8Array(publicKeyBytes: Uint8Array): Promise<CryptoKey> {
+async function importPublicKeyFromUint8Array(publicKeyBytes: Uint8Array): Promise<CryptoKey> {
   return window.crypto.subtle.importKey(
     "spki",
     publicKeyBytes.buffer as BufferSource,
@@ -155,7 +185,7 @@ export async function importPublicKeyFromUint8Array(publicKeyBytes: Uint8Array):
 /**
  * Importa uma chave privada JWK (depois de descriptografada localmente) de volta para um objeto CryptoKey usável.
  */
-export async function importPrivateKeyFromJwk(jwk: JsonWebKey): Promise<CryptoKey> {
+async function importPrivateKeyFromJwk(jwk: JsonWebKey): Promise<CryptoKey> {
   return window.crypto.subtle.importKey(
     'jwk',
     jwk,
@@ -166,41 +196,37 @@ export async function importPrivateKeyFromJwk(jwk: JsonWebKey): Promise<CryptoKe
 }
 
 
-/**
- * Deriva a chave simétrica AES compartilhada usando ECDH.
- *
- * @param privateKey O objeto CryptoKey da sua chave privada (já carregada/desembrulhada).
- * @param publicKeyBytes O Uint8Array da chave pública da outra pessoa (buscado da Move).
- * @returns A chave simétrica AES (CryptoKey) para encrypt/decrypt mensagens.
- */
-export async function deriveSharedAesKey(privateKey: CryptoKey, publicKeyBytes: Uint8Array): Promise<CryptoKey> {
+// /**
+//  * Deriva a chave simétrica AES compartilhada usando ECDH.
+//  *
+//  * @param privateKey O objeto CryptoKey da sua chave privada (já carregada/desembrulhada).
+//  * @param publicKeyBytes O Uint8Array da chave pública da outra pessoa (buscado da Move).
+//  * @returns A chave simétrica AES (CryptoKey) para encrypt/decrypt mensagens.
+//  */
+// async function deriveSharedAesKey(privateKey: CryptoKey, publicKeyBytes: Uint8Array): Promise<CryptoKey> {
 
-    // Importa a chave pública da outra pessoa a partir dos bytes SPKI
-    const otherPublicKey = await importPublicKeyFromUint8Array(publicKeyBytes);
+//   // Importa a chave pública da outra pessoa a partir dos bytes SPKI
+//   const otherPublicKey = await importPublicKeyFromUint8Array(publicKeyBytes);
 
-    // Derivação Mágica do ECDH:
-    const sharedSecret = await window.crypto.subtle.deriveBits(
-        {
-            name: ECDH_ALG_NAME,
-            public: otherPublicKey
-        },
-        privateKey, // Usa sua chave privada
-        256 // Tamanho da chave AES desejada (256 bits)
-    );
+//   // Derivação Mágica do ECDH:
+//   const sharedSecret = await window.crypto.subtle.deriveBits(
+//     {
+//         name: ECDH_ALG_NAME,
+//         public: otherPublicKey
+//     },
+//     privateKey, // Usa sua chave privada
+//     256 // Tamanho da chave AES desejada (256 bits)
+//   );
 
-    // Importa o segredo compartilhado como uma chave AES-GCM usável
-    return window.crypto.subtle.importKey(
-        "raw",
-        sharedSecret,
-        { name: "AES-GCM", length: 256 },
-        true,
-        ["encrypt", "decrypt"]
-    );
-}
-
-// Importe a função auxiliar que gera IVs aleatórios (que já estava no seu código original)
-// function arrayBufferToBase64Url(data: ArrayBuffer | Uint8Array): string { ... }
-// function base64UrlToArrayBuffer(base64url: string): ArrayBuffer { ... }
+//   // Importa o segredo compartilhado como uma chave AES-GCM usável
+//   return window.crypto.subtle.importKey(
+//     "raw",
+//     sharedSecret,
+//     { name: "AES-GCM", length: 256 },
+//     true,
+//     ["encrypt", "decrypt"]
+//   );
+// }
 
 /**
  * Criptografa uma mensagem (string ou Uint8Array) usando uma chave AES-GCM (CryptoKey).
@@ -237,6 +263,7 @@ export async function encryptMessageAesGcm(dataToEncrypt: string | Uint8Array, a
 }
 
 /**
+ * Descriptografar mensagens enviadas
  * Descriptografa uma mensagem combinada (IV+Texto Cifrado em Base64Url) usando uma chave AES-GCM.
  *
  * @param combinedCiphertextBase64Url O texto cifrado combinado.
@@ -264,24 +291,30 @@ export async function decryptMessageAesGcm(combinedCiphertextBase64Url: string, 
 
 
 /**
+ * Criação de UserProfile
  * Orquestra a geração de um par de chaves ECDH e o "embrulho" da chave privada
  * usando uma assinatura mestra da carteira. Retorna o objeto para armazenamento local e Move.
  */
-export const generateKeysWithSignature = async (masterSignature: string): Promise<StoredEncryptedKey> => {
-  const keyPair = await generateEcKeyPair();
+export const generateKeysWithSignature = async (masterSignature: string): Promise<UserProfileKey> => {
+  // gera par assimétrica de chaves ECDH
+  const ecdhPair = await generateEcKeyPair();
 
+  // criptografia da chave privada para armazenamento na blockchain, derivando uma chave AES da assinatura da carteira que será utilizada para criptografar a private key
   const saltArray = window.crypto.getRandomValues(new Uint8Array(16));
   const aesKeyForWrapping = await deriveAesKeyFromPassword(masterSignature, saltArray.buffer as ArrayBuffer);
+  const encryptedData = await encryptPrivateKey(ecdhPair.privateKey, aesKeyForWrapping);
 
-  const encryptedData = await encryptPrivateKey(keyPair.privateKey, aesKeyForWrapping);
+  // serialização da public key em bytes
+  const publicKeyForBlockchain = await async function() {
+    const spkiBuffer = await window.crypto.subtle.exportKey("spki", ecdhPair.publicKey);
+    return new Uint8Array(spkiBuffer);
+  }();
 
-  const publicKeyForBlockchain = await exportPublicKeyAsUint8Array(keyPair.publicKey);
-
-  const storedObject: StoredEncryptedKey = {
-      iv: encryptedData.iv, // Uint8Array
-      encryptedKey: encryptedData.encryptedKeyJwk, // Uint8Array
-      salt: saltArray, // Uint8Array
-      publicKey: publicKeyForBlockchain // Uint8Array
+  const storedObject: UserProfileKey = {
+    iv: encryptedData.iv, // Uint8Array
+    salt: saltArray, // Uint8Array
+    publicKey: publicKeyForBlockchain, // Uint8Array
+    encryptedKey: encryptedData.encryptedKeyJwk, // Uint8Array
   };
 
   return storedObject;
@@ -289,17 +322,18 @@ export const generateKeysWithSignature = async (masterSignature: string): Promis
 
 
 export default {
-  arrayBufferToBase64Url,
-  base64UrlToArrayBuffer,
-  deriveAesKeyFromPassword,
-  encryptPrivateKey,
-  decryptPrivateKey,
-  generateEcKeyPair,
-  exportPublicKeyAsUint8Array,
-  exportPrivateKeyAsJwk,
-  importPublicKeyFromUint8Array,
-  importPrivateKeyFromJwk,
-  deriveSharedAesKey,
+  // arrayBufferToBase64Url,
+  // base64UrlToArrayBuffer,
+  // deriveAesKeyFromPassword,
+  // encryptPrivateKey,
+  // decryptPrivateKey,
+  // generateSymmetricKey,
+  // generateEcKeyPair,
+  // exportPublicKeyAsUint8Array,
+  // exportPrivateKeyAsJwk,
+  // importPublicKeyFromUint8Array,
+  // importPrivateKeyFromJwk,
+  // deriveSharedAesKey,
   encryptMessageAesGcm,
   decryptMessageAesGcm,
   generateKeysWithSignature

@@ -1,15 +1,20 @@
-import { Transaction } from '@mysten/sui/transactions';
 import { SuiObjectResponse } from '@mysten/sui/client';
-import { useConfig } from '../../configs';
 import { client } from './useClient';
+import { config, getFullTable } from './useUtils';
 import type * as Models from '.';
-import encrypt from '../utils/encrypt';
 
-export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
-
-export const getUserProfileRegistry = async () => {
+export const getUserProfileRegistry = async (): Promise<Models.UserProfileRegistry | undefined> => {
   const userProfileRegistry = await client.getObject({ id: config('UserProfileRegistryId')!, options: { showContent: true }});
-  return userProfileRegistry;
+  if (userProfileRegistry.data?.content?.dataType === 'moveObject') {
+    const fields = userProfileRegistry.data?.content.fields as any;
+    const users = await getFullTable(fields.users);
+
+    return {
+      id: fields.id?.id,
+      users: users
+    };
+  }
+  return undefined;
 };
 
 export const parseUserProfile = (response: SuiObjectResponse): Models.UserProfile => {
@@ -48,20 +53,9 @@ export const getUserProfile = async (address: string) => {
 
 export const getAllUsersProfiles = async () => {
   const userProfileRegistry = await getUserProfileRegistry();
-  const userProfileRegistryTableId = (userProfileRegistry.data?.content as any).fields?.users?.fields?.id?.id as string;
 
-  const dynamicFieldPage = await client.getDynamicFields({ parentId: userProfileRegistryTableId });
-
-  const objectsRes = await client.multiGetObjects({
-    ids: dynamicFieldPage.data?.map(row => row.objectId),
-    options: { showContent: true }
-  });
-  const profilesMapping = objectsRes.map(obj => {
-    const profile = (obj.data?.content as any)?.fields as any;
-    return { address: profile.name as string, profileId: profile.value as string }
-  });
   const profilesRes = await client.multiGetObjects({
-    ids: profilesMapping.map(profile => profile.profileId),
+    ids: Object.values(userProfileRegistry?.users!),
     options: { showContent: true }
   });
   const profiles = profilesRes.map(profile => parseUserProfile(profile));

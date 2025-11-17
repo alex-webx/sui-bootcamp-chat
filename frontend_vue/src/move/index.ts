@@ -7,7 +7,7 @@ export const chatRoomModule = {
   ...chatRoomQuery
 };
 
-export type { UserProfile } from './userProfileModel';
+export type { UserProfileRegistry,UserProfile } from './userProfileModel';
 import * as userProfileQuery from './userProfileQuery';
 import * as userProfileFun from './userProfileFun';
 export const userProfileModule = {

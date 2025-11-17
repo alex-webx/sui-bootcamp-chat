@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { UserProfile, userProfileModule } from '../move';
 import { useWalletStore } from './';
-import * as encrypt from '../utils/encrypt';
+import { UserProfileGenerator, UserProfileService } from '../utils/encrypt2';
 
 export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
@@ -30,9 +30,9 @@ export const useUserStore = defineStore('userStore', () => {
 
     const masterSignature = await walletStore.generateMasterSignature();
     if (masterSignature) {
-      profile.value.keyPrivDecoded = await encrypt.decryptPrivateKey({
-        publicKey: profile.value.keyPub,
-        encryptedKey: profile.value.keyPrivDerived,
+      profile.value.keyPrivDecoded = await new UserProfileService().unwrapPrivateKey({
+        publicKeySpki: profile.value.keyPub,
+        privateKeyWrapped: profile.value.keyPrivDerived,
         iv: profile.value.keyIv,
         salt: profile.value.keySalt
       }, masterSignature?.signature);
@@ -45,50 +45,38 @@ export const useUserStore = defineStore('userStore', () => {
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
     const response = await walletStore.generateMasterSignature();
-    const keys = await encrypt.generateKeysWithSignature(response!.signature);
+    const keys = await new UserProfileGenerator().generateProfileKeys(response?.signature!)
 
-    {
-      const keyPrivDecoded = await encrypt.decryptPrivateKey({
-          publicKey: keys.publicKey,
-          encryptedKey: keys.encryptedKey,
-          iv: keys.iv,
-          salt: keys.salt
-        },
-        response!.signature
-      );
-
-      console.log(keyPrivDecoded);
-    }
-
-    const tx = userProfileModule.txCreateUserProfile({
+    const { tx, parser } = userProfileModule.txCreateUserProfile({
       ...userProfile,
-      keyPub: keys.publicKey,
-      keyPrivDerived: keys.encryptedKey,
+      keyPub: keys.publicKeySpki,
+      keyPrivDerived: keys.privateKeyWrapped,
       keyIv: keys.iv,
       keySalt: keys.salt
     });
-    await walletStore.signAndExecuteTransaction(tx);
-    await fetchCurrentUserProfile();
 
-    return profile.value;
+    const profileId = parser(await walletStore.signAndExecuteTransaction(tx));
+    await fetchCurrentUserProfile();
+    return profileId;
   };
 
   const deleteUserProfile = async () => {
     const profile = await fetchCurrentUserProfile();
     if (profile) {
-      const tx = userProfileModule.txDeleteUserProfile(profile.id);
-      await walletStore.signAndExecuteTransaction(tx);
+      const { tx, parser } = userProfileModule.txDeleteUserProfile(profile.id);
+      const deleted = parser(await walletStore.signAndExecuteTransaction(tx));
+      return deleted;
     }
-    return true;
+    return false;
   };
 
   const updateUserProfile = async (newProfile: Pick<UserProfile, 'avatarUrl' | 'username'>) => {
     const profile = await fetchCurrentUserProfile();
     if (profile) {
-      const tx =  userProfileModule.txUpdateUserProfile(profile.id, newProfile);
-      await walletStore.signAndExecuteTransaction(tx);
+      const { tx, parser } =  userProfileModule.txUpdateUserProfile(profile.id, newProfile);
+      return parser(await walletStore.signAndExecuteTransaction(tx));
     }
-    return true;
+    return false;
   };
 
   return {

@@ -1,7 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { SuiObjectResponse } from '@mysten/sui/client';
+import { SuiObjectResponse, SuiObjectChange, SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { useConfig } from '../../configs';
-import { client } from './useClient';
+import { client, parsers } from './useClient';
 import type * as Models from '.';
 import encrypt from '../utils/encrypt';
 
@@ -24,7 +24,9 @@ export const txCreateUserProfile = (
       tx.object(config('SuiClockId')!)
     ],
   });
-  return tx;
+
+  const parser = parsers.isCreated('user_profile::UserProfile');
+  return { tx, parser };
 };
 
 export const txUpdateUserProfile = (
@@ -41,7 +43,9 @@ export const txUpdateUserProfile = (
       tx.object(config('SuiClockId')!)
     ],
   });
-  return tx;
+
+  const parser = parsers.isUpdated('user_profile::UserProfile');
+  return { tx, parser };
 };
 
 export const txDeleteUserProfile = (userProfileId: string) => {
@@ -54,7 +58,8 @@ export const txDeleteUserProfile = (userProfileId: string) => {
     ],
   });
 
-  return tx;
+  const parser = parsers.isDeleted(userProfileId);
+  return { tx, parser };
 };
 
 export const txJoinRoom = (profile: Pick<Models.UserProfile, 'id'>, chatRoom: Pick<Models.ChatRoom, 'id'>) => {

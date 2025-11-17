@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import { Transaction } from '@mysten/sui/transactions';
-import { SuiObjectResponse } from '@mysten/sui/client';
+import { SuiObjectResponse, SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { useConfig } from '../../configs';
-import { client } from './useClient';
+import { client, parsers } from './useClient';
 import type * as Models from '.';
 import { EPermission } from './chatRoomModels';
 
@@ -34,13 +34,8 @@ export const txCreateRoom = (
     ],
   });
 
-  return tx;
-  // const result = await signer.signAndExecuteTransaction(tx);
-  // const chatRoom = result.objectChanges?.filter(change => change.type === 'created' && change.objectType === `${Config('PackageId')}::chat_room::ChatRoom`)?.[0];
-  // return {
-  //   chatRoomId: (chatRoom as any)?.objectId as string || undefined,
-  //   ...result
-  // };
+  const parser = parsers.isCreated('chat_room::ChatRoom');
+  return { tx, parser };
 };
 
 export const txCreatePublicRoom = (
@@ -108,8 +103,7 @@ export const txCreateAnnouncementsRoom = (
 export const txCreateDmRoom = (
   data: {
     userProfile: Pick<Models.UserProfile, 'id'>,
-    inviteeAddress: string,
-    inviteeRoomKey: Uint8Array,
+    inviteeAddress: string
   }
 ) => {
   const tx = new Transaction();
@@ -119,26 +113,18 @@ export const txCreateDmRoom = (
       tx.object(config('ChatRoomRegistryId')!),
       tx.object(data.userProfile.id),
       tx.pure.address(data.inviteeAddress),
-      tx.pure.vector('u8', data.inviteeRoomKey),
       tx.object(config('SuiClockId')!)
     ],
   });
 
-  return tx;
-
-  // const result = await signer.signAndExecuteTransaction(tx);
-  // const chatRoom = result.objectChanges?.filter(change => change.type === 'created' && change.objectType === `${Config('PackageId')}::chat_room::ChatRoom`)?.[0];
-  // return {
-  //   chatRoomId: (chatRoom as any)?.objectId as string || undefined,
-  //   ...result
-  // };
+  const parser = parsers.isCreated('chat_room::ChatRoom');
+  return { tx, parser };
 };
 
 export const txAcceptDmRoom = (
   data: {
     room: Pick<Models.ChatRoom, 'id'>,
-    profile: Pick<Models.UserProfile, 'id'>,
-    inviterRoomKey: Uint8Array
+    profile: Pick<Models.UserProfile, 'id'>
   }
 ) => {
   const tx = new Transaction();
@@ -147,7 +133,6 @@ export const txAcceptDmRoom = (
     arguments: [
       tx.object(data.room.id),
       tx.object(data.profile.id),
-      tx.pure.vector('u8', data.inviterRoomKey),
       tx.object(config('SuiClockId')!)
     ],
   });

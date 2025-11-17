@@ -21,12 +21,14 @@
       template(v-for="messageGroup in groupByTimestamp(messages[msgBlock.blockNumber] || [], 1)")
         q-chat-message(
           v-if="messageGroup.messages[0].sender === profile?.owner"
-          :avatar="profile.avatarUrl || './logo_sui_chat_bordered.png'"
-          :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
           :sent="true"
           bg-color="primary"
           text-color="white"
         )
+          template(#avatar)
+            q-avatar.q-ml-sm
+              q-img(:src="profile.avatarUrl || './logo_sui_chat_bordered.png'" :ratio="1" fit="cover")
+
           template(#name)
             | {{ users[messageGroup.sender]?.username }}
             q-badge.q-ml-sm.q-mb-xs(
@@ -34,18 +36,26 @@
               color="medium-sea" outline
             ) admin
 
-          div(v-for="message in messageGroup.messages")
+          .text-body1(v-for="message in messageGroup.messages")
             span(v-for="(line, iLine) in message.content.split('\\n')")
               <br v-if="iLine > 0" />
               | {{ line }}
+
+          template(#stamp)
+            .flex.items-center.text-caption
+              q-icon.q-mr-xs(name="mdi-lock" v-if="!!messageGroup.messages.find(m => m._safe)")
+                q-tooltip Mensagem criptografada E2EE utilizando uma chave AES derivada de ECDH das duas partes
+              span.text-italic {{ fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt) }}
 
         q-chat-message(
           v-else
-          :stamp="fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt)"
-          :avatar="users[messageGroup.sender]?.avatarUrl || '/user-circles-set-sm.png'"
           bg-color="white"
           text-color="dark"
         )
+          template(#avatar)
+            q-avatar.q-mr-sm
+              q-img(:src="users[messageGroup.sender]?.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
+
           template(#name)
             | {{ users[messageGroup.sender]?.username }}
             q-badge.q-ml-sm.q-mb-xs(
@@ -53,10 +63,16 @@
               color="medium-sea" outline
             ) admin
 
-          div(v-for="message in messageGroup.messages")
+          .text-body1(v-for="message in messageGroup.messages")
             span(v-for="(line, iLine) in message.content.split('\\n')")
               <br v-if="iLine > 0" />
               | {{ line }}
+
+          template(#stamp)
+            .flex.items-center.text-caption
+              q-icon.q-mr-xs(name="mdi-lock" v-if="!!messageGroup.messages.find(m => m._safe)" color="grey")
+                q-tooltip Mensagem criptografada E2EE utilizando uma chave AES derivada de ECDH das duas partes
+              span.text-italic {{ fromNow(messageGroup.messages[messageGroup.messages.length - 1].createdAt) }}
 
 .q-pa-md.row.justify-center.full-width(
   v-if="activeChatRoom.messageCount === 0"
@@ -76,9 +92,11 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
+import { useChatRoomList } from '../../composables/useChatRoomList';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
 import moment from 'moment';
+import { DirectMessageService } from '../../utils/encrypt2';
 
 const route = useRoute();
 const chatRoomStore = useChatRoomStore();
@@ -87,6 +105,9 @@ const usersStore = useUsersStore();
 const { activeChatRoom } = storeToRefs(chatRoomStore);
 const { profile } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
+const { getDmParticipantId } = useChatRoomList();
+
+const dmService = new DirectMessageService();
 
 const messageBlocks = ref<Awaited<ReturnType<typeof chatRoomStore.getChatRoomMessageBlocks>>>([]);
 const messages = ref<Record<string, Awaited<ReturnType<typeof chatRoomStore.getChatRoomMessagesFromBlock>>>>({});
@@ -94,12 +115,39 @@ const loading = ref(false);
 
 const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
 
+const decryptMessage = async (jsonMessage: string) => {
+  const message = JSON.parse(jsonMessage) as { iv: string, ciphertext: string };
+  await userStore.ensurePrivateKey();
+  if (message.ciphertext && message.iv) {
+    try {
+      const decrypted = await dmService.decryptMessage({
+        ciphertext: message.ciphertext,
+        iv: message.iv,
+        recipientPrivateKey: userStore.profile?.keyPrivDecoded!,
+        senderPublicKeyBytes: users.value[getDmParticipantId(activeChatRoom.value!)!]?.keyPub!
+      });
+      return decrypted;
+    } catch (e) {
+      return '[conteúdo protegido]';
+    }
+  } else {
+    return jsonMessage;
+  }
+}
+
 const fetchMessages = async () => {
   if (activeChatRoom.value?.id) {
     messageBlocks.value = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.value.id);
     if (messageBlocks.value.length) {
       for (let messageBlock of messageBlocks.value) {
-        messages.value[messageBlock.blockNumber] = await chatRoomStore.getChatRoomMessagesFromBlock(messageBlock);
+        const res = await chatRoomStore.getChatRoomMessagesFromBlock(messageBlock);
+        for (let msg of res) {
+          try {
+            msg.content = await decryptMessage(msg.content);
+            (msg as any)._safe = true;
+          } catch { }
+        }
+        messages.value[messageBlock.blockNumber] = res
       }
     }
   }
@@ -122,6 +170,8 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+
+  await userStore.ensurePrivateKey();
 });
 onBeforeUnmount(() => {
   clearTimeout(timeout);
