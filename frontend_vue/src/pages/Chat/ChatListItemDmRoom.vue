@@ -21,7 +21,7 @@ q-item-section(side)
 import { ref, onMounted, computed, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
 import { type UserProfile, type ChatRoom } from '../../move';
-import { useChatRoomList } from '../../composables';
+import { useChatRoomStore } from '../../stores';
 
 const props = defineProps({
   userAddress: {
@@ -38,7 +38,7 @@ const props = defineProps({
   }
 })
 
-const { getDmParticipantId } = useChatRoomList();
+const { getDmParticipantId } = useChatRoomStore();
 
 const contactedParticipantId = computed(() => getDmParticipantId(props.room));
 

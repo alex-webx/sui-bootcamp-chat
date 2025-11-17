@@ -3,7 +3,6 @@ import { SuiObjectResponse, SuiObjectChange, SuiTransactionBlockResponse } from 
 import { useConfig } from '../../configs';
 import { client, parsers } from './useClient';
 import type * as Models from '.';
-import encrypt from '../utils/encrypt';
 
 const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
 

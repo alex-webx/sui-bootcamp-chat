@@ -92,20 +92,18 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
-import { useChatRoomList } from '../../composables/useChatRoomList';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
 import moment from 'moment';
-import { DirectMessageService } from '../../utils/encrypt2';
+import { DirectMessageService } from '../../utils/encrypt';
 
 const route = useRoute();
 const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
 const { activeChatRoom } = storeToRefs(chatRoomStore);
-const { profile } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
-const { getDmParticipantId } = useChatRoomList();
+const { getDmParticipantId } = chatRoomStore;
 
 const dmService = new DirectMessageService();
 

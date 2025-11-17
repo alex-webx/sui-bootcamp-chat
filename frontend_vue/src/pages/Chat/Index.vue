@@ -209,7 +209,6 @@ import { useWalletStore } from '../../stores/walletStore';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
 import { useChatRoomStore } from '../../stores/chatRoomStore';
-import { useChatRoomList } from '../../composables';
 import WavesBackground from '../../components/WavesBackground.vue';
 import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
@@ -243,8 +242,8 @@ const shortAddress = computed(() => walletStore.shortAddress);
 const profile = computed(() => userStore.profile);
 const tab = ref<'chats' | 'users'>('chats');
 const { activeChatRoom } = storeToRefs(chatRoomStore);
+const { getDmParticipantId } = chatRoomStore;
 const { users } = storeToRefs(usersStore);
-const { getDmParticipantId } = useChatRoomList();
 
 const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
 const style = computed(() => ({ height: $q.screen.height + 'px' }));

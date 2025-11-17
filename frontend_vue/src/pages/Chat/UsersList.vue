@@ -57,20 +57,19 @@ import { useUserStore } from '../../stores/userStore';
 import formatters from '../../utils/formatters';
 import { useChatRoomStore } from 'src/stores/chatRoomStore';
 import { ERoomType } from '../../move';
-import { useChatRoomList } from '../../composables/useChatRoomList';
 
 const usersStore = useUsersStore();
 const userStore = useUserStore();
 const chatRoomStore = useChatRoomStore();
-const chatRoomList = useChatRoomList();
 
+const { selectChatRoom } = chatRoomStore;
+const { activeChatRoom, chatRooms } = storeToRefs(chatRoomStore);
 const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
+const { formatDate, formatTime, shortenAddress } = formatters;
+
 const usersLength = computed(() => Object.keys(users.value!).length);
 const loading = ref(false);
-const { formatDate, formatTime, shortenAddress } = formatters;
-const { selectChatRoom, activeChatRoom, chatRooms } = chatRoomList;
-
 const selectedUserId = ref<string>();
 
 const loadUserProfiles = async () => {

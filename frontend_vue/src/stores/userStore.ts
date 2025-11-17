@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { UserProfile, userProfileModule } from '../move';
 import { useWalletStore } from './';
-import { UserProfileGenerator, UserProfileService } from '../utils/encrypt2';
+import { UserProfileGenerator, UserProfileService } from '../utils/encrypt';
 
 export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();

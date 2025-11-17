@@ -65,28 +65,25 @@ q-list.text-dark
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed, toRefs } from 'vue';
-import { useRouter } from 'vue-router';
 import { useChatRoomStore, useUserStore, useUsersStore } from '../../stores';
-import { useChatRoomList } from '../../composables/useChatRoomList';
 import _ from 'lodash';
 import { storeToRefs } from 'pinia';
 import ChatListItemDmRoom from './ChatListItemDmRoom.vue';
 import ChatListItemRoom from './ChatListItemRoom.vue';
 
-const router = useRouter();
 const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
+
+const { selectChatRoom, fetchAllUserJoinedChatRooms, fetchAllChatRooms } = chatRoomStore;
+const { chatRooms, activeChatRoomId } = storeToRefs(chatRoomStore);
+const { users } = storeToRefs(usersStore);
+const { profile } = storeToRefs(userStore);
+
 const roomsJoined = computed(() => _.keyBy(userStore.profile?.roomsJoined || [], roomId => roomId));
 const myChatRooms = computed(() => chatRooms.value.filter(chatRoom => !!roomsJoined.value[chatRoom.id]));
 const publicChatRooms = computed(() => chatRooms.value.filter(chatRoom => !roomsJoined.value[chatRoom.id]));
 const loading = ref(true);
-
-const { users } = storeToRefs(usersStore);
-const { profile } = storeToRefs(userStore);
-
-const chatRoomList = useChatRoomList();
-const { chatRooms, activeChatRoomId, selectChatRoom, fetchAllUserJoinedChatRooms, fetchAllChatRooms } = chatRoomList;
 
 onMounted(() => {
   loading.value = false;

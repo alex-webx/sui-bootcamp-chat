@@ -2,16 +2,13 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { EPermission, chatRoomModule, ERoomType } from '../move';
 import type { ChatRoom, Message, MessageBlock, UserProfile } from '../move';
-import { DirectMessageService } from '../utils/encrypt2';
+import { DirectMessageService } from '../utils/encrypt';
 import { useUsersStore, useUserStore, useWalletStore } from './';
-import { useChatRoomList } from '../composables';
 
 export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const userStore = useUserStore();
   const usersStore = useUsersStore();
   const walletStore = useWalletStore();
-
-  const chatRoomList = useChatRoomList();
 
   const chatRooms = ref<ChatRoom[]>([]);
   const activeChatRoomId = ref<string>();
@@ -131,7 +128,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     if (room.roomType === ERoomType.DirectMessage) {
       const privKey = await userStore.ensurePrivateKey();
       const dmService = new DirectMessageService();
-      const dmParticipantId = chatRoomList.getDmParticipantId(room);
+      const dmParticipantId = getDmParticipantId(room);
       const dmParticipantProfile = usersStore.users[dmParticipantId!];
       const encryptedContent = await dmService.encryptMessage(message.content, privKey!, dmParticipantProfile?.keyPub!);
       const tx = chatRoomModule.txSendMessage(userStore.profile.id, {
@@ -162,6 +159,22 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     }
   };
 
+  const selectChatRoom = (chatRoom: typeof chatRooms.value[number]) => {
+    if (activeChatRoomId.value === chatRoom.id) {
+      activeChatRoomId.value = undefined;
+    } else {
+      activeChatRoomId.value = chatRoom.id;
+    }
+  };
+
+  const getDmParticipantId = (room: (typeof chatRooms.value)[number] | null) => {
+    if (room?.roomType === ERoomType.DirectMessage) {
+      return Object.keys(room.participants).find(id => id !== userStore.profile?.owner)!;
+    } else {
+      return null;
+    }
+  };
+
   return {
     createChatRoom,
 
@@ -175,6 +188,8 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,
     checkChatRoomRegistry,
+    selectChatRoom,
+    getDmParticipantId,
 
     chatRooms,
     activeChatRoomId,

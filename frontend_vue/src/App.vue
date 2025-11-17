@@ -4,14 +4,10 @@ router-view
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import * as encrypt2 from './utils/encrypt2';
+import * as encrypt2 from './utils/encrypt';
 
 onMounted(async () => {
-  // await encrypt2.UserProfileGenerator.example();
-  // await encrypt2.DirectMessageService.example();
-  // await encrypt2.UserProfileService.example();
-  // await encrypt2.PublicChannelService.example();
-  // await encrypt2.PrivateGroupService.example();
+  // await encrypt2.runTests();
 
   // const ecdh = await window.crypto.subtle.generateKey(
   //   { name: "ECDH", namedCurve: "P-256" },
@@ -27,8 +23,6 @@ onMounted(async () => {
   //   true,
   //   []
   // );
-
-  console.log('fim');
 
 })
 </script>
