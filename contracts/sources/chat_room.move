@@ -217,13 +217,10 @@ public fun create_room(
 public fun create_dm_room(
     registry: &mut ChatRoomRegistry,
     profile: &mut UserProfile,
-    invitee_address: address,    
-    invitee_room_key: vector<u8>,    
+    invitee_address: address,
     clock: &Clock,
     ctx: &mut TxContext
-) {
-    assert!(vector::length(&invitee_room_key) > 0, EEmptyRoomKey);
-    
+) {        
     let sender = tx_context::sender(ctx);
     let room_uid = object::new(ctx);
     let room_id = room_uid.uid_to_inner();
@@ -251,13 +248,11 @@ public fun create_dm_room(
         permission_send_message
     };
 
-    let inviter_key_pub = user_profile::get_user_profile_key_pub(profile);
-    
     let invitee_user_info = ParticipantInfo {
         added_by: sender,
         timestamp,
-        room_key: invitee_room_key,
-        inviter_key_pub
+        room_key: vector::empty(),
+        inviter_key_pub: vector::empty()
     };
 
     let inviter_user_info = ParticipantInfo {
@@ -295,14 +290,12 @@ public fun create_dm_room(
 public fun accept_dm_room(
     room: &mut ChatRoom,
     profile: &mut UserProfile,
-    inviter_room_key: vector<u8>,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
 
     assert!(room.room_type == ROOM_TYPE_DM, ENotAuthorized);
-    assert!(vector::length(&inviter_room_key) > 0, EEmptyRoomKey);
     assert!(table::contains(&room.participants, sender), ENotAuthorized);
     
     let room_id = room.id.uid_to_inner();
@@ -310,10 +303,7 @@ public fun accept_dm_room(
     let inviter_address = room.owner;
 
     let inviter_participant_info = table::borrow_mut<address, ParticipantInfo>(&mut room.participants, inviter_address);
-
-    inviter_participant_info.added_by = sender;
     inviter_participant_info.timestamp = timestamp;
-    inviter_participant_info.room_key = inviter_room_key;
 
     user_profile::add_user_profile_rooms_joined(profile, room_id);
 }
