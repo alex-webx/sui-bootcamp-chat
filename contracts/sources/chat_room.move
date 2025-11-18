@@ -91,8 +91,8 @@ public struct Message has key, store {
     media_url: vector<String>,
     created_at: u64,
     reply_to: Option<ID>,
-    edited_at: u64, // MIGRAR EDITED_AT
-    deleted_at: u64 // DELETE_AT
+    edited_at: u64,
+    deleted_at: u64
 }
  
 public struct MessageCreatedEvent has copy, drop {

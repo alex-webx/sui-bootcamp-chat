@@ -22,7 +22,7 @@ template(v-else)
 
     q-item-label.text-italic(v-if="lastMessage" caption)
       | {{ users[lastMessage.sender]?.username }}:
-      | {{ lastMessage.deleted ? 'mensagem removida' : lastMessage.content }}
+      | {{ lastMessage.deletedAt ? 'mensagem removida' : lastMessage.content }}
       template(v-if="lastMessage.mediaUrl?.length")
         span.q-mr-xs imagem
         q-icon( name="mdi-image-outline")
@@ -77,7 +77,7 @@ const lastMessage = ref<Message>();
 
 watch(() => latestMessages.value[props.room.id], async (message) => {
   if (message) {
-    if (!message.deleted) {
+    if (!message.deletedAt) {
       try {
         const jsonMessage = JSON.parse(message?.content!) as string[];
         message!.content = await dmService.decryptMessage({ iv: jsonMessage[0]!, ciphertext: jsonMessage[1]! });

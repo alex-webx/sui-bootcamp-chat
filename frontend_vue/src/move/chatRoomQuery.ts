@@ -75,8 +75,8 @@ export const parseMessage = (response: SuiObjectResponse): Models.Message => {
     mediaUrl: fields.media_url || [],
     createdAt: fields.created_at,
     replyTo: fields.reply_to,
-    edited: fields.edited,
-    deleted: Number(fields.deleted)
+    editedAt: Number(fields.edited_at),
+    deletedAt: Number(fields.deleted_at)
   };
 };
 

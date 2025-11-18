@@ -101,7 +101,7 @@ template(v-else)
               @contextmenu.prevent="() => handleSelectMessage(message)"
               @dblclick="() => handleSelectMessage(message)"
             )
-              template(v-if="!message.deleted")
+              template(v-if="!message.deletedAt")
                 div
                   video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
                     source(:src="message.mediaUrl[0]")
@@ -152,7 +152,7 @@ template(v-else)
               span.text-weight-bold.text-medium-sea {{ dmUser?.username }}
 
             .text-body1(v-for="message in messageGroup.messages" :key="message.id")
-              template(v-if="!message.deleted")
+              template(v-if="!message.deletedAt")
                 div
                   video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
                     source(:src="message.mediaUrl[0]")

@@ -61,8 +61,8 @@ export type Message = {
   mediaUrl: string[];
   createdAt: number;
   replyTo?: string;
-  edited: boolean;
-  deleted: number;
+  editedAt: number;
+  deletedAt: number;
 };
 
 export type MessageBlock = {
