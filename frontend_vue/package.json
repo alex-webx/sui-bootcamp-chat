@@ -14,7 +14,7 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
-    "@mysten/sui": "^1.44.0",
+    "@mysten/sui": "^1.45.0",
     "@mysten/wallet-standard": "^0.19.6",
     "@quasar/extras": "^1.16.4",
     "lodash": "^4.17.21",

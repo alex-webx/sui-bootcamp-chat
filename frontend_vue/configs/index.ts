@@ -38,6 +38,10 @@ export function useConfig() {
   };
 
   const getConfig = (key: ConfigKey): string | undefined => {
+    if (process.env[key]) {
+      return process.env[key];
+    }
+
     const valueFromLocalStorage = localStorage.getItem(`${network}::${key}`);
     if (valueFromLocalStorage !== null) {
       return valueFromLocalStorage;

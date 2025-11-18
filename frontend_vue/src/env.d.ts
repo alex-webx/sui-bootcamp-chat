@@ -5,5 +5,6 @@ declare namespace NodeJS {
     VUE_ROUTER_BASE: string | undefined;
     VUE_APP_GITHUB_COMMIT_REF: string;
     COMMIT_REF: string | undefined; //injected by Netlify
+    TEST_WALLETS: string | undefined;
   }
 }

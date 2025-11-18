@@ -1,9 +1,7 @@
 import _ from 'lodash';
 import { Transaction, Inputs } from '@mysten/sui/transactions';
-import { SuiObjectResponse, SuiTransactionBlockResponse } from '@mysten/sui/client';
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { useConfig } from '../../configs';
-import { client, parsers } from './useClient';
+import { parsers } from './useClient';
 import type * as Models from '.';
 import { EPermission } from './chatRoomModels';
 

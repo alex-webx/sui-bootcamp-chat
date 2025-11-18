@@ -263,10 +263,31 @@
     "@mysten/utils" "0.2.0"
     "@scure/base" "^1.2.6"
 
-"@mysten/sui@1.44.0", "@mysten/sui@^1.44.0":
+"@mysten/sui@1.44.0":
   version "1.44.0"
   resolved "https://registry.yarnpkg.com/@mysten/sui/-/sui-1.44.0.tgz#2a66f563d9daea4c2fc9881c505bf3523568716e"
   integrity sha512-3p/y5gUhsG/MBXLOdX6qw1b8r1z/lKMvdfpacH+CjuEx8Y0U98R9fLmnFFd+6K+d+CE1gctBuMtcOqr+SppBug==
+  dependencies:
+    "@graphql-typed-document-node/core" "^3.2.0"
+    "@mysten/bcs" "1.9.2"
+    "@mysten/utils" "0.2.0"
+    "@noble/curves" "=1.9.4"
+    "@noble/hashes" "^1.8.0"
+    "@protobuf-ts/grpcweb-transport" "^2.11.1"
+    "@protobuf-ts/runtime" "^2.11.1"
+    "@protobuf-ts/runtime-rpc" "^2.11.1"
+    "@scure/base" "^1.2.6"
+    "@scure/bip32" "^1.7.0"
+    "@scure/bip39" "^1.6.0"
+    gql.tada "^1.8.13"
+    graphql "^16.11.0"
+    poseidon-lite "0.2.1"
+    valibot "^0.36.0"
+
+"@mysten/sui@^1.45.0":
+  version "1.45.0"
+  resolved "https://registry.yarnpkg.com/@mysten/sui/-/sui-1.45.0.tgz#306f79c88b18ca58b6ff889066184a1cda839640"
+  integrity sha512-WYpZmrGWE/FeQaRhYrAYpHcHallj4BFIfSmjq6BkODzEhP9HfMplQAtd8AmtctwO7cpHJ+BjPUOguEAcf1gU4g==
   dependencies:
     "@graphql-typed-document-node/core" "^3.2.0"
     "@mysten/bcs" "1.9.2"
