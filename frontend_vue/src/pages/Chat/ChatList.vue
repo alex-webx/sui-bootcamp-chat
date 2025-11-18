@@ -47,19 +47,21 @@ q-list.text-dark
 
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, toRefs } from 'vue';
-import { useChatRoomStore, useUserStore, useUsersStore } from '../../stores';
-import { useChat } from './useChat';
+import { ref, onMounted, computed, toRefs, onBeforeUnmount } from 'vue';
 import _ from 'lodash';
 import { storeToRefs } from 'pinia';
+import { useChatRoomStore, useUserStore, useUsersStore } from '../../stores';
+import { useChat } from './useChat';
+import { useAsyncLoop } from '../../utils/delay';
 import ChatListItemDmRoom from './ChatListItemDmRoom.vue';
 import ChatListItemRoom from './ChatListItemRoom.vue';
 
-const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
+const chatService = useChat();
+const chatRoomStore = chatService.chatRoomStore;
 
-const { selectChatRoom, } = useChat();
+const { selectChatRoom, fetchLastMessageFromJoinedRooms } = chatService;
 const { fetchAllUserChatRoom } = chatRoomStore;
 const { chatRooms, activeChatRoomId } = storeToRefs(chatRoomStore);
 const { users } = storeToRefs(usersStore);
@@ -67,11 +69,14 @@ const { profile } = storeToRefs(userStore);
 
 const chatRoomsCount = computed(() => Object.keys(chatRooms.value).length);
 
-const loading = ref(true);
+const loading = ref(false);
 
-onMounted(() => {
+useAsyncLoop(async (isFirstExecution) => {
+  if (isFirstExecution) { loading.value = true; }
+  await fetchLastMessageFromJoinedRooms();
   loading.value = false;
-});
+}, 15000, true);
+
 </script>
 <style lang="scss" scoped>
 .active-item {

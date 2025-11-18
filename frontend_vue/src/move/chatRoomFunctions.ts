@@ -183,7 +183,7 @@ export const txEditMessage = (
 
 export const txDeleteMessage = (
   chatRoom: Pick<Models.ChatRoom, 'id'>,
-  message: Pick<Models.Message, 'id'>
+  message: Pick<Models.Message, 'id'>,
 ) => {
 
   const tx = new Transaction();
@@ -191,11 +191,12 @@ export const txDeleteMessage = (
     target: `${config('PackageId')}::chat_room::delete_message`,
     arguments: [
       tx.object(chatRoom.id),
-      tx.object(message.id)
+      tx.object(message.id),
+      tx.object(config('SuiClockId')!)
     ],
   });
 
-  const parser = parsers.isDeleted('chat_room::Message');
+  const parser = parsers.isUpdated('chat_room::Message');
   return { tx, parser };
 };
 

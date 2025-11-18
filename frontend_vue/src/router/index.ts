@@ -81,7 +81,12 @@ export default defineRouter(async ({ store }) => {
       }
 
       if (to.name === 'chat') {
-        await userStore.ensurePrivateKey();
+        try {
+          await userStore.ensurePrivateKey();
+        } catch {
+          next({ name: 'login' });
+          return;
+        }
       }
 
       next();

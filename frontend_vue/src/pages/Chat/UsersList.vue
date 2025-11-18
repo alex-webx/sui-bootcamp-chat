@@ -123,7 +123,8 @@ const selectUser = async (user: typeof users.value[number]) => {
           color: 'positive'
         })
         const rooms = await chatRoomStore.fetchAllUserChatRoom();
-        await usersStore.fetchAllUsersProfiles([user.id, profile.value?.id!]);
+        await usersStore.fetchAllUsersProfiles([user.id]);
+        await userStore.fetchCurrentUserProfile();
         const room = rooms[chatRoomId];
         if (room) {
           await selectChatRoom(room);

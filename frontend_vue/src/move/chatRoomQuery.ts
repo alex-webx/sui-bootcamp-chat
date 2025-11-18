@@ -75,7 +75,8 @@ export const parseMessage = (response: SuiObjectResponse): Models.Message => {
     mediaUrl: fields.media_url || [],
     createdAt: fields.created_at,
     replyTo: fields.reply_to,
-    edited: fields.edited
+    edited: fields.edited,
+    deleted: Number(fields.deleted)
   };
 };
 
@@ -157,4 +158,29 @@ export const getLastMessage = async (chatRoom: Models.ChatRoom) => {
   }
 
   return lastMessage;
+};
+
+export const getLastMessagesFromUserChatRoomsJoined = async (profile: Models.UserProfile) => {
+  const lastMessages: Record<string, Models.Message> = {};
+
+  for (let chatRoomId of profile.roomsJoined) {
+    let latestBlockCount = 1;
+    let keep = true;
+
+    while (keep) {
+      const block = (await getChatRoomMessageBlocks(chatRoomId, latestBlockCount++)).slice(0, 1)?.[0];
+      if (!block) {
+        keep = false;
+      } else {
+        const lastMessageId = block?.messageIds?.slice(-1)?.[0];
+        if (lastMessageId) {
+          const lastMessageRes = await client.getObject({ id: lastMessageId, options: { showContent: true } });
+          lastMessages[chatRoomId] = parseMessage(lastMessageRes);
+          keep = false;
+        }
+      }
+    }
+  }
+
+  return lastMessages;
 };

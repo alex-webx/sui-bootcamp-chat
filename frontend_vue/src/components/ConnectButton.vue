@@ -79,6 +79,8 @@ const showModal = async () => {
 
 const selectWallet = async (walletName: string) => {
   let dialog: ReturnType<typeof Dialog.create> | null = null;
+  let timer: any;
+
   try {
     modal.value = false;
     abortController = new AbortController();
@@ -97,7 +99,7 @@ const selectWallet = async (walletName: string) => {
 
     let countdown  = timeoutLimitSeconds;
 
-    const timer = setInterval(() => {
+    timer = setInterval(() => {
       countdown--
 
       if (countdown > 0) {
@@ -105,10 +107,7 @@ const selectWallet = async (walletName: string) => {
           message: `A solicitação será cancelada em (${countdown}s)`
         })
       } else {
-        clearInterval(timer);
-        if (dialog) {
-          dialog.hide();
-        }
+        dialog?.hide();
       }
     }, 1000);
 
@@ -122,6 +121,7 @@ const selectWallet = async (walletName: string) => {
       message: 'Conexão rejeitada!'
     });
   } finally {
+    clearInterval(timer);
     dialog?.hide();
   }
 };

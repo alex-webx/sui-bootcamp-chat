@@ -59,7 +59,7 @@ export function useProfile() {
         Notify.create({
           message: 'Perfil excluído com sucesso',
           color: 'primary'
-        })
+        });
       }
     });
   };

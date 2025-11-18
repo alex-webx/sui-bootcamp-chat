@@ -107,7 +107,7 @@
           @click="toggleRighttDrawer()"
         )
 
-      .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box
+      .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box(v-if="activeChatRoom.roomType === 1")
         div
           q-avatar(size="80px")
             q-img(:src="activeChatRoom.imageUrl")
@@ -115,6 +115,9 @@
         .text-center
           .text-subtitle2 {{ activeChatRoom.name }}
           .text-caption {{ activeChatRoom.messageCount }} {{activeChatRoom.messageCount > 1 ? 'mensagens' : 'mensagem' }}
+
+      .q-pt-xl.q-pb-sm(v-else="activeChatRoom.roomType === 2")
+
 
       .q-ma-none.flex.column.q-px-md.q-py-md.q-gutter-y-sm.card-box.text-caption(style="line-height: 11px")
         div Criado em: {{ formatFullDate(activeChatRoom.createdAt) }}
@@ -165,25 +168,24 @@
           )
             img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
 
-        .row.justify-end.full-width.new-media(
-          v-if="newMessage.mediaUrl?.length"
-          style="margin-top: auto;"
-        )
-          .flex.bg-deep-sea.text-white.q-pa-md.q-pt-none(style="width: 30%; border-top-left-radius: 16px")
-            q-btn(icon="close" flat round @click="removeGif()")
-            div
-              video.fit(autoplay loop muted playisline)
-                source(:src="newMessage.mediaUrl[0]")
-
-
     template(v-if="activeChatRoom")
       transition(
         appear
         enter-active-class="animated fadeInUp slower"
         leave-active-class="animated fadeOut slower"
       )
-        q-footer
+        q-footer.bg-transparent
           q-form(@submit="sendMessage()" ref="form")
+            .row.justify-end.full-width.new-media(
+              v-if="newMessage.mediaUrl?.length"
+              style="margin-top: auto;"
+            )
+              .flex.bg-deep-sea.text-white.q-pa-md.q-pt-none(style="width: 30%; border-top-left-radius: 16px")
+                q-btn(icon="close" flat round @click="removeGif()")
+                div
+                  video.fit(autoplay loop muted playisline)
+                    source(:src="newMessage.mediaUrl[0]")
+
             q-toolbar.bg-deep-sea.text-white.row.q-py-xs
               q-btn(icon="mdi-file-gif-box" flat round)
                 q-menu(ref="tenorMenu")

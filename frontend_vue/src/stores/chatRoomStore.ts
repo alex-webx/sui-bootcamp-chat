@@ -144,6 +144,29 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     return parser(await walletStore.signAndExecuteTransaction(tx));
   };
 
+
+  const deleteMessage = async (
+    chatRoom: Pick<ChatRoom, 'id'>,
+    message: Pick<Message, 'id'>) => {
+    if (!userStore.profile?.id) {
+      return;
+    }
+    const { tx, parser } = await chatRoomModule.txDeleteMessage(chatRoom, message);
+    return parser(await walletStore.signAndExecuteTransaction(tx));
+  };
+
+  const editMessage = async (
+    message: Pick<Message, 'id'>,
+    newMessage: Pick<Message, 'content'>
+  ) => {
+    if (!userStore.profile?.id) {
+      return;
+    }
+    const { tx, parser } = await chatRoomModule.txEditMessage(message, newMessage);
+    return parser(await walletStore.signAndExecuteTransaction(tx));
+  };
+
+
   const getChatRoomMessageBlocks = async (chatRoomId: string) => {
     return await chatRoomModule.getChatRoomMessageBlocks(chatRoomId);
   };
@@ -170,6 +193,8 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     refreshUserChatRoom,
 
     sendMessage,
+    editMessage,
+    deleteMessage,
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,
     checkChatRoomRegistry,

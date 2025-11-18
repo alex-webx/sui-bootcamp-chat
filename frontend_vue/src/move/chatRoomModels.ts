@@ -62,6 +62,7 @@ export type Message = {
   createdAt: number;
   replyTo?: string;
   edited: boolean;
+  deleted: number;
 };
 
 export type MessageBlock = {

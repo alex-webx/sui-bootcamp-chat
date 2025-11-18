@@ -10,6 +10,7 @@ import { DirectMessageService } from '../../utils/encrypt';
 const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo'>>({ content: '', mediaUrl: [], replyTo: '' });
 const messageBlocks = ref<Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>([]);
 const messages = ref<Record<string, Message[]>>({});
+const latestMessages = ref<Record<string, Message>>({});
 
 export function useChat() {
 
@@ -143,6 +144,51 @@ export function useChat() {
     return await chatRoomModule.getLastMessage(chatRoom);
   };
 
+  const fetchLastMessageFromJoinedRooms = async () => {
+    latestMessages.value = await chatRoomModule.getLastMessagesFromUserChatRoomsJoined(userStore.profile!);
+  };
+
+  const deleteMessage = async (
+    chatRoom: Pick<ChatRoom, 'id'>,
+    message: Pick<Message, 'id'>
+  ) => {
+    Dialog.create({
+      title: 'Tem certeza que deseja apagar esta mensagem?',
+      message: 'Apenas o conteúdo da mensagem será apagado',
+      cancel: {
+        label: 'Cancelar',
+        color: 'grey',
+        flat: true
+      },
+      ok: {
+        label: 'Apagar',
+        color: 'primary'
+      }
+    }).onOk(async () => {
+      const success = await chatRoomStore.deleteMessage(chatRoom, message);
+      if (success) {
+        Notify.create({
+          message: 'Mensagem apagada com sucesso',
+          color: 'positive'
+        })
+      } else {
+        Notify.create({
+          message: 'Não foi possível apagar a mensagem',
+          color: 'negative'
+        });
+      }
+      await fetchMessages();
+    });
+  };
+
+  const editMessage = async (
+    message: Pick<Message, 'id'>,
+    newMessage: Pick<Message, 'content'>
+  ) => {
+    alert('todo');
+    // const success = await chatRoomStore.editMessage(message, newMessage);
+    await fetchMessages();
+  }
 
 
   return {
@@ -151,6 +197,7 @@ export function useChat() {
     newMessage,
     messageBlocks,
     messages,
+    latestMessages,
 
     createRoom,
     selectChatRoom,
@@ -159,7 +206,11 @@ export function useChat() {
     removeGif,
     insertEmoji,
     sendMessage,
+    deleteMessage,
+    editMessage,
+
     fetchMessages,
+    fetchLastMessageFromJoinedRooms,
     getLastMessage,
     getDmParticipant,
     getDmParticipantId

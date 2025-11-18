@@ -20,9 +20,9 @@ template(v-else)
           q-icon.q-mb-xs.q-ml-xs(name="mdi-alert-circle" color="sea" size="16px" v-if="!contactedUserJoined" )
             q-tooltip O usuário ainda não aceitou o seu convite
 
-    q-item-label.text-italic(v-if="lastMessage?.content || lastMessage?.mediaUrl?.length" caption)
+    q-item-label.text-italic(v-if="lastMessage" caption)
       | {{ users[lastMessage.sender]?.username }}:
-      | {{ lastMessage?.content }}
+      | {{ lastMessage.deleted ? 'mensagem removida' : lastMessage.content }}
       template(v-if="lastMessage.mediaUrl?.length")
         span.q-mr-xs imagem
         q-icon( name="mdi-image-outline")
@@ -37,7 +37,7 @@ template(v-else)
 
 </template>
 <script setup lang="ts">
-import { onMounted, ref, computed, toRefs, type PropType } from 'vue';
+import { watch, onMounted, ref, computed, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
 import moment from 'moment';
 import { type UserProfile, type ChatRoom, type Message } from '../../move';
@@ -65,26 +65,28 @@ const props = defineProps({
 
 const { users } = storeToRefs(useUsersStore());
 const { userStore } = useProfile();
-const { getDmParticipantId, getLastMessage } = useChat();
+const { getDmParticipantId, getLastMessage, latestMessages } = useChat();
 const contactedParticipantId = computed(() => getDmParticipantId(props.room));
 const contactedUser = computed(() => props.users[contactedParticipantId.value!]);
 
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(props.room.id) >= 0);
 const contactedUserJoined = computed(() => (contactedUser.value?.roomsJoined || []).indexOf(props.room.id) >= 0);
-const lastMessage = ref<Message>();
 const isToday = (timestamp: number) => moment(Number(timestamp)).isSame(moment(), 'date');
+const dmService = new DirectMessageService(userStore.profile?.keyPrivDecoded!, contactedUser.value?.keyPub!);
+const lastMessage = ref<Message>();
 
-onMounted(async () => {
-  const message = await getLastMessage(props.room);
-  const dmService = new DirectMessageService(userStore.profile?.keyPrivDecoded!, contactedUser.value?.keyPub!);
+watch(() => latestMessages.value[props.room.id], async (message) => {
   if (message) {
-    try {
-      const jsonMessage = JSON.parse(message?.content!) as string[];
-      message!.content = await dmService.decryptMessage({ iv: jsonMessage[0]!, ciphertext: jsonMessage[1]! });
-      lastMessage.value = message;
-    } catch { }
+    if (!message.deleted) {
+      try {
+        const jsonMessage = JSON.parse(message?.content!) as string[];
+        message!.content = await dmService.decryptMessage({ iv: jsonMessage[0]!, ciphertext: jsonMessage[1]! });
+      } catch { }
+    }
   }
-})
+  lastMessage.value = message;
+}, { immediate: true, deep: true });
+
 </script>
 <style lang="scss" scoped>
 </style>

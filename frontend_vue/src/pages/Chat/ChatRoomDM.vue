@@ -95,15 +95,40 @@ template(v-else)
             template(#name)
               span.text-weight-bold.text-ocean {{ users[messageGroup.sender]?.username }}
 
-            .text-body1(v-for="message in messageGroup.messages")
-              div
-                video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
-                  source(:src="message.mediaUrl[0]")
+            .text-body1(
+              v-for="message in messageGroup.messages" :key="message.id"
+              v-touch-hold.mouse="() => handleSelectMessage(message)"
+              @contextmenu.prevent="() => handleSelectMessage(message)"
+              @dblclick="() => handleSelectMessage(message)"
+            )
+              template(v-if="!message.deleted")
+                div
+                  video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
+                    source(:src="message.mediaUrl[0]")
 
-              span(v-for="(line, iLine) in message.content.split('\\n')")
-                <br v-if="iLine > 0" />
-                | {{ line }}
+                span(v-for="(line, iLine) in message.content.split('\\n')")
+                  <br v-if="iLine > 0" />
+                  | {{ line }}
 
+                template(v-if="messageSelected?.id === message.id")
+                  transition-group(
+                    appear
+                    enter-active-class="animated flipInX slower"
+                    leave-active-class="animated flipInX slower"
+                  )
+                    q-separator(dark spaced key="separator")
+                    .flex.flex-center(key="buttons")
+                      q-btn-group.bg-white(outline)
+                        q-btn.bg-sea(icon="close" @click="messageSelected = null" size="md" outline)
+                        q-separator(vertical)
+                        q-btn.bg-sea(icon="mdi-trash-can-outline" size="md" outline @click="deleteSelectedMessage()")
+                        q-separator(vertical)
+                        q-btn.bg-sea(icon="mdi-pencil-outline" size="md" outline @click="editSelectedMessage()")
+
+              //-- v-else: message deleted
+              template(v-else)
+                .text-italic.text-caption.q-py-sm.q-px-md.rounded-borders(style="background: rgba(255,255,255, 0.2)")
+                  | mensagem removida
 
             template(#stamp)
               .flex.items-center.text-caption
@@ -126,7 +151,7 @@ template(v-else)
             template(#name)
               span.text-weight-bold.text-medium-sea {{ dmUser?.username }}
 
-            .text-body1(v-for="message in messageGroup.messages")
+            .text-body1(v-for="message in messageGroup.messages" :key="message.id")
               div
                 video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
                   source(:src="message.mediaUrl[0]")
@@ -157,6 +182,7 @@ import { useChat } from './useChat';
 import { useUserStore, useUsersStore } from '../../stores';
 import { type Message } from '../../move';
 import { shortenAddress } from '../../utils/formatters';
+import { useAsyncLoop } from '../../utils/delay';
 
 const chatService = useChat();
 const userStore = useUserStore();
@@ -177,6 +203,15 @@ const dmUser = computed(() => {
 });
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
 const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
+
+const {} = useAsyncLoop(async (isFirstExecution) => {
+  if (isFirstExecution) { loading.value = true; }
+  try {
+    await fetchMessages();
+  } finally {
+    loading.value = false;
+  }
+}, 5000);
 
 const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
 
@@ -210,26 +245,21 @@ const exploreTxs = async (messages: Message[]) => {
   }
 };
 
-let timeout = 0;
+const messageSelected = ref<Message>();
+const handleSelectMessage = (message: Message) => {
+  messageSelected.value = message;
+};
+
+const deleteSelectedMessage = async () => {
+  await chatService.deleteMessage(activeChatRoom.value!, messageSelected.value!);
+};
+
+const editSelectedMessage = async () => {
+  await chatService.editMessage(messageSelected.value!, { content: '' });
+};
 
 onMounted(async () => {
-  const loop = async () => {
-    console.log('fetching');
-    await fetchMessages();
-    timeout = setTimeout(loop, 5000) as any;
-  };
-
-  loading.value = true;
-  try {
-    await loop();
-  } finally {
-    loading.value = false;
-  }
-
   await userStore.ensurePrivateKey();
-});
-onBeforeUnmount(() => {
-  clearTimeout(timeout);
 });
 
 
