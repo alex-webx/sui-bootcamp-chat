@@ -41,7 +41,7 @@ q-layout.bg-sea(view="lHh Lpr fff")
               .col
                 q-input(
                   label="Nome de usuário *" outlined maxlength="50" stack-label
-                  v-model="form.username" :max="50" :maxlength="50"
+                  v-model="form.username" :max="50" :maxlength="50" autofocus
                   :rules=`[
                     val => val.length < 50 || 'Máximo de 50 caracteres',
                     val => val.length || '* Campo obrigatório'
@@ -83,9 +83,6 @@ import { storeToRefs } from 'pinia';
 import { useUserStore } from '../../stores/userStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { Screen, QForm, Loading, Notify } from 'quasar';
-import WavesBackground from '../../components/WavesBackground.vue';
-import SettingsMenu from '../../components/SettingsMenu.vue';
-import DeployLabel from '../../components/DeployLabel.vue';
 
 const router = useRouter();
 const userStore = useUserStore();

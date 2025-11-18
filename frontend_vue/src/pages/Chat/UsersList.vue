@@ -16,7 +16,7 @@ q-list
       v-for="(user, userId) in users" :key="userId"
       clickable v-ripple
       @click="selectUser(user)"
-      :class="{ 'active-item': user.owner !== profile.owner && !!activeChatRoom?.participants?.[user.owner] }"
+      :class="{ 'active-item': activeChatRoom && user.owner !== profile.owner && profile.roomsJoined.indexOf(activeChatRoom.id) >= 0 && !!activeChatRoom?.participants?.[user.owner] }"
     )
       q-item-section(avatar)
         q-avatar
@@ -52,18 +52,18 @@ q-list
 import { ref, onMounted, computed, toRefs } from 'vue';
 import { Dialog, Notify } from 'quasar';
 import { storeToRefs } from 'pinia';
-import { useUsersStore } from '../../stores/usersStore';
-import { useUserStore } from '../../stores/userStore';
+import { useUsersStore, useUserStore } from '../../stores';
 import formatters from '../../utils/formatters';
-import { useChatRoomStore } from 'src/stores/chatRoomStore';
+import { useChat } from './useChat';
 import { ERoomType } from '../../move';
 
 const usersStore = useUsersStore();
 const userStore = useUserStore();
-const chatRoomStore = useChatRoomStore();
+const chatService = useChat();
+const chatRoomStore = chatService.chatRoomStore;
 
-const { selectChatRoom } = chatRoomStore;
-const { activeChatRoom, chatRooms } = storeToRefs(chatRoomStore);
+const { selectChatRoom, } = chatService;
+const { chatRooms, activeChatRoom } = storeToRefs(chatRoomStore);
 const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
 const { formatDate, formatTime, shortenAddress } = formatters;
@@ -87,9 +87,16 @@ const selectUser = async (user: typeof users.value[number]) => {
     return;
   }
 
-  const dmRoom = chatRooms.value
+  let dmRoom = Object.values(chatRooms.value)
     .filter(room => room.roomType === ERoomType.DirectMessage)
     .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
+
+  if (!dmRoom) {
+    await chatRoomStore.fetchAllUserChatRoom();
+    dmRoom = Object.values(chatRooms.value)
+      .filter(room => room.roomType === ERoomType.DirectMessage)
+      .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
+  }
 
   if (dmRoom) {
     await selectChatRoom(dmRoom);
@@ -107,15 +114,20 @@ const selectUser = async (user: typeof users.value[number]) => {
         color: 'primary'
       }
     }).onOk(async () => {
-      const res = await chatRoomStore.createDmRoom({
+      const chatRoomId = await chatRoomStore.createDmRoom({
         inviteeUserProfile: user
       });
-      if (res) {
+      if (chatRoomId) {
         Notify.create({
           message: 'Sala criada com sucesso!',
           color: 'positive'
         })
-        await chatRoomStore.fetchAllChatRooms();
+        const rooms = await chatRoomStore.fetchAllUserChatRoom();
+        await usersStore.fetchAllUsersProfiles([user.id, profile.value?.id!]);
+        const room = rooms[chatRoomId];
+        if (room) {
+          await selectChatRoom(room);
+        }
       }
     });
   }

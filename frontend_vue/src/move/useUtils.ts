@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import { client } from './useClient';
 import { useConfig } from '../../configs';
+import { type SuiObjectResponse, type DynamicFieldInfo } from '@mysten/sui/client';
 
 export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
 
@@ -43,17 +44,36 @@ export const getFullTable = async (field: { fields: { id: { id: string }, size: 
   return res;
 }
 
-export const getMultiObjects = async (ids: string[], pageSize = 50) => {
-  const chunks = _.chunk(ids, pageSize);
-  const results: any[] = [];
+export const getMultiObjects = async (args: { ids: string[], pageSize?: number }) => {
+  const chunks = _.chunk(args.ids, args.pageSize || 50);
+  const results: SuiObjectResponse[] = [];
 
   for (let chunk of chunks) {
     const res = await client.multiGetObjects({
-      ids,
-      options: { showContent: true }
+      ids: chunk,
+      options: { showContent: true },
     });
     results.push(...res);
   }
 
   return results;
 }
+
+export const getDynamicFields = async (args: { parentId: string, pageSize?: number }) => {
+  let hasNextPage = true;
+  let cursor: string | null = null;
+  let fields: DynamicFieldInfo[] = [];
+
+  while (hasNextPage) {
+    const response = await client.getDynamicFields({
+      parentId: args.parentId,
+      cursor: cursor || undefined,
+      limit: args.pageSize || 50
+    });
+
+    cursor = response.nextCursor;
+    hasNextPage = response.hasNextPage;
+    fields.push(...response.data);
+  }
+  return fields;
+};

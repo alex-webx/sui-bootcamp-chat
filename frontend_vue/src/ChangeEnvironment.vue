@@ -48,8 +48,6 @@ q-layout.bg-sea
 
 <script setup lang="ts">
 import { useConfig } from '../configs';
-import SettingsMenu from './components/SettingsMenu.vue';
-import WavesBackground from './components/WavesBackground.vue';
 import { useAppStore } from './stores/appStore';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';

@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, Inputs } from '@mysten/sui/transactions';
 import { SuiObjectResponse, SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { useConfig } from '../../configs';
@@ -142,15 +142,9 @@ export const txAcceptDmRoom = (
 
 export const txSendMessage = (
   userProfileId: string,
-  message: Pick<Models.Message, 'content' | 'roomId'>
+  message: Pick<Models.Message, 'content' | 'roomId' | 'mediaUrl' | 'replyTo'>
 ) => {
   const tx = new Transaction();
-
-  const noneOptionId = tx.moveCall({
-    target: '0x1::option::none',
-    typeArguments: ['0x2::object::ID'],
-    arguments: [],
-  });
 
   tx.moveCall({
     target: `${config('PackageId')}::chat_room::send_message`,
@@ -158,12 +152,14 @@ export const txSendMessage = (
       tx.object(userProfileId),
       tx.object(message.roomId),
       tx.pure.string(message.content),
-      noneOptionId,
+      tx.pure.option('id', message.replyTo || null),
+      tx.pure.vector('string', message.mediaUrl),
       tx.object(config('SuiClockId')!)
     ],
   });
 
-  return tx;
+  const parser = parsers.isCreated('chat_room::Message');
+  return { tx, parser };
 };
 
 export const txEditMessage = (
@@ -181,7 +177,8 @@ export const txEditMessage = (
     ],
   });
 
-  return tx;
+  const parser = parsers.isUpdated('chat_room::Message');
+  return { tx, parser };
 };
 
 export const txDeleteMessage = (
@@ -198,7 +195,8 @@ export const txDeleteMessage = (
     ],
   });
 
-  return tx;
+  const parser = parsers.isDeleted('chat_room::Message');
+  return { tx, parser };
 };
 
 export const txInviteParticipant = (

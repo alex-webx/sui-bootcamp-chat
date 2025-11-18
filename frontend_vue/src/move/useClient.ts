@@ -15,7 +15,7 @@ export type SuiObjectChangeWrapped = Extract<SuiObjectChange, { type: 'wrapped' 
 const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
 
 const getObjectType = (
-    structName: 'user_profile::UserProfile' | 'user_profile::UserProfileRegistry' | 'chat_room::ChatRoom' | 'chat_room::ChatRoomRegistry'
+    structName: 'user_profile::UserProfile' | 'user_profile::UserProfileRegistry' | 'chat_room::ChatRoom' | 'chat_room::ChatRoomRegistry' | 'chat_room::Message'
 ) => {
   return `${config('PackageId')}::${structName}`;
 };
@@ -29,13 +29,13 @@ export const parsers = {
   },
   isCreated: (objectType: Parameters<typeof getObjectType>[0]) => {
     return (res: SuiTransactionBlockResponse) => {
-      const profileUpdated = res.objectChanges?.find(change => change.type === 'created' && change.objectType === objectType) as SuiObjectChangeCreated | undefined;
+      const profileUpdated = res.objectChanges?.find(change => change.type === 'created' && change.objectType === getObjectType(objectType)) as SuiObjectChangeCreated | undefined;
       return profileUpdated?.objectId;
     };
   },
   isUpdated: (objectType: Parameters<typeof getObjectType>[0]) => {
     return (res: SuiTransactionBlockResponse) => {
-      const profileUpdated = res.objectChanges?.find(change => change.type === 'mutated' && change.objectType === objectType) as SuiObjectChangeMutated | undefined;
+      const profileUpdated = res.objectChanges?.find(change => change.type === 'mutated' && change.objectType === getObjectType(objectType)) as SuiObjectChangeMutated | undefined;
       return profileUpdated?.objectId;
     };
   }

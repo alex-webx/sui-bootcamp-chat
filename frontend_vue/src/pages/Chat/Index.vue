@@ -29,10 +29,10 @@
             )
               q-btn(round flat)
                 q-avatar
-                  q-img(:src="activeChatRoom.imageUrl || users[dmParticipantId].avatarUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
+                  q-img(:src="activeChatRoom.imageUrl || users[dmParticipantId]?.avatarUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
 
               span.text-subtitle1.q-pl-sm
-                | {{ activeChatRoom.name || users[dmParticipantId].username }}
+                | {{ activeChatRoom.name || users[dmParticipantId]?.username }}
 
         q-space
 
@@ -67,10 +67,11 @@
                 q-item-section(avatar)
                   q-icon(name="mdi-account-edit" color="sea")
                 q-item-section Editar perfil
-              q-item(clickable @click="deleteProfile()")
+              q-item
+                //- (clickable @click="deleteProfile()")
                 q-item-section(avatar)
-                  q-icon(name="mdi-account-cancel" color="sea")
-                q-item-section Excluir perfil
+                  q-icon(name="mdi-account-cancel" color="grey")
+                q-item-section Excluir perfil [desabilitado]
               q-separator
               q-item(clickable @click="disconnect()")
                 q-item-section
@@ -123,21 +124,18 @@
       .q-ma-none.flex.flex-center.column.q-py-sm.q-gutter-y-sm.card-box
         q-list.full-width
           q-item Participantes
-          q-item
+
+          q-item(v-for="(participant, participantUserId) in activeChatRoom.participants" :key="participantUserId")
             q-item-section(avatar)
               q-avatar
-                q-img(:src="users[activeChatRoom.owner]?.avatarUrl")
+                q-img(:src="users[participantUserId]?.avatarUrl" :ratio="1" fit="cover")
             q-item-section
-              q-item-label {{ users[activeChatRoom.owner]?.username }}
-              q-item-label(caption) {{ shortenAddress(activeChatRoom.owner) }}
+              q-item-label {{ users[participantUserId]?.username }}
+              q-item-label(caption) {{ shortenAddress(participantUserId) }}
             q-item-section(side)
-              q-item-label
+              q-item-label(v-if="activeChatRoom.owner === participantUserId")
                 q-chip(size="sm" color="grey-3") Administrador
 
-      //- JsonViewer(
-      //-   :data="activeChatRoom"
-      //-   :dark-mode="false"
-      //- )
 
     q-page-container(style="display: flex; flex-direction: column; overflow: auto; min-height: calc(100vh - 40px)" :key="activeChatRoom?.id || 0")
       template(v-if="activeChatRoom")
@@ -156,11 +154,6 @@
           ref="chatRoomComponent"
           v-if="activeChatRoom.roomType === 2"
         )
-          template(#empty)
-            q-card.rounded-borders(v-if="dmParticipantId && users[dmParticipantId].roomsJoined.indexOf(activeChatRoom.id) < 0")
-              .flex.flex-center.column.q-ma-lg
-                q-icon(name="mdi-chat-sleep-outline" size="100px" color="medium-sea")
-                q-card-section O usuário ainda não aceitou a conversa =(
 
         .q-pa-md.row.justify-center.full-width(
           v-else style="margin-top: auto; margin-bottom: auto"
@@ -172,6 +165,17 @@
           )
             img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
 
+        .row.justify-end.full-width.new-media(
+          v-if="newMessage.mediaUrl?.length"
+          style="margin-top: auto;"
+        )
+          .flex.bg-deep-sea.text-white.q-pa-md.q-pt-none(style="width: 30%; border-top-left-radius: 16px")
+            q-btn(icon="close" flat round @click="removeGif()")
+            div
+              video.fit(autoplay loop muted playisline)
+                source(:src="newMessage.mediaUrl[0]")
+
+
     template(v-if="activeChatRoom")
       transition(
         appear
@@ -182,20 +186,21 @@
           q-form(@submit="sendMessage()" ref="form")
             q-toolbar.bg-deep-sea.text-white.row.q-py-xs
               q-btn(icon="mdi-file-gif-box" flat round)
-                q-menu
+                q-menu(ref="tenorMenu")
                   q-card.bg-white(style="width: 300px; max-height: 400px")
-                    TenorComponent(@select="insertGif")
+                    TenorComponent(@select="ev => { $refs.tenorMenu.hide(); insertGif(ev) }")
 
-              q-btn(icon="mdi-sticker-emoji" flat round)
+              q-btn(icon="mdi-emoticon-happy-outline" flat round)
                 q-menu
                   EmojiPicker(:native="true" @select="insertEmoji" theme="light")
-              q-input(
+
+              q-input.q-ml-sm(
                 rounded outlined dense class="WAL__field col-grow q-mr-sm" bg-color="white"
-                v-model="message" placeholder="Digite uma mensagem..." type="textarea" rows="1"
-                borderless clearable autofocus autogrow
+                v-model="newMessage.content" placeholder="Digite uma mensagem..." type="textarea" rows="1"
+                borderless clearable autofocus autogrow @clear="newMessage.content = ''"
                 @keydown.enter.exact.prevent="$refs.form.submit($event)"
               )
-              q-btn(round flat icon="send" type="submit" :disabled="!message.length")
+              q-btn(round flat icon="send" type="submit" :disabled="!newMessage.content.length && newMessage.mediaUrl.length === 0")
 
 </template>
 
@@ -203,30 +208,31 @@
 import { Dialog, Notify, Screen, useQuasar } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
 import formatters from '../../utils/formatters';
 import { useWalletStore } from '../../stores/walletStore';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
-import { useChatRoomStore } from '../../stores/chatRoomStore';
-import WavesBackground from '../../components/WavesBackground.vue';
 import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
 import ChatRoom from './ChatRoom.vue';
 import ChatRoomDM from './ChatRoomDM.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import EditProfileDialog from './EditProfileDialog.vue';
-import SettingsMenu from '../../components/SettingsMenu.vue';
-import DeployLabel from '../../components/DeployLabel.vue';
-import TenorComponent, { type TenorResult }  from '../../components/TenorComponent.vue';
+import { useProfile } from './useProfile';
+import { useChat } from './useChat';
+
+const $q = useQuasar();
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
-const chatRoomStore = useChatRoomStore();
 
-const $q = useQuasar();
-const router = useRouter();
+const chatService = useChat();
+
+const { disconnect, deleteProfile, editProfile } = useProfile();
+const { createRoom, insertEmoji, insertGif, removeGif, sendMessage, getDmParticipantId } = chatService;
+const { newMessage } = chatService;
+const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 
 const breakpoint = 800;
 const screenWidth = computed(() => Screen.width);
@@ -235,14 +241,12 @@ const drawerWidth = computed(() => desktopMode.value ? 350 : Screen.width);
 
 const leftDrawerOpen = ref(true);
 const rightDrawerOpen = ref(false);
-const message = ref('');
+
 const chatRoomComponent = ref<InstanceType<typeof ChatRoom>>();
 
 const shortAddress = computed(() => walletStore.shortAddress);
 const profile = computed(() => userStore.profile);
 const tab = ref<'chats' | 'users'>('chats');
-const { activeChatRoom } = storeToRefs(chatRoomStore);
-const { getDmParticipantId } = chatRoomStore;
 const { users } = storeToRefs(usersStore);
 
 const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
@@ -250,140 +254,6 @@ const style = computed(() => ({ height: $q.screen.height + 'px' }));
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
 const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
 const { shortenAddress, formatFullDate } = formatters;
-
-
-const disconnect = async (silently = false) => {
-  const shouldDisconnect = await new Promise((resolve) => {
-
-    if (silently) { resolve(true); }
-
-    Dialog.create({
-      title: 'Tem certeza que deseja desconectar sua carteira?',
-      cancel: {
-        label: 'Cancelar',
-        color: 'grey',
-        flat: true
-      },
-      ok: {
-        label: 'Desconectar',
-        color: 'primary'
-      }
-    }).onOk(async () => {
-      resolve(true);
-    }).onDismiss(() => {
-      resolve(false);
-    });
-  });
-
-  if (shouldDisconnect) {
-    await walletStore.disconnect();
-    await router.push({ name: 'login' });
-  }
-}
-
-const deleteProfile = async () => {
-  Dialog.create({
-    title: 'Tem certeza que deseja excluir o seu perfil?',
-    message: 'Esta operação não poderá ser desfeita.',
-    cancel: {
-      label: 'Cancelar',
-      color: 'grey',
-      flat: true
-    },
-    ok: {
-      label: 'Excluir perfil'
-    }
-  }).onOk(async () => {
-    const success = await userStore.deleteUserProfile();
-    if (success === true) {
-      disconnect(true);
-      Notify.create({
-        message: 'Perfil excluído com sucesso',
-        color: 'primary'
-      })
-    }
-  });
-};
-
-const editProfile = async () => {
-  Dialog.create({
-    component: EditProfileDialog
-  }).onOk(async (updatedUserProfile: Parameters<typeof userStore.updateUserProfile>[0]) => {
-    const notif = Notify.create({
-      message: 'Atualizando dados do seu perfil...',
-      caption: 'Por favor, assine a transação em sua carteira.',
-      color: 'primary',
-      spinner: true,
-      group: false,
-      timeout: 0
-    });
-
-    try {
-      const response = await userStore.updateUserProfile(updatedUserProfile);
-      if (response) {
-        notif({
-          message: 'Perfil atualizado com sucesso!',
-          caption: '',
-          timeout: 2500,
-          spinner: false,
-          icon: 'done',
-          color: 'positive'
-        });
-        await userStore.fetchCurrentUserProfile();
-      } else {
-        notif({
-          message: 'Não foi possível atualizar o seu perfil.',
-          caption: '',
-          timeout: 2500,
-          spinner: false,
-          icon: 'done',
-          color: 'negative'
-        });
-      }
-    } catch (exc) {
-      console.log({exc});
-      notif({
-        message: 'Não foi possível atualizar o seu perfil.',
-        caption: 'Ocorreu um erro: ' + exc,
-        timeout: 2500,
-        spinner: false,
-        icon: 'done',
-        color: 'negative'
-      });
-    }
-  });
-};
-
-const createRoom = async () => {
-  Dialog.create({
-    component: CreateRoomDialog
-  });
-};
-
-const insertGif = async (gif: TenorResult) => {
-  // message.value += gif.media_formats.mp4.url;
-  alert('TODO');
-};
-
-const insertEmoji = (emoji: { i: string }) => {
-  message.value += emoji.i;
-}
-
-const sendMessage = async () => {
-  if (profile.value && activeChatRoom.value) {
-    await chatRoomStore.sendMessage(
-      activeChatRoom.value,
-      {
-        content: message.value
-      }
-    );
-    chatRoomComponent.value?.fetchMessages();
-    message.value = '';
-    if ((profile.value.roomsJoined || []).indexOf(activeChatRoom.value.id) < 0) {
-      await userStore.fetchCurrentUserProfile();
-    }
-  }
-}
 
 onMounted(async () => {
 
@@ -393,8 +263,8 @@ onMounted(async () => {
     if (connected) {
       await userStore.fetchCurrentUserProfile();
       await usersStore.fetchAllUsersProfiles();
-      //await chatRoomStore.fetchAllUserJoinedChatRooms();
-      await chatRoomStore.fetchAllChatRooms();
+      await chatService.chatRoomStore.fetchAllUserChatRoom();
+      //await chatService.chatRoomStore.fetchAllChatRooms();
     }
   } finally {
     $q.loading.hide();
@@ -450,5 +320,24 @@ $heightBanner: 260px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   margin-bottom: 4px;
   box-shadow: 0px 0px 1px rgba(0,0,0,0.2);
+}
+
+.new-media {
+  > div { z-index: 1; }
+  &::before {
+    content: ' ';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba($sea, 0.3);
+    backdrop-filter: blur(4px);
+    // animation: blink 0.4s infinite alternate;
+    // @keyframes blink {
+    //   0% { background: rgba($sea, 0.3); }
+    //   100% { background: rgba($sea, 0.2); }
+    // }
+  }
 }
 </style>

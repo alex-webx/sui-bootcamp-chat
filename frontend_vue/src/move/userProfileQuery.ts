@@ -1,6 +1,6 @@
 import { SuiObjectResponse } from '@mysten/sui/client';
 import { client } from './useClient';
-import { config, getFullTable } from './useUtils';
+import { config, getFullTable, getMultiObjects } from './useUtils';
 import type * as Models from '.';
 
 export const getUserProfileRegistry = async (): Promise<Models.UserProfileRegistry | undefined> => {
@@ -51,12 +51,9 @@ export const getUserProfile = async (address: string) => {
   return userProfiles[0];
 }
 
-export const getAllUsersProfiles = async () => {
-  const userProfileRegistry = await getUserProfileRegistry();
-
-  const profilesRes = await client.multiGetObjects({
-    ids: Object.values(userProfileRegistry?.users!),
-    options: { showContent: true }
+export const getAllUsersProfiles = async (profilesIds: string[] = []) => {
+  const profilesRes = await getMultiObjects({
+    ids: profilesIds?.length ? profilesIds : Object.values((await getUserProfileRegistry())?.users!)
   });
   const profiles = profilesRes.map(profile => parseUserProfile(profile));
   return profiles;

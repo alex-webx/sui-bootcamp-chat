@@ -10,6 +10,11 @@ export enum EPermission {
   Anyone = 8
 }
 
+export type ChatRoomRegistry= {
+  id: string;
+  rooms: string[];
+};
+
 export type ParticipantInfo = {
   addedBy: string;
   timestamp: number;

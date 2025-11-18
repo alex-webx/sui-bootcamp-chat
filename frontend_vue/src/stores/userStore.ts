@@ -10,10 +10,21 @@ export const useUserStore = defineStore('userStore', () => {
   const profile = ref<UserProfile>();
 
   const fetchCurrentUserProfile = async () => {
-    if (walletStore.address) {
-      profile.value = await userProfileModule.getUserProfile(walletStore.address!);
-    } else {
+    if (!walletStore.address) {
       profile.value = undefined;
+      return profile.value;
+    }
+
+    let preservedKeyPriv: CryptoKey | undefined;
+
+    if (walletStore.address === profile.value?.owner && profile.value?.keyPrivDecoded) {
+      preservedKeyPriv = profile.value?.keyPrivDecoded;
+    }
+
+    profile.value = await userProfileModule.getUserProfile(walletStore.address!);
+
+    if (walletStore.address === profile.value?.owner && preservedKeyPriv) {
+      profile.value!.keyPrivDecoded = preservedKeyPriv;
     }
 
     return profile.value;
@@ -57,6 +68,10 @@ export const useUserStore = defineStore('userStore', () => {
 
     const profileId = parser(await walletStore.signAndExecuteTransaction(tx));
     await fetchCurrentUserProfile();
+    if (profile.value) {
+      profile.value.keyPrivDecoded = await new UserProfileService().unwrapPrivateKey(keys, response?.signature!);
+    }
+
     return profileId;
   };
 

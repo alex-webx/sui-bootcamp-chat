@@ -65,7 +65,7 @@ export default defineRouter(async ({ store }) => {
         return;
       }
 
-      if (requiresProfile && !hasProfile && isConnected && to.name !== 'create-profile') {
+      if (to.name !== 'create-profile' && requiresProfile && !hasProfile && isConnected) {
         next({ name: 'create-profile' });
         return;
       }
@@ -73,6 +73,15 @@ export default defineRouter(async ({ store }) => {
       if ((to.name === 'login' || to.name === 'create-profile') && isConnected && hasProfile) {
         next({ name: 'chat' });
         return;
+      }
+
+      if (to.name === 'login' && isConnected && !hasProfile) {
+        next({ name: 'create-profile' });
+        return;
+      }
+
+      if (to.name === 'chat') {
+        await userStore.ensurePrivateKey();
       }
 
       next();

@@ -229,7 +229,7 @@ const createChatRoom = async () => {
           icon: 'done',
           color: 'positive'
         });
-        await chatRoomStore.fetchAllChatRooms();
+        await chatRoomStore.fetchAllUserChatRoom();
         await userStore.fetchCurrentUserProfile();
 
         //chatRoomStore.activeChatRoomId = response.chatRoomId;

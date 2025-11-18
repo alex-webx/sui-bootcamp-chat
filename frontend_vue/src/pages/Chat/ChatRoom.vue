@@ -72,40 +72,28 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, toRefs } from 'vue';
 import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { useChatRoomStore } from '../../stores/chatRoomStore';
 import { useUserStore } from '../../stores/userStore';
 import { useUsersStore } from '../../stores/usersStore';
+import { useChat } from './useChat';
 import moment from 'moment';
 
 const route = useRoute();
-const chatRoomStore = useChatRoomStore();
+const chatService = useChat();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
-const { activeChatRoom } = storeToRefs(chatRoomStore);
+const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
+const { messageBlocks, messages } = chatService;
+const { fetchMessages } = chatService;
+
 const { profile } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
 
-const messageBlocks = ref<Awaited<ReturnType<typeof chatRoomStore.getChatRoomMessageBlocks>>>([]);
-const messages = ref<Record<string, Awaited<ReturnType<typeof chatRoomStore.getChatRoomMessagesFromBlock>>>>({});
 const loading = ref(false);
 
 const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
-
-const fetchMessages = async () => {
-  if (activeChatRoom.value?.id) {
-    messageBlocks.value = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.value.id);
-    if (messageBlocks.value.length) {
-      for (let messageBlock of messageBlocks.value) {
-        messages.value[messageBlock.blockNumber] = await chatRoomStore.getChatRoomMessagesFromBlock(messageBlock);
-      }
-    }
-  }
-};
-
-defineExpose({ fetchMessages });
 
 let timeout = 0;
 

@@ -12,9 +12,12 @@ export const useUsersStore = defineStore('usersStore', () => {
     return _(users.value).keyBy(profile => profile.id).mapValues(profile => profile.owner).value();
   });
 
-  const fetchAllUsersProfiles = async () => {
-    const usersProfiles = await userProfileModule.getAllUsersProfiles();
-    users.value = _(usersProfiles).keyBy(user => user.owner).value();
+  const fetchAllUsersProfiles = async (profilesIds: string[] = []) => {
+    const usersProfiles = await userProfileModule.getAllUsersProfiles(profilesIds);
+    users.value = {
+      ...users.value,
+      ..._(usersProfiles).keyBy(user => user.owner).value()
+    };
   };
 
   const checkUserProfilesRegistry = async() => {

@@ -30,42 +30,26 @@ q-list.text-dark
       )
 
     .flex.text-center.text-dark.q-px-md.q-py-xs.text-caption.bg-grey-3
-      template(v-if="myChatRooms.length === 0") Você não participa de nenhuma sala
-      template(v-else-if="myChatRooms.length === 1") Você participa de 1 sala
-      template(v-else) Voce participa de {{ myChatRooms.length}} salas
+      template(v-if="chatRoomsCount === 0") Você não participa de nenhuma sala
+      template(v-else-if="chatRoomsCount === 1") Você participa de 1 sala
+      template(v-else) Voce participa de {{ chatRoomsCount}} salas
       q-space
-      q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="fetchAllChatRooms()")
+      q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="fetchAllUserChatRoom()")
         q-tooltip Recarregar lista de salas
 
     q-item(
-      v-for="room in myChatRooms" :key="room.id"
+      v-for="(room, roomId) in chatRooms" :key="roomId"
       clickable v-ripple
       @click="selectChatRoom(room)"
-      :class="{ 'active-item': room.id === activeChatRoomId }"
+      :class="{ 'active-item': roomId === activeChatRoomId }"
     )
       +chat-room-item-content
-
-    template(v-if="publicChatRooms.length > 0")
-      .flex.text-center.text-dark.q-px-md.q-py-xs.text-caption.bg-grey-3
-        template(v-if="publicChatRooms.length === 1") 1 sala pública
-        template(v-else) {{ publicChatRooms.length}} salas pública
-        q-space
-        q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="fetchAllChatRooms()")
-          q-tooltip Recarregar lista de salas
-
-      q-item(
-        v-for="room in publicChatRooms" :key="room.id"
-        clickable v-ripple
-        @click="selectChatRoom(room)"
-        :class="{ 'active-item': room.id === activeChatRoomId }"
-      )
-        +chat-room-item-content
-
 
 </template>
 <script setup lang="ts">
 import { ref, onMounted, computed, toRefs } from 'vue';
 import { useChatRoomStore, useUserStore, useUsersStore } from '../../stores';
+import { useChat } from './useChat';
 import _ from 'lodash';
 import { storeToRefs } from 'pinia';
 import ChatListItemDmRoom from './ChatListItemDmRoom.vue';
@@ -75,14 +59,14 @@ const chatRoomStore = useChatRoomStore();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
 
-const { selectChatRoom, fetchAllUserJoinedChatRooms, fetchAllChatRooms } = chatRoomStore;
+const { selectChatRoom, } = useChat();
+const { fetchAllUserChatRoom } = chatRoomStore;
 const { chatRooms, activeChatRoomId } = storeToRefs(chatRoomStore);
 const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
 
-const roomsJoined = computed(() => _.keyBy(userStore.profile?.roomsJoined || [], roomId => roomId));
-const myChatRooms = computed(() => chatRooms.value.filter(chatRoom => !!roomsJoined.value[chatRoom.id]));
-const publicChatRooms = computed(() => chatRooms.value.filter(chatRoom => !roomsJoined.value[chatRoom.id]));
+const chatRoomsCount = computed(() => Object.keys(chatRooms.value).length);
+
 const loading = ref(true);
 
 onMounted(() => {

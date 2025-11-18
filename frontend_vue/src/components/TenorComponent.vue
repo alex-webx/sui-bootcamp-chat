@@ -3,10 +3,10 @@
 .q-pa-xs
   q-input(
     v-model="searchText" @keypress.enter="searchTenor()" outlined bg-color="white" color="grey"
-    placeholder="Search Tenor" stack-label dense clearable size="sm" :debounce="800" autofocus
+    placeholder="Search Tenor" stack-label dense clearable :debounce="800" autofocus
   )
 
-.q-ma-xs(v-bind="$attrs")
+.q-ma-xs(v-bind="$attrs" style="min-height: 300px")
   .row
     .col-xs-6(v-for="item in results" :key="item.id" style="min-height: 100px")
       video.cursor-pointer.fit(autoplay loop muted playisline @click="select(item)")

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import _ from 'lodash';
 import { EPermission, chatRoomModule, ERoomType } from '../move';
 import type { ChatRoom, Message, MessageBlock, UserProfile } from '../move';
 import { DirectMessageService } from '../utils/encrypt';
@@ -10,7 +11,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const usersStore = useUsersStore();
   const walletStore = useWalletStore();
 
-  const chatRooms = ref<ChatRoom[]>([]);
+  const chatRooms = ref<Record<string, ChatRoom>>({});
   const activeChatRoomId = ref<string>();
 
   const createChatRoom = async(roomMetaData: {
@@ -107,40 +108,40 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     }
   };
 
-  const fetchAllChatRooms = async () => {
-    chatRooms.value = await chatRoomModule.getAllChatRooms();
+  // const fetchAllChatRooms = async () => {
+  //   chatRooms.value = await chatRoomModule.getAllChatRooms();
+  //   return chatRooms.value;
+  // };
+
+  const fetchAllUserChatRoom = async () => {
+    const allRooms  = await chatRoomModule.getAllChatRooms();
+    const roomsJoined = userStore.profile?.roomsJoined || [];
+    chatRooms.value = _(allRooms)
+      .filter(room => roomsJoined.indexOf(room.id) >= 0 || !!room.participants[userStore.profile?.owner!] )
+      .keyBy(room => room.id).value();
     return chatRooms.value;
   };
 
-  const fetchAllUserJoinedChatRooms = async () => {
-    chatRooms.value = await chatRoomModule.getChatRooms(userStore.profile?.roomsJoined || []);
+  const refreshUserChatRoom = async (chatRoom: ChatRoom) => {
+    const room  = await chatRoomModule.getChatRooms([chatRoom.id]);
+    chatRooms.value[chatRoom.id] = room[0]!;
     return chatRooms.value;
   };
 
   const sendMessage = async (
     room: ChatRoom,
-    message: Pick<Message, 'content'>
+    message: Pick<Message, 'content' | 'mediaUrl' | 'replyTo'>
   ) => {
     if (!userStore.profile?.id) {
       return;
     }
-
-    if (room.roomType === ERoomType.DirectMessage) {
-      const privKey = await userStore.ensurePrivateKey();
-      const dmService = new DirectMessageService();
-      const dmParticipantId = getDmParticipantId(room);
-      const dmParticipantProfile = usersStore.users[dmParticipantId!];
-      const encryptedContent = await dmService.encryptMessage(message.content, privKey!, dmParticipantProfile?.keyPub!);
-      const tx = chatRoomModule.txSendMessage(userStore.profile.id, {
-        content: JSON.stringify(encryptedContent),
-        roomId: room.id
-      });
-      return await walletStore.signAndExecuteTransaction(tx);
-    } else {
-      throw 'todo'
-      // const tx = chatRoomModule.txSendMessage(userStore.profile.id, message);
-      // return await walletStore.signAndExecuteTransaction(tx);
-    }
+    const { tx, parser } = chatRoomModule.txSendMessage(userStore.profile.id, {
+      content: message.content!,
+      roomId: room.id,
+      replyTo: message.replyTo!,
+      mediaUrl: message.mediaUrl || []
+    });
+    return parser(await walletStore.signAndExecuteTransaction(tx));
   };
 
   const getChatRoomMessageBlocks = async (chatRoomId: string) => {
@@ -159,44 +160,26 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     }
   };
 
-  const selectChatRoom = (chatRoom: typeof chatRooms.value[number]) => {
-    if (activeChatRoomId.value === chatRoom.id) {
-      activeChatRoomId.value = undefined;
-    } else {
-      activeChatRoomId.value = chatRoom.id;
-    }
-  };
-
-  const getDmParticipantId = (room: (typeof chatRooms.value)[number] | null) => {
-    if (room?.roomType === ERoomType.DirectMessage) {
-      return Object.keys(room.participants).find(id => id !== userStore.profile?.owner)!;
-    } else {
-      return null;
-    }
-  };
-
   return {
     createChatRoom,
 
     createDmRoom,
     acceptDmRoom,
 
-    fetchAllChatRooms,
-    fetchAllUserJoinedChatRooms,
+    fetchAllUserChatRoom,
+    refreshUserChatRoom,
 
     sendMessage,
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,
     checkChatRoomRegistry,
-    selectChatRoom,
-    getDmParticipantId,
 
     chatRooms,
     activeChatRoomId,
-    activeChatRoom: computed(() => chatRooms.value.find(chatRoom => chatRoom.id === activeChatRoomId.value)),
+    activeChatRoom: computed(() => chatRooms.value[activeChatRoomId.value!]),
 
     resetState: async () => {
-      chatRooms.value = [];
+      chatRooms.value = {};
       activeChatRoomId.value = undefined;
     }
   };

@@ -232,7 +232,222 @@ export class UserProfileService {
 // (arrayBufferToBase64Url, base64UrlToArrayBuffer) do nosso código anterior, se estiverem em arquivos separados.
 // E a interface SuiAccount, se você a estiver usando.
 
+// export class DirectMessageService {
+
+//     /**
+//      * Criptografa uma mensagem usando a chave privada local do remetente e a chave pública do destinatário.
+//      * Implementa o fluxo 3.1.2: A_priv + B_pub -> Chave AES -> Cripto da mensagem.
+//      *
+//      * @param plaintext A mensagem de texto simples.
+//      * @param senderPrivateKey A chave privada ECDH local do remetente (como CryptoKey).
+//      * @param recipientPublicKeyBytes A chave pública ECDH do destinatário (como Uint8Array SPKI).
+//      * @returns {Promise<{iv: string, ciphertext: string}>} Dados criptografados prontos para a blockchain.
+//      */
+//     public async encryptMessage(
+//         plaintext: string,
+//         senderPrivateKey: CryptoKey,
+//         recipientPublicKeyBytes: Uint8Array
+//     ): Promise<{iv: string, ciphertext: string}> {
+
+//         // 1. Importar a chave pública do destinatário (do Uint8Array para CryptoKey)
+//         const recipientPublicKey = await this.importEcdhPublicKey(recipientPublicKeyBytes.buffer as ArrayBuffer);
+
+//         // 2. Derivar a chave AES compartilhada via ECDH
+//         const sharedAesKey = await this.deriveSharedAesKey(senderPrivateKey, recipientPublicKey);
+
+//         // 3. Criptografar a mensagem usando a chave AES compartilhada
+//         return this.encryptMessageWithAesKey(plaintext, sharedAesKey);
+//     }
+
+//     /**
+//      * Descriptografa uma mensagem usando a chave privada local do destinatário e a chave pública do remetente.
+//      * Implementa o fluxo 3.1.3: B_priv + A_pub -> Chave AES -> Descripto da mensagem.
+//      *
+//      * @param iv Base64URL do Initialization Vector.
+//      * @param ciphertext Base64URL da mensagem cifrada.
+//      * @param recipientPrivateKey A chave privada ECDH local do destinatário (como CryptoKey).
+//      * @param senderPublicKeyBytes A chave pública ECDH do remetente (como Uint8Array SPKI).
+//      * @returns {Promise<string>} A mensagem original em texto simples.
+//      */
+//     public async decryptMessage(
+//       args: {
+//         iv: string,
+//         ciphertext: string,
+//         recipientPrivateKey: CryptoKey,
+//         senderPublicKeyBytes: Uint8Array
+//       }
+//     ): Promise<string> {
+
+//         // 1. Importar a chave pública do remetente (do Uint8Array para CryptoKey)
+//         const senderPublicKey = await this.importEcdhPublicKey(args.senderPublicKeyBytes.buffer as ArrayBuffer);
+
+//         // 2. Derivar a mesma chave AES compartilhada via ECDH
+//         const sharedAesKey = await this.deriveSharedAesKey(args.recipientPrivateKey, senderPublicKey);
+
+//         // 3. Descriptografar a mensagem usando a chave AES compartilhada
+//         return this.decryptMessageWithAesKey(args.ciphertext, args.iv, sharedAesKey);
+//     }
+
+//     // --- Métodos Privados Auxiliares ---
+
+//     private async importEcdhPublicKey(publicKeyBuffer: ArrayBuffer): Promise<CryptoKey> {
+//         return window.crypto.subtle.importKey(
+//             "spki",
+//             publicKeyBuffer,
+//             { name: "ECDH", namedCurve: "P-256" },
+//             true,
+//             []
+//         );
+//     }
+
+//     private async deriveSharedAesKey(privateKeyLocal: CryptoKey, publicKeyRemote: CryptoKey): Promise<CryptoKey> {
+//         return window.crypto.subtle.deriveKey(
+//             { name: "ECDH", public: publicKeyRemote },
+//             privateKeyLocal,
+//             { name: "AES-GCM", length: 256 },
+//             false, // Não precisa ser extraível, só usada para essa mensagem
+//             ["encrypt", "decrypt"]
+//         );
+//     }
+
+//     // Obs: As funções AES-GCM encryptMessageWithAesKey e decryptMessageWithAesKey
+//     // podem ser movidas para uma classe utilitária de Criptografia Simétrica se
+//     // você quiser reutilizá-las no item 3.2 e 3.3.
+
+//     private async encryptMessageWithAesKey(plaintext: string, aesKey: CryptoKey): Promise<{iv: string, ciphertext: string}> {
+//         const encoder = new TextEncoder();
+//         const data = encoder.encode(plaintext);
+//         const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+//         const encryptedBuffer = await window.crypto.subtle.encrypt(
+//             { name: "AES-GCM", iv: iv.buffer }, // Use .buffer aqui para compatibilidade de tipo
+//             aesKey,
+//             data
+//         );
+
+//         return {
+//             iv: arrayBufferToBase64Url(iv),
+//             ciphertext: arrayBufferToBase64Url(encryptedBuffer)
+//         };
+//     }
+
+//     private async decryptMessageWithAesKey(ciphertextBase64Url: string, ivBase64Url: string, aesKey: CryptoKey): Promise<string> {
+//         const ciphertextBuffer = base64UrlToArrayBuffer(ciphertextBase64Url);
+//         const ivBuffer = base64UrlToArrayBuffer(ivBase64Url);
+
+//         const decryptedBuffer = await window.crypto.subtle.decrypt(
+//             { name: "AES-GCM", iv: ivBuffer },
+//             aesKey,
+//             ciphertextBuffer
+//         );
+
+//         const decoder = new TextDecoder();
+//         return decoder.decode(decryptedBuffer);
+//     }
+
+//     public static async example() {
+//       console.log("--- Demonstração do Fluxo de Direct Message (DM) E2EE ---");
+
+//         // --- Setup Inicial (Assumindo UserProfileGenerator/Service existem) ---
+//         const masterPassAlice = "SIG_ALICE_DM_123";
+//         const masterPassBob = "SIG_BOB_DM_456";
+//         const userProfileGenerator = new UserProfileGenerator();
+//         const userProfileService = new UserProfileService();
+//         const dmService = new DirectMessageService();
+
+//         // 1. Gerar Perfis e Chaves (Simulação de registro na blockchain)
+//         const aliceProfileData = await userProfileGenerator.generateProfileKeys(masterPassAlice);
+//         const bobProfileData = await userProfileGenerator.generateProfileKeys(masterPassBob);
+//         console.log("Perfis de Alice e Bob gerados.");
+
+//         // 2. Recuperar Chaves Privadas usáveis (desembrulhar localmente)
+//         const alicePrivateKey: CryptoKey = await userProfileService.unwrapPrivateKey(aliceProfileData, masterPassAlice);
+//         const bobPrivateKey: CryptoKey = await userProfileService.unwrapPrivateKey(bobProfileData, masterPassBob);
+//         console.log("Chaves privadas recuperadas com sucesso.");
+
+
+//         // --- Fluxo de Mensagem 1: Alice envia para Bob ---
+
+//         const messageFromAlice = "Olá Bob! Esta é uma mensagem E2EE da Alice.";
+//         console.log(`\nAlice escreve: "${messageFromAlice}"`);
+
+//         // 3. Alice Criptografa para Bob (Alice_Priv + Bob_Pub)
+//         const encryptedByAlice = await dmService.encryptMessage(
+//             messageFromAlice,
+//             alicePrivateKey,
+//             bobProfileData.publicKeySpki // Chave pública de Bob em bytes
+//         );
+//         console.log("Mensagem criptografada por Alice (Dados para Blockchain):", encryptedByAlice);
+
+//         // 4. Bob Descriptografa (Bob_Priv + Alice_Pub)
+//         console.log("\nBob lê a blockchain e tenta descriptografar...");
+//         const decryptedByBob = await dmService.decryptMessage({
+//             iv: encryptedByAlice.iv,
+//             ciphertext: encryptedByAlice.ciphertext,
+//             recipientPrivateKey: bobPrivateKey,
+//             senderPublicKeyBytes: aliceProfileData.publicKeySpki // Chave pública de Alice em bytes
+//         });
+//         console.log(`Bob descriptografa: "${decryptedByBob}"`);
+
+//         if (decryptedByBob !== messageFromAlice) {
+//             console.error("ERRO: A descriptografia de Bob falhou!");
+//             return;
+//         }
+
+//         // --- Fluxo de Mensagem 2: Bob envia para Alice ---
+
+//         const messageFromBob = "E aí, Alice! Recebi sua mensagem com sucesso.";
+//         console.log(`\nBob escreve: "${messageFromBob}"`);
+
+//         // 5. Bob Criptografa para Alice (Bob_Priv + Alice_Pub)
+//         const encryptedByBob = await dmService.encryptMessage(
+//             messageFromBob,
+//             bobPrivateKey,
+//             aliceProfileData.publicKeySpki // Chave pública de Alice em bytes
+//         );
+//         console.log("Mensagem criptografada por Bob (Dados para Blockchain):", encryptedByBob);
+
+//         // 6. Alice Descriptografa (Alice_Priv + Bob_Pub)
+//         console.log("\nAlice lê a blockchain e tenta descriptografar...");
+//         const decryptedByAlice = await dmService.decryptMessage({
+//             iv: encryptedByBob.iv,
+//             ciphertext: encryptedByBob.ciphertext,
+//             recipientPrivateKey: alicePrivateKey,
+//             senderPublicKeyBytes: bobProfileData.publicKeySpki // Chave pública de Bob em bytes
+//         });
+//         console.log(`Alice descriptografa: "${decryptedByAlice}"`);
+
+//         if (decryptedByAlice !== messageFromBob) {
+//             console.error("ERRO: A descriptografia de Alice falhou!");
+//             return;
+//         }
+
+//         console.log("\nSUCESSO: O fluxo completo de mensagens DM E2EE funcionou perfeitamente em ambas as direções.");
+//     }
+// }
+
 export class DirectMessageService {
+
+  public localPrivateKey: CryptoKey;
+  public remotePublicKeyBuffer: Uint8Array;
+
+  public sharedAesKey: CryptoKey | undefined;
+  public remotePublicKey: CryptoKey | undefined;
+
+  constructor(localPrivateKey: CryptoKey, remotePublicKey: Uint8Array) {
+    this.localPrivateKey = localPrivateKey;
+    this.remotePublicKeyBuffer = remotePublicKey;
+  }
+
+  private async ensureKeys() {
+    if (!this.remotePublicKey) {
+      // 1. Importar a chave pública do destinatário (do Uint8Array para CryptoKey)
+      this.remotePublicKey = await this.importEcdhPublicKey(this.remotePublicKeyBuffer.buffer! as ArrayBuffer);
+
+      // 2. Derivar a chave AES compartilhada via ECDH
+      this.sharedAesKey = await this.deriveSharedAesKey(this.localPrivateKey, this.remotePublicKey);
+    }
+  }
 
     /**
      * Criptografa uma mensagem usando a chave privada local do remetente e a chave pública do destinatário.
@@ -243,20 +458,10 @@ export class DirectMessageService {
      * @param recipientPublicKeyBytes A chave pública ECDH do destinatário (como Uint8Array SPKI).
      * @returns {Promise<{iv: string, ciphertext: string}>} Dados criptografados prontos para a blockchain.
      */
-    public async encryptMessage(
-        plaintext: string,
-        senderPrivateKey: CryptoKey,
-        recipientPublicKeyBytes: Uint8Array
-    ): Promise<{iv: string, ciphertext: string}> {
-
-        // 1. Importar a chave pública do destinatário (do Uint8Array para CryptoKey)
-        const recipientPublicKey = await this.importEcdhPublicKey(recipientPublicKeyBytes.buffer as ArrayBuffer);
-
-        // 2. Derivar a chave AES compartilhada via ECDH
-        const sharedAesKey = await this.deriveSharedAesKey(senderPrivateKey, recipientPublicKey);
-
+    public async encryptMessage(plaintext: string): Promise<{iv: string, ciphertext: string}> {
+        await this.ensureKeys();
         // 3. Criptografar a mensagem usando a chave AES compartilhada
-        return this.encryptMessageWithAesKey(plaintext, sharedAesKey);
+        return this.encryptMessageWithAesKey(plaintext, this.sharedAesKey!);
     }
 
     /**
@@ -269,23 +474,11 @@ export class DirectMessageService {
      * @param senderPublicKeyBytes A chave pública ECDH do remetente (como Uint8Array SPKI).
      * @returns {Promise<string>} A mensagem original em texto simples.
      */
-    public async decryptMessage(
-      args: {
-        iv: string,
-        ciphertext: string,
-        recipientPrivateKey: CryptoKey,
-        senderPublicKeyBytes: Uint8Array
-      }
-    ): Promise<string> {
-
-        // 1. Importar a chave pública do remetente (do Uint8Array para CryptoKey)
-        const senderPublicKey = await this.importEcdhPublicKey(args.senderPublicKeyBytes.buffer as ArrayBuffer);
-
-        // 2. Derivar a mesma chave AES compartilhada via ECDH
-        const sharedAesKey = await this.deriveSharedAesKey(args.recipientPrivateKey, senderPublicKey);
+    public async decryptMessage(args: { iv: string, ciphertext: string, }): Promise<string> {
+        await this.ensureKeys();
 
         // 3. Descriptografar a mensagem usando a chave AES compartilhada
-        return this.decryptMessageWithAesKey(args.ciphertext, args.iv, sharedAesKey);
+        return this.decryptMessageWithAesKey(args.ciphertext, args.iv, this.sharedAesKey!);
     }
 
     // --- Métodos Privados Auxiliares ---
@@ -353,7 +546,6 @@ export class DirectMessageService {
         const masterPassBob = "SIG_BOB_DM_456";
         const userProfileGenerator = new UserProfileGenerator();
         const userProfileService = new UserProfileService();
-        const dmService = new DirectMessageService();
 
         // 1. Gerar Perfis e Chaves (Simulação de registro na blockchain)
         const aliceProfileData = await userProfileGenerator.generateProfileKeys(masterPassAlice);
@@ -372,20 +564,16 @@ export class DirectMessageService {
         console.log(`\nAlice escreve: "${messageFromAlice}"`);
 
         // 3. Alice Criptografa para Bob (Alice_Priv + Bob_Pub)
-        const encryptedByAlice = await dmService.encryptMessage(
-            messageFromAlice,
-            alicePrivateKey,
-            bobProfileData.publicKeySpki // Chave pública de Bob em bytes
-        );
+        const dmAliceService = new DirectMessageService(alicePrivateKey, bobProfileData.publicKeySpki);
+        const encryptedByAlice = await dmAliceService.encryptMessage(messageFromAlice);
         console.log("Mensagem criptografada por Alice (Dados para Blockchain):", encryptedByAlice);
 
         // 4. Bob Descriptografa (Bob_Priv + Alice_Pub)
         console.log("\nBob lê a blockchain e tenta descriptografar...");
-        const decryptedByBob = await dmService.decryptMessage({
+        const dmBobService = new DirectMessageService(bobPrivateKey, aliceProfileData.publicKeySpki);
+        const decryptedByBob = await dmBobService.decryptMessage({
             iv: encryptedByAlice.iv,
-            ciphertext: encryptedByAlice.ciphertext,
-            recipientPrivateKey: bobPrivateKey,
-            senderPublicKeyBytes: aliceProfileData.publicKeySpki // Chave pública de Alice em bytes
+            ciphertext: encryptedByAlice.ciphertext
         });
         console.log(`Bob descriptografa: "${decryptedByBob}"`);
 
@@ -400,20 +588,14 @@ export class DirectMessageService {
         console.log(`\nBob escreve: "${messageFromBob}"`);
 
         // 5. Bob Criptografa para Alice (Bob_Priv + Alice_Pub)
-        const encryptedByBob = await dmService.encryptMessage(
-            messageFromBob,
-            bobPrivateKey,
-            aliceProfileData.publicKeySpki // Chave pública de Alice em bytes
-        );
+        const encryptedByBob = await dmBobService.encryptMessage(messageFromBob);
         console.log("Mensagem criptografada por Bob (Dados para Blockchain):", encryptedByBob);
 
         // 6. Alice Descriptografa (Alice_Priv + Bob_Pub)
         console.log("\nAlice lê a blockchain e tenta descriptografar...");
-        const decryptedByAlice = await dmService.decryptMessage({
+        const decryptedByAlice = await dmAliceService.decryptMessage({
             iv: encryptedByBob.iv,
-            ciphertext: encryptedByBob.ciphertext,
-            recipientPrivateKey: alicePrivateKey,
-            senderPublicKeyBytes: bobProfileData.publicKeySpki // Chave pública de Bob em bytes
+            ciphertext: encryptedByBob.ciphertext
         });
         console.log(`Alice descriptografa: "${decryptedByAlice}"`);
 
@@ -425,6 +607,7 @@ export class DirectMessageService {
         console.log("\nSUCESSO: O fluxo completo de mensagens DM E2EE funcionou perfeitamente em ambas as direções.");
     }
 }
+
 
 // Importe ou defina aqui as funções auxiliares de codificação/decodificação
 // (arrayBufferToBase64Url, base64UrlToArrayBuffer) do nosso arquivo CryptoUtils.ts.

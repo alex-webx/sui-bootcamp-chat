@@ -37,11 +37,7 @@ q-layout.bg-sea
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRouter  } from 'vue-router';
-import ConnectButton from '../../components/ConnectButton.vue';
-import WavesBackground from '../../components/WavesBackground.vue';
 import { Dialog, Screen } from 'quasar';
-import SettingsMenu from '../../components/SettingsMenu.vue';
-import DeployLabel from '../../components/DeployLabel.vue';
 
 const router = useRouter();
 const screenHeight = computed(() => Screen.height);
