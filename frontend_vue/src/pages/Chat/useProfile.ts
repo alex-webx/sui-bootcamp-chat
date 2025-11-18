@@ -34,7 +34,6 @@ export function useProfile() {
     });
 
     if (shouldDisconnect) {
-      await walletStore.disconnect();
       await app.resetState();
       await router.push({ name: 'login' });
     }

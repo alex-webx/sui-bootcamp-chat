@@ -56,7 +56,7 @@ export const useUserStore = defineStore('userStore', () => {
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
     const response = await walletStore.generateMasterSignature();
-    const keys = await new UserProfileGenerator().generateProfileKeys(response?.signature!)
+    const keys = await new UserProfileGenerator().generateProfileKeys(response?.signature!);
 
     const { tx, parser } = userProfileModule.txCreateUserProfile({
       ...userProfile,

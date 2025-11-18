@@ -80,13 +80,13 @@ q-layout.bg-sea(view="lHh Lpr fff")
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { useUserStore } from '../../stores/userStore';
-import { useWalletStore } from '../../stores/walletStore';
+import { useUserStore, useWalletStore, useAppStore } from '../../stores';
 import { Screen, QForm, Loading, Notify } from 'quasar';
 
 const router = useRouter();
 const userStore = useUserStore();
 const walletStore = useWalletStore();
+const appStore = useAppStore();
 
 const { account, address, shortAddress } = storeToRefs(walletStore);
 
@@ -95,7 +95,7 @@ const myForm = ref<InstanceType<typeof QForm>>();
 const screenHeight = computed(() => Screen.height);
 
 const disconnect = async () => {
-  await walletStore.disconnect();
+  await appStore.resetState();
   router.push({ name: 'login' });
 }
 

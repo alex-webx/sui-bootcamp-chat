@@ -36,7 +36,7 @@ export default defineRouter(async ({ store }) => {
   });
 
   Router.beforeEach(async (to, from, next) => {
-    console.log(`[router.beforeEach:${String(from.name)}:${String(to.name)}]`);
+    console.log(`[router.beforeEach:${String(from.name || '-')}:${String(to.name)}]`);
 
     try {
       const appStore = useAppStore(store);
@@ -82,7 +82,11 @@ export default defineRouter(async ({ store }) => {
 
       if (to.name === 'chat') {
         try {
-          await userStore.ensurePrivateKey();
+          const hasPK = !!await userStore.ensurePrivateKey();
+          if (!hasPK) {
+            await appStore.resetState();
+            next({ name: 'login' });
+          }
         } catch {
           next({ name: 'login' });
           return;

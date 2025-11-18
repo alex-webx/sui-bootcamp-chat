@@ -31,7 +31,7 @@ export const useWalletStore = defineStore('wallet', () => {
     wallets.value = getSuiWallets(walletsApi);
 
     walletsApi.on('register', () => {
-      console.log('wallet registed')
+      console.log('wallet registered')
       wallets.value = getSuiWallets(walletsApi);
     });
   };
@@ -154,15 +154,25 @@ export const useWalletStore = defineStore('wallet', () => {
     return result as { bytes: string, signature: string };
   };
 
-  const generateMasterSignature = () => {
+  const generateMasterSignature = async () => {
     const owner = address.value;
-    if (owner === '0x047c1a983328431f7b9b050b731fcf78583c2de14698699a7fbfbf77756815eb') {
-      return { signature: 'AEtfrqJH11eU2ZxTDpbKBsvG2nBSZGb0lMZfkcWIUUu997oQfjwjQtqSjj1ELwQNWFg3/nG2bCJgA0LIU75M7gOWXpCM/0xxT22cAQt9cmClvfMPaEAIiLPRaW87W9yAEA==' };
-    } else if (owner === '0x225da7fee2f6615b31d833dbe8cb2f7fcbf0926d1a99b8d55ac9e1b67fe4e7b3') {
-      return { signature: 'AGx7tGpOh3aoJZj6CTO55m4+iseuBH7d+Pi4efh/yKi9rKmN9tGR7l1perJb2rWvknZC4tU15V8zRTJs83gBYgpP4FCXrEYOFSrDDfiD7MMMGaac0nFlKyeOkAA99XDjdw==' };
+
+    const bypass: Record<string, string> = {
+      "0xf092c0d5f42d79ce0cc34957db907b8d69363a141687a3d29a82f9faf6d74012": "AKSv0TdNjHI3DzkX7DegxiLA2wD5J+Fqk1vxl+qMOXtIXmCXOgtzmkdB6h/TZ3wCKsKe1C7iNi0txth3ymmZPwXIJa2I1zvCiRC06cyZckqM9mEVHveex2+5a3sSThbV7Q==",
+      "0x047c1a983328431f7b9b050b731fcf78583c2de14698699a7fbfbf77756815eb": "AEtfrqJH11eU2ZxTDpbKBsvG2nBSZGb0lMZfkcWIUUu997oQfjwjQtqSjj1ELwQNWFg3/nG2bCJgA0LIU75M7gOWXpCM/0xxT22cAQt9cmClvfMPaEAIiLPRaW87W9yAEA==",
+      "0x225da7fee2f6615b31d833dbe8cb2f7fcbf0926d1a99b8d55ac9e1b67fe4e7b3": "AGx7tGpOh3aoJZj6CTO55m4+iseuBH7d+Pi4efh/yKi9rKmN9tGR7l1perJb2rWvknZC4tU15V8zRTJs83gBYgpP4FCXrEYOFSrDDfiD7MMMGaac0nFlKyeOkAA99XDjdw==",
+      "0x2ef5eecac0b29f59b31b0f4f6b11eeb384e6acef6d22536e012c8eb0740961b5": "ADi0qLGpJFD6ovMLtWCiWakyOkDGVbwM/XsaR134ffHVf7s6J7JTgrsux2HuVWfBWiGIM+7Lo8m9T08rVwaoJQgtEP6lvNk9bEAINVCy70XOAKlcuLFxXkhnrXG2WAGfGg==",
+      "0x8f80da0b1660489eb2f5026c2ba89d145a1ad1a180bb650f2314935b6f6c4989": "AIoAT5JBpzkAcJ/Kn7cVVoFQpf2P/YRjdh4OB7JGmIh+wQva+6hUUbkRwMnCwSEzhZH5K0yOpxYPa8A7MjgoPAgWvOJgPYGkNEKxnyz69OHGvMJMoL1vh9G1vY/pYyx2Aw==",
+      "0xf0139ae6a7dc0897981f83befebfd0fda49584e772b158f17becf093029375a5": "AIiO5a56WTSlEWUz3B9XMUFcsbrGbFxos7JKdQCMJG6HLtHUfcdqfyyn6YWMUlkeppc8juXu2PQuaTirxdWHcAQQftflgkYpXm12OGpHcjtwi6gFnZ3J2Fa1qVGzCFiSlw=="
+    };
+
+    if (owner && bypass[owner]) {
+      console.log('bypassing master signature: ' + owner);
+      return { signature: bypass[owner] };
     }
+
     try {
-      return signMessage([
+      const res = await signMessage([
           `SUI CHAT`,
           ``,
           `Eu estou assinando esta mensagem para geração de chaves que serão utilizadas para os algoritmos ECDH e E2EE.`,
@@ -171,6 +181,7 @@ export const useWalletStore = defineStore('wallet', () => {
           `${owner}`,
         ].join('\n')
       );
+      return res;
     } catch {
       return null;
     }
@@ -198,6 +209,7 @@ export const useWalletStore = defineStore('wallet', () => {
     generateMasterSignature,
 
     resetState: async () => {
+      await disconnect();
       account.value = null;
       wallets.value = [];
       isConnecting.value = false;

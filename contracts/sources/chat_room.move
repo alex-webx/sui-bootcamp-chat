@@ -91,7 +91,8 @@ public struct Message has key, store {
     media_url: vector<String>,
     created_at: u64,
     reply_to: Option<ID>,
-    edited: bool,
+    edited_at: u64, // MIGRAR EDITED_AT
+    deleted_at: u64 // DELETE_AT
 }
  
 public struct MessageCreatedEvent has copy, drop {
@@ -350,13 +351,14 @@ public fun send_message(
     room: &mut ChatRoom,
     content: String,
     reply_to: Option<ID>,
+    media_url: vector<String>,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
 
     assert!(!table::contains(&room.banned_users, sender), EUserBanned);
-    assert!(!string::is_empty(&content), EEmptyMessage);
+    assert!(!string::is_empty(&content) || !vector::is_empty(&media_url), EEmptyMessage);
     assert!(has_room_permission(room, sender, room.permission_send_message), ENotAuthorizedToSendMessage);
 
     let timestamp = clock.timestamp_ms();
@@ -412,8 +414,9 @@ public fun send_message(
         content,
         created_at: timestamp,
         reply_to,
-        edited: false,
-        media_url: vector::empty()        
+        edited_at: 0,
+        media_url: media_url,
+        deleted_at: 0
     };
 
     vector::push_back(&mut current_block.message_ids, message_id);
@@ -432,6 +435,7 @@ public fun send_message(
 public fun edit_message(
     message: &mut Message,
     new_content: String,
+    clock: &Clock,
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
@@ -439,8 +443,10 @@ public fun edit_message(
     assert!(message.sender == sender, ENotAuthorized);
     assert!(!string::is_empty(&new_content), EEmptyMessage);    
 
+    let timestamp = clock.timestamp_ms();
+
     message.content = new_content;
-    message.edited = true;
+    message.edited_at = timestamp;
 
     event::emit(MessageUpdatedEvent {        
         message_id: message.id.to_inner(),
@@ -451,10 +457,13 @@ public fun edit_message(
 
 public fun delete_message(
     room: &ChatRoom,
-    message: Message,
+    message: &mut Message,
+    clock: &Clock,
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
+
+    assert!(message.deleted_at == 0, ENotAuthorized);
 
     if (room.room_type == ROOM_TYPE_DM) {
         assert!(message.sender == sender, ENotAuthorized);
@@ -467,10 +476,13 @@ public fun delete_message(
 
     let message_id = message.id.uid_to_inner();    
     let room_id = message.room_id;
+    let timestamp = clock.timestamp_ms();
 
-    let Message { id, .. } = message;
-    
-    object::delete(id);
+    //let Message { id, .. } = message;
+    // object::delete(id);
+    message.content = "";
+    message.media_url = vector::empty();
+    message.deleted_at = timestamp;
 
     event::emit(MessageDeletedEvent {
         message_id,

@@ -152,13 +152,20 @@ template(v-else)
               span.text-weight-bold.text-medium-sea {{ dmUser?.username }}
 
             .text-body1(v-for="message in messageGroup.messages" :key="message.id")
-              div
-                video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
-                  source(:src="message.mediaUrl[0]")
+              template(v-if="!message.deleted")
+                div
+                  video.fit(v-if="message.mediaUrl?.length" autoplay loop muted playisline style="max-width: 250px")
+                    source(:src="message.mediaUrl[0]")
 
-              span(v-for="(line, iLine) in message.content.split('\\n')")
-                <br v-if="iLine > 0" />
-                | {{ line }}
+                span(v-for="(line, iLine) in message.content.split('\\n')")
+                  <br v-if="iLine > 0" />
+                  | {{ line }}
+
+
+              //-- v-else: message deleted
+              template(v-else)
+                .text-italic.text-caption.q-py-sm.q-px-md.rounded-borders(style="background: rgba(0,0,0, 0.05)")
+                  | mensagem removida
 
             template(#stamp)
               .flex.items-center.text-caption

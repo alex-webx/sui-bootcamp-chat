@@ -174,6 +174,7 @@ export const txEditMessage = (
     arguments: [
       tx.object(message.id),
       tx.pure.string(newMessage.content),
+      tx.object(config('SuiClockId')!)
     ],
   });
 

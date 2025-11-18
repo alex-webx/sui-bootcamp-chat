@@ -56,14 +56,14 @@
 
 <script setup lang="ts" inherit-attrs="true">
 import { ref, computed, onMounted } from 'vue';
-import { useWalletStore, storedSuiState } from '../stores/walletStore';
-import { useUserStore } from '../stores/userStore';
+import { useWalletStore, useUserStore, useAppStore, storedSuiState } from '../stores';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { Dialog, Notify } from 'quasar';
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
+const appStore = useAppStore();
 const router = useRouter();
 const modal = ref(false);
 
@@ -127,7 +127,7 @@ const selectWallet = async (walletName: string) => {
 };
 
 const handleDisconnect = async () => {
-  await walletStore.disconnect();
+  await appStore.resetState();
   router.push({ name: 'login' });
 };
 
