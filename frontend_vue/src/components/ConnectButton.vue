@@ -89,7 +89,8 @@ const selectWallet = async (walletName: string) => {
       title: 'Aprove a conexão em sua carteira. Aguardando...',
       message: `A solicitação será automaticamente abortada em (${timeoutLimitSeconds}s)`,
       cancel: {
-        label: 'Cancelar conexão'
+        label: 'Cancelar conexão',
+        disabled: true
       },
       ok: false,
       persistent: true,
@@ -104,7 +105,11 @@ const selectWallet = async (walletName: string) => {
 
       if (countdown > 0) {
         dialog?.update({
-          message: `A solicitação será cancelada em (${countdown}s)`
+          message: `A solicitação será cancelada em (${countdown}s)`,
+          cancel: {
+            label: `Cancelar conexão`,
+            disabled: countdown > (timeoutLimitSeconds - 3)
+          }
         })
       } else {
         dialog?.hide();
@@ -118,7 +123,7 @@ const selectWallet = async (walletName: string) => {
   } catch {
     Notify.create({
       color: 'negative',
-      message: 'Conexão rejeitada!'
+      message: 'Conexão rejeitada pelo usuário!'
     });
   } finally {
     clearInterval(timer);

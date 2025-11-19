@@ -4,8 +4,8 @@ const {
   PackageId, 
   UserProfileRegistryId, 
   ChatRoomRegistryId
-} = JSON.parse(fs.readFileSync('./.move.devnet.json').toString());
-const userProfilesConfig = JSON.parse(fs.readFileSync('./data/userProfiles.json').toString()); // <-- [{ alias, address, signature, username, avatarUrl, keys { keyPub, keyPrivDerived, keyIv, keySalt } }]
+} = JSON.parse(fs.readFileSync('../.move.devnet.json').toString());
+const userProfilesConfig = JSON.parse(fs.readFileSync('./userProfiles.json').toString()); // <-- [{ alias, address, signature, username, avatarUrl, keys { keyPub, keyPrivDerived, keyIv, keySalt } }]
 const activeEnv = execSync('sui client active-env').toString().trim();
 const addresses = JSON.parse(execSync('sui client addresses --json').toString().trim()).addresses;
 

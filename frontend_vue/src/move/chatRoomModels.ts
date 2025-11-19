@@ -71,4 +71,5 @@ export type MessageBlock = {
   blockNumber: number;
   messageIds: string[];
   createdAt: number;
+  updatedAt: number;
 };

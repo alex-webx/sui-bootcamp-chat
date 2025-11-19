@@ -146,17 +146,16 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
 
 
   const deleteMessage = async (
-    chatRoom: Pick<ChatRoom, 'id'>,
-    message: Pick<Message, 'id'>) => {
+    message: Pick<Message, 'id' | 'roomId'>) => {
     if (!userStore.profile?.id) {
       return;
     }
-    const { tx, parser } = await chatRoomModule.txDeleteMessage(chatRoom, message);
+    const { tx, parser } = await chatRoomModule.txDeleteMessage(message);
     return parser(await walletStore.signAndExecuteTransaction(tx));
   };
 
   const editMessage = async (
-    message: Pick<Message, 'id'>,
+    message: Pick<Message, 'id' | 'roomId'>,
     newMessage: Pick<Message, 'content'>
   ) => {
     if (!userStore.profile?.id) {

@@ -161,7 +161,7 @@ export const txSendMessage = (
 };
 
 export const txEditMessage = (
-  message: Pick<Models.Message, 'id'>,
+  message: Pick<Models.Message, 'id' | 'roomId'>,
   newMessage: Pick<Models.Message, 'content'>
 ) => {
 
@@ -170,6 +170,7 @@ export const txEditMessage = (
   tx.moveCall({
     target: `${config('PackageId')}::chat_room::edit_message`,
     arguments: [
+      tx.object(message.roomId),
       tx.object(message.id),
       tx.pure.string(newMessage.content),
       tx.object(config('SuiClockId')!)
@@ -181,15 +182,14 @@ export const txEditMessage = (
 };
 
 export const txDeleteMessage = (
-  chatRoom: Pick<Models.ChatRoom, 'id'>,
-  message: Pick<Models.Message, 'id'>,
+  message: Pick<Models.Message, 'id' |  'roomId'>,
 ) => {
 
   const tx = new Transaction();
   tx.moveCall({
     target: `${config('PackageId')}::chat_room::delete_message`,
     arguments: [
-      tx.object(chatRoom.id),
+      tx.object(message.roomId),
       tx.object(message.id),
       tx.object(config('SuiClockId')!)
     ],

@@ -86,7 +86,7 @@ const userStore = useUserStore();
 const usersStore = useUsersStore();
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { messageBlocks, messages } = chatService;
-const { fetchMessages } = chatService;
+const { fetchMessageBlocks } = chatService;
 
 const { profile } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
@@ -100,7 +100,7 @@ let timeout = 0;
 onMounted(async () => {
   const loop = async () => {
     console.log('fetching');
-    await fetchMessages();
+    await fetchMessageBlocks();
     timeout = setTimeout(loop, 5000) as any;
   };
 

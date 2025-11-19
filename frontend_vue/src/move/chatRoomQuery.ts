@@ -93,7 +93,7 @@ export const getChatRooms = async (chatRoomsIds: string[]) => {
   return rooms;
 };
 
-export const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: number | null = null) => {
+export const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: number | null = null) : Promise<Models.MessageBlock[]> => {
   const chatRoom = await client.getObject({
     id: chatRoomId, options: { showContent: true }}
   );
@@ -125,10 +125,17 @@ export const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: n
 
   const messageBlocks = messageBlocksResponse
     .map(msgBlock => msgBlock.data?.content as any)
-    .map(msgBlock => <Pick<Models.MessageBlock, 'blockNumber' | 'messageIds'>>({
-      blockNumber: msgBlock.fields.value.fields.block_number as number,
-      messageIds: (msgBlock.fields.value.fields.message_ids || []) as string[]
-    }));
+    .map(msgBlock => {
+      const messageBlock: Models.MessageBlock = {
+        id: msgBlock.fields.value.fields.id,
+        blockNumber: msgBlock.fields.value.fields.block_number as number,
+        messageIds: (msgBlock.fields.value.fields.message_ids || []) as string[],
+        roomId: msgBlock.fields.value.fields.room_id,
+        updatedAt: Number(msgBlock.fields.value.fields.updated_at),
+        createdAt: Number(msgBlock.fields.value.fields.created_at),
+      };
+      return messageBlock;
+    });
 
   return messageBlocks;
 };

@@ -1,11 +1,18 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Dialog, Notify } from 'quasar';
+import { Dialog, Notify, Screen } from 'quasar';
 import { useChatRoomStore, useUsersStore, useUserStore, useWalletStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
 import { type ChatRoom, ERoomType, Message, MessageBlock, chatRoomModule } from '../../move';
 import { DirectMessageService } from '../../utils/encrypt';
+
+const breakpoint = 800;
+const screenWidth = computed(() => Screen.width);
+const desktopMode = computed(() => Screen.width > breakpoint);
+const drawerWidth = computed(() => desktopMode.value ? 350 : Screen.width);
+const leftDrawerOpen = ref(true);
+const rightDrawerOpen = ref(false);
 
 const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo'>>({ content: '', mediaUrl: [], replyTo: '' });
 const messageBlocks = ref<Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>([]);
@@ -26,7 +33,8 @@ export function useChat() {
   };
 
   const insertGif = async (gif: TenorResult) => {
-    newMessage.value.mediaUrl = [gif.media_formats.mp4.url];
+    newMessage.value.mediaUrl = [];
+    newMessage.value.mediaUrl.push(gif.media_formats.mp4.url);
   };
 
   const removeGif = async() => {
@@ -40,18 +48,30 @@ export function useChat() {
   const sendMessage = async () => {
     if (userStore.profile && chatRoomStore.activeChatRoom) {
       if (chatRoomStore.activeChatRoom.roomType === ERoomType.DirectMessage) {
-        const privKey = await userStore.ensurePrivateKey();
-        const dmUser = getDmParticipant(chatRoomStore.activeChatRoom);
-        const dmService = new DirectMessageService(privKey!, dmUser?.keyPub!);
 
-        const encryptedContent = await dmService.encryptMessage(newMessage.value.content);
-        const encryptedMediaUrl = await Promise.all(newMessage.value.mediaUrl.map(mediaUrl => dmService.encryptMessage(mediaUrl)));
+        let content = newMessage.value.content;
+        let mediaUrl = newMessage.value.mediaUrl;
+
+        if (content?.length || mediaUrl.length) {
+          const privKey = await userStore.ensurePrivateKey();
+          const dmUser = getDmParticipant(chatRoomStore.activeChatRoom);
+          const dmService = new DirectMessageService(privKey!, dmUser?.keyPub!);
+
+          if (content?.length) {
+            const encContent = await dmService.encryptMessage(content);
+            content = JSON.stringify([encContent.iv, encContent.ciphertext]);
+          }
+          if (mediaUrl.length) {
+            const encMedia = await Promise.all(mediaUrl.map(mediaUrl => dmService.encryptMessage(mediaUrl)));
+            mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
+          }
+        }
 
         const messageId = await chatRoomStore.sendMessage(
           chatRoomStore.activeChatRoom,
           {
-            content: JSON.stringify([encryptedContent.iv, encryptedContent.ciphertext]),
-            mediaUrl: encryptedMediaUrl.map(media => JSON.stringify([ media.iv,media.ciphertext ])),
+            content: content,
+            mediaUrl: mediaUrl,
             replyTo: newMessage.value.replyTo!
           }
         );
@@ -65,7 +85,7 @@ export function useChat() {
           }
         );
       }
-      await fetchMessages();
+      await fetchMessageBlocks();
       newMessage.value = { content: '', mediaUrl: [], replyTo: '' };
       if ((userStore.profile.roomsJoined || []).indexOf(chatRoomStore.activeChatRoom.id) < 0) {
         await userStore.fetchCurrentUserProfile();
@@ -73,7 +93,7 @@ export function useChat() {
     }
   }
 
-  const fetchMessages = async () => {
+  const fetchMessageBlocks = async () => {
     const activeChatRoom = chatRoomStore.activeChatRoom;
     if (!activeChatRoom?.id) {
       return;
@@ -81,26 +101,6 @@ export function useChat() {
 
     await chatRoomStore.refreshUserChatRoom(activeChatRoom);
     messageBlocks.value = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.id);
-
-    for (let messageBlock of messageBlocks.value) {
-      const currentMessages = await chatRoomStore.getChatRoomMessagesFromBlock(messageBlock);
-
-      if (activeChatRoom.roomType == ERoomType.DirectMessage) {
-        const privKey = userStore.profile?.keyPrivDecoded!;
-        const dmUser = getDmParticipant(activeChatRoom);
-        const pubKey = dmUser?.keyPub!;
-        const dmService = new DirectMessageService(privKey, pubKey);
-        for (let msg of currentMessages) {
-          try {
-            msg.content = await decryptDmMessage(dmService, msg.content);
-            msg.mediaUrl = await Promise.all(msg.mediaUrl.map(url => decryptDmMessage(dmService, url))),
-            (msg as any)._safe = true;
-          } catch { }
-        }
-      }
-
-      messages.value[messageBlock.blockNumber] = currentMessages;
-    }
   };
 
   const decryptDmMessage = async (dmService: DirectMessageService, jsonMessage: string) => {
@@ -133,10 +133,15 @@ export function useChat() {
 
   const selectChatRoom = (chatRoom: ChatRoom) => {
     newMessage.value = { content: '', mediaUrl: [], replyTo: '' };
-    if (chatRoomStore.activeChatRoomId === chatRoom.id) {
-      chatRoomStore.activeChatRoomId = undefined;
+    if (desktopMode.value) {
+      if (chatRoomStore.activeChatRoomId === chatRoom.id) {
+        chatRoomStore.activeChatRoomId = undefined;
+      } else {
+        chatRoomStore.activeChatRoomId = chatRoom.id;
+      }
     } else {
       chatRoomStore.activeChatRoomId = chatRoom.id;
+      leftDrawerOpen.value = false;
     }
   };
 
@@ -149,8 +154,7 @@ export function useChat() {
   };
 
   const deleteMessage = async (
-    chatRoom: Pick<ChatRoom, 'id'>,
-    message: Pick<Message, 'id'>
+    message: Pick<Message, 'id' | 'roomId'>
   ) => {
     Dialog.create({
       title: 'Tem certeza que deseja apagar esta mensagem?',
@@ -165,33 +169,58 @@ export function useChat() {
         color: 'primary'
       }
     }).onOk(async () => {
-      const success = await chatRoomStore.deleteMessage(chatRoom, message);
+      const notif = Notify.create({
+        message: 'Apagando mensagem...',
+        caption: 'Confirme a transação em sua carteira para apagar a mensagem.',
+        timeout: 0, group: false,
+        spinner: true,
+        color: 'medium-sea'
+      });
+
+      const success = await chatRoomStore.deleteMessage(message).catch(() => false);
+      await fetchMessageBlocks();
+
       if (success) {
-        Notify.create({
+        notif({
           message: 'Mensagem apagada com sucesso',
-          color: 'positive'
+          caption: '',
+          color: 'positive',
+          icon: 'done',
+          spinner: false,
+          timeout: 2500
         })
       } else {
-        Notify.create({
+        notif({
           message: 'Não foi possível apagar a mensagem',
-          color: 'negative'
+          caption: '',
+          color: 'negative',
+          icon: 'alert',
+          spinner: false,
+          timeout: 5000
         });
       }
-      await fetchMessages();
     });
   };
 
   const editMessage = async (
-    message: Pick<Message, 'id'>,
+    message: Pick<Message, 'id' | 'roomId'>,
     newMessage: Pick<Message, 'content'>
   ) => {
     alert('todo');
     // const success = await chatRoomStore.editMessage(message, newMessage);
-    await fetchMessages();
+    await fetchMessageBlocks();
   }
 
 
   return {
+    // ui
+    breakpoint,
+    screenWidth,
+    desktopMode,
+    drawerWidth,
+    leftDrawerOpen,
+    rightDrawerOpen,
+
     chatRoomStore,
 
     newMessage,
@@ -209,7 +238,7 @@ export function useChat() {
     deleteMessage,
     editMessage,
 
-    fetchMessages,
+    fetchMessageBlocks,
     fetchLastMessageFromJoinedRooms,
     getLastMessage,
     getDmParticipant,

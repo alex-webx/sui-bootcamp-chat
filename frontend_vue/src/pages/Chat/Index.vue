@@ -85,11 +85,11 @@
 
       q-scroll-area.bg-grey-2(style="height: calc(100% - 50px)")
         q-tabs(v-model="tab" content-class="bg-medium-sea text-white" no-caps)
-          q-tab(name="chats" label="Salas")
+          q-tab(name="mensagens" label="Mensagens")
           q-tab(name="users" label="Usuários")
 
         q-tab-panels(v-model="tab" animated)
-          q-tab-panel.q-pa-none(name="chats")
+          q-tab-panel.q-pa-none(name="mensagens")
             ChatList
           q-tab-panel.q-pa-none(name="users")
             UsersList
@@ -140,33 +140,32 @@
                 q-chip(size="sm" color="grey-3") Administrador
 
 
-    q-page-container(style="display: flex; flex-direction: column; overflow: auto; min-height: calc(100vh - 40px)" :key="activeChatRoom?.id || 0")
+    q-page-container(
+      style="display: flex; flex-direction: column; min-height: calc(100vh - 40px)"
+      :key="activeChatRoom?.id || 0"
+    )
       template(v-if="activeChatRoom")
 
-        ChatRoom(
-          ref="chatRoomComponent"
-          v-if="activeChatRoom.roomType === 1"
-        )
+        ChatRoom(v-if="activeChatRoom.roomType === 1")
           template(#empty)
             q-card.rounded-borders
               .flex.flex-center.column.q-ma-lg
                 q-icon(name="mdi-chat-sleep-outline" size="100px" color="medium-sea")
                 q-card-section Nenhum mensagem no grupo
 
-        ChatRoomDM(
-          ref="chatRoomComponent"
+        DmChatRoom(
           v-if="activeChatRoom.roomType === 2"
         )
 
-        .q-pa-md.row.justify-center.full-width(
-          v-else style="margin-top: auto; margin-bottom: auto"
+      .q-pa-md.row.justify-center.full-width(
+        v-else style="margin-top: auto; margin-bottom: auto"
+      )
+        transition(
+          appear
+          enter-active-class="animated jello slower"
+          leave-active-class="animated fadeOut"
         )
-          transition(
-            appear
-            enter-active-class="animated jello slower"
-            leave-active-class="animated fadeOut"
-          )
-            img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
+          img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
 
     template(v-if="activeChatRoom")
       transition(
@@ -176,33 +175,45 @@
       )
         q-footer.bg-transparent
           q-form(@submit="sendMessage()" ref="form")
-            .row.justify-end.full-width.new-media(
+
+            .row.justify-center.full-width.new-media(
               v-if="newMessage.mediaUrl?.length"
               style="margin-top: auto;"
             )
-              .flex.bg-deep-sea.text-white.q-pa-md.q-pt-none(style="width: 30%; border-top-left-radius: 16px")
-                q-btn(icon="close" flat round @click="removeGif()")
+              .column.flex.justify-center.bg-deep-sea.text-white.q-pa-md.q-pt-none.rounded-top(style="max-width: 30%")
+                .flex.justify-end
+                  q-btn.q-mb-sm(icon="close" flat round @click="removeGif()")
                 div
-                  video.fit(autoplay loop muted playisline)
+                  video.fit(autoplay loop muted playisline style="max-height: 50vh")
                     source(:src="newMessage.mediaUrl[0]")
 
             q-toolbar.bg-deep-sea.text-white.row.q-py-xs
-              q-btn(icon="mdi-file-gif-box" flat round)
+              q-btn(icon="mdi-file-gif-box" flat round :disabled="sendingBusy")
                 q-menu(ref="tenorMenu")
                   q-card.bg-white(style="width: 300px; max-height: 400px")
                     TenorComponent(@select="ev => { $refs.tenorMenu.hide(); insertGif(ev) }")
 
-              q-btn(icon="mdi-emoticon-happy-outline" flat round)
+              q-btn(icon="mdi-emoticon-happy-outline" flat round :disabled="sendingBusy")
                 q-menu
                   EmojiPicker(:native="true" @select="insertEmoji" theme="light")
 
               q-input.q-ml-sm(
-                rounded outlined dense class="WAL__field col-grow q-mr-sm" bg-color="white"
+                rounded outlined dense class="WAL__field col-grow q-mr-sm"
                 v-model="newMessage.content" placeholder="Digite uma mensagem..." type="textarea" rows="1"
                 borderless clearable autofocus autogrow @clear="newMessage.content = ''"
                 @keydown.enter.exact.prevent="$refs.form.submit($event)"
+                :readonly="sendingBusy" :bg-color="sendingBusy ? 'aqua' : 'white'"
               )
-              q-btn(round flat icon="send" type="submit" :disabled="!newMessage.content.length && newMessage.mediaUrl.length === 0")
+              transition(
+                appear
+                enter-active-class="animated jello slower"
+                leave-active-class="animated fadeOut"
+              )
+                q-btn(
+                  round flat icon="send" type="submit"
+                  :disabled="!newMessage.content.length && newMessage.mediaUrl.length === 0"
+                  :loading="sendingBusy"
+                )
 
 </template>
 
@@ -211,17 +222,15 @@ import { Dialog, Notify, Screen, useQuasar } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import formatters from '../../utils/formatters';
-import { useWalletStore } from '../../stores/walletStore';
-import { useUserStore } from '../../stores/userStore';
-import { useUsersStore } from '../../stores/usersStore';
+import { useWalletStore, useUsersStore, useUserStore } from '../../stores';
+import { useProfile } from './useProfile';
+import { useChat } from './useChat';
 import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
 import ChatRoom from './ChatRoom.vue';
-import ChatRoomDM from './ChatRoomDM.vue';
+import DmChatRoom from './DmChatRoom/DmChatRoom.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import EditProfileDialog from './EditProfileDialog.vue';
-import { useProfile } from './useProfile';
-import { useChat } from './useChat';
 
 const $q = useQuasar();
 
@@ -231,31 +240,32 @@ const usersStore = useUsersStore();
 
 const chatService = useChat();
 
+const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
-const { createRoom, insertEmoji, insertGif, removeGif, sendMessage, getDmParticipantId } = chatService;
+const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId } = chatService;
 const { newMessage } = chatService;
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
+const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
 
-const breakpoint = 800;
-const screenWidth = computed(() => Screen.width);
-const desktopMode = computed(() => Screen.width > breakpoint);
-const drawerWidth = computed(() => desktopMode.value ? 350 : Screen.width);
-
-const leftDrawerOpen = ref(true);
-const rightDrawerOpen = ref(false);
-
-const chatRoomComponent = ref<InstanceType<typeof ChatRoom>>();
-
-const shortAddress = computed(() => walletStore.shortAddress);
-const profile = computed(() => userStore.profile);
-const tab = ref<'chats' | 'users'>('chats');
-const { users } = storeToRefs(usersStore);
-
-const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
 const style = computed(() => ({ height: $q.screen.height + 'px' }));
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
 const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
-const { shortenAddress, formatFullDate } = formatters;
+
+const shortAddress = computed(() => walletStore.shortAddress);
+const profile = computed(() => userStore.profile);
+const tab = ref<'mensagens' | 'users'>('mensagens');
+const { users } = storeToRefs(usersStore);
+const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
+
+const sendingBusy = ref(false);
+const sendMessage = async () => {
+  sendingBusy.value = true;
+  try {
+    await chatService.sendMessage();
+  } finally {
+    sendingBusy.value = false;
+  }
+}
 
 onMounted(async () => {
 
@@ -266,7 +276,6 @@ onMounted(async () => {
       await userStore.fetchCurrentUserProfile();
       await usersStore.fetchAllUsersProfiles();
       await chatService.chatRoomStore.fetchAllUserChatRoom();
-      //await chatService.chatRoomStore.fetchAllChatRooms();
     }
   } finally {
     $q.loading.hide();
@@ -276,8 +285,6 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-$heightBanner: 260px;
-
 .WAL {
   width: 100%;
   height: 100%;
@@ -333,13 +340,8 @@ $heightBanner: 260px;
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba($sea, 0.3);
-    backdrop-filter: blur(4px);
-    // animation: blink 0.4s infinite alternate;
-    // @keyframes blink {
-    //   0% { background: rgba($sea, 0.3); }
-    //   100% { background: rgba($sea, 0.2); }
-    // }
+    backdrop-filter: blur(12px);
+    margin-top: -100%;
   }
 }
 </style>

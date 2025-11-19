@@ -72,7 +72,8 @@ public struct MessageBlock has key, store {
     room_id: ID,
     block_number: u64,
     message_ids: vector<ID>,
-    created_at: u64
+    created_at: u64,
+    updated_at: u64
 }
 
 public struct MessageBlockEvent has copy, drop {
@@ -189,7 +190,8 @@ public fun create_room(
         room_id,
         block_number: 0,
         message_ids: vector::empty(),
-        created_at: timestamp
+        created_at: timestamp,
+        updated_at: timestamp
     };
 
     vector::push_back(&mut registry.rooms, room_id);
@@ -271,7 +273,8 @@ public fun create_dm_room(
         room_id,
         block_number: 0,
         message_ids: vector::empty(),
-        created_at: timestamp
+        created_at: timestamp,
+        updated_at: timestamp
     };
 
     vector::push_back(&mut registry.rooms, room_id);
@@ -387,7 +390,8 @@ public fun send_message(
             room_id,
             block_number: new_block_num,
             message_ids: vector::empty(),
-            created_at: timestamp
+            created_at: timestamp,
+            updated_at: timestamp
         };
 
         df::add(&mut room.id, new_block_num, new_block);
@@ -419,6 +423,7 @@ public fun send_message(
         deleted_at: 0
     };
 
+    current_block.updated_at = timestamp;
     vector::push_back(&mut current_block.message_ids, message_id);
     room.message_count = room.message_count + 1;        
     user_profile::add_user_profile_rooms_joined(profile, room_id);    
@@ -433,6 +438,7 @@ public fun send_message(
 }
 
 public fun edit_message(
+    room: &mut ChatRoom,    
     message: &mut Message,
     new_content: String,
     clock: &Clock,
@@ -448,6 +454,9 @@ public fun edit_message(
     message.content = new_content;
     message.edited_at = timestamp;
 
+    let message_block = df::borrow_mut<u64, MessageBlock>(&mut room.id, message.block_number);
+    message_block.updated_at = timestamp;
+
     event::emit(MessageUpdatedEvent {        
         message_id: message.id.to_inner(),
         room_id: message.room_id,
@@ -456,7 +465,7 @@ public fun edit_message(
 }
 
 public fun delete_message(
-    room: &ChatRoom,
+    room: &mut ChatRoom,
     message: &mut Message,
     clock: &Clock,
     ctx: &mut TxContext
@@ -477,6 +486,9 @@ public fun delete_message(
     let message_id = message.id.uid_to_inner();    
     let room_id = message.room_id;
     let timestamp = clock.timestamp_ms();
+
+    let message_block = df::borrow_mut<u64, MessageBlock>(&mut room.id, message.block_number);
+    message_block.updated_at = timestamp;
 
     //let Message { id, .. } = message;
     // object::delete(id);

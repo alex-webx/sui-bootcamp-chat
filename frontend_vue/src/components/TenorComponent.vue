@@ -42,7 +42,7 @@ const emits = defineEmits<{
 const searchText = ref('');
 const results = ref<TenorResult[]>([]);
 const cursor = ref('');
-const pageSize = 40;
+const pageSize = 30;
 
 watch(searchText, () => {
   searchTenor()
