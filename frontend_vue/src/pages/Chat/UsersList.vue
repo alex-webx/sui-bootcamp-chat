@@ -19,7 +19,7 @@ q-list
       :class="{ 'active-item': activeChatRoom && user.owner !== profile.owner && profile.roomsJoined.indexOf(activeChatRoom.id) >= 0 && !!activeChatRoom?.participants?.[user.owner] }"
     )
       q-item-section(avatar)
-        q-avatar
+        q-avatar(size="48px")
           q-img(:src="user.avatarUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
 
       q-item-section

@@ -1,6 +1,6 @@
 <template lang="pug">
 q-item-section(avatar)
-  q-avatar
+  q-avatar(size="48px")
     q-img(:src="props.room.imageUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
 
 q-item-section

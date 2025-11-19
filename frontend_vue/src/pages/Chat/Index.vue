@@ -51,7 +51,7 @@
     )
       q-toolbar.bg-deep-sea
 
-        q-avatar.cursor-pointer(@click="editProfile()")
+        q-avatar.cursor-pointer(@click="editProfile()" size="42px")
           q-img(:src="profile.avatarUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
 
         .q-ml-md.cursor-pointer(@click="editProfile()")

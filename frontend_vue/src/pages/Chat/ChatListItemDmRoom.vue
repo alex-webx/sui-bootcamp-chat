@@ -1,6 +1,6 @@
 <template lang="pug">
 q-item-section(avatar)
-  q-avatar
+  q-avatar(size="48px")
     q-img(:src="contactedUser?.avatarUrl || '/user-circles-set.png'" :ratio="1" fit="cover")
 
 template(v-if="!contactedUser")
