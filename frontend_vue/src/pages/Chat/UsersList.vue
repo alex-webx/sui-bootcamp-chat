@@ -34,8 +34,8 @@ q-list
           .text-right
             div
               | entrou em
-            div {{ formatDate(users.createdAt) }}
-            div {{ formatTime(users.createdAt) }}
+            div {{ formatDate(user.createdAt) }}
+            div {{ formatTime(user.createdAt) }}
 
     .text-center.text-dark.q-px-sm.q-py-xs.text-caption.bg-grey-3
       | {{ usersLength }} {{usersLength > 1 ? 'usuários cadastrados' : 'usuário cadastrado'}}
