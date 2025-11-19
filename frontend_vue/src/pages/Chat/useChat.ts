@@ -18,6 +18,7 @@ const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo'>>({ cont
 const messageBlocks = ref<Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>([]);
 const messages = ref<Record<string, Message[]>>({});
 const latestMessages = ref<Record<string, Message>>({});
+const bottomChatElement = ref<InstanceType<typeof HTMLDivElement>>();
 
 export function useChat() {
 
@@ -220,6 +221,14 @@ export function useChat() {
     drawerWidth,
     leftDrawerOpen,
     rightDrawerOpen,
+    bottomChatElement,
+    scrollTo: (where: 'bottom') => {
+      if (where === 'bottom') {
+        setTimeout(() => {
+          bottomChatElement.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 500);
+      }
+    },
 
     chatRoomStore,
 

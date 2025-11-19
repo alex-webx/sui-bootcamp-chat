@@ -78,13 +78,13 @@ template(v-else)
     v-if="youJoined"
     style="margin-top: auto"
   )
-    q-virtual-scroll(
-      :style=`{ width: '100%', maxWidth: '800px', height: desktopMode ? 'calc(-140px + 100vh)' : '100vh', padding: '16px 0 8px 0' }`
-      :items="messageBlocks"
-      v-slot="{ item: msgBlock, index }"
-      ref="virtualScroll"
-    )
-      //- .q-px-md.full-width(v-for="msgBlock in messageBlocks")
+    //- q-virtual-scroll.content-end(
+    //-   :style=`{ width: '100%', maxWidth: '800px', maxHeight: desktopMode ? 'calc(-140px + 100vh)' : '100vh', padding: '16px 0 8px 0' }`
+    //-   :items="messageBlocks"
+    //-   v-slot="{ item: msgBlock, index }"
+    //-   ref="virtualScroll"
+    //- )
+    .q-px-md.full-width(v-for="msgBlock in messageBlocks")
       q-chat-message(
         :label="'Block Number #' + msgBlock.blockNumber + ' (' + msgBlock.messageIds.length + ')'"
       )
@@ -97,18 +97,17 @@ template(v-else)
         @messagesChanged="() => messagesEvent('changed')"
       )
 
-      div(ref="end")
+  div(ref="bottomChatElement")
 
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, onMounted, nextTick } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChat } from '../useChat';
 import { useUserStore, useUsersStore } from '../../../stores';
 import { useAsyncLoop } from '../../../utils/delay';
 import MessageBlock from './MessageBlock.vue';
-import { QVirtualScroll } from 'quasar';
 
 const chatService = useChat();
 const userStore = useUserStore();
@@ -117,11 +116,11 @@ const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { getChatRoomMessageBlocks, getChatRoomMessagesFromBlock, refreshUserChatRoom } = chatService.chatRoomStore;
-const { getDmParticipantId, messages, messageBlocks, fetchMessageBlocks } = chatService;
-const { breakpoint, screenWidth, desktopMode, drawerWidth } = chatService;
+const {
+  getDmParticipantId, messages, messageBlocks, bottomChatElement, scrollTo, fetchMessageBlocks,
+  breakpoint, screenWidth, desktopMode, drawerWidth
+} = chatService;
 
-const end = ref<InstanceType<typeof HTMLDivElement>>();
-const virtualScroll = ref<InstanceType<typeof QVirtualScroll>>();
 
 const loading = ref(false);
 
@@ -155,9 +154,7 @@ useAsyncLoop(async isFirstExecution => {
 
 const messagesEvent = async (type: 'loaded' | 'changed') => {
   if (type === 'loaded') {
-    setTimeout(() => {
-      end.value?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 500);
+    scrollTo('bottom');
   }
 };
 
@@ -185,11 +182,4 @@ const messagesEvent = async (type: 'loaded' | 'changed') => {
 
 </script>
 <style lang="scss" scoped>
-$chat-message-border-radius: 12px;
-:deep(.q-message .q-message-text--received) {
-  border-radius: $chat-message-border-radius $chat-message-border-radius $chat-message-border-radius 0 !important;
-}
-:deep(.q-message .q-message-text--sent) {
-  border-radius: $chat-message-border-radius $chat-message-border-radius 0 $chat-message-border-radius !important;
-}
 </style>

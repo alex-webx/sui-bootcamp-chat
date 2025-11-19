@@ -7,6 +7,7 @@ q-item-section
   q-item-label(lines="1") {{ props.room.name }}
   q-item-label(caption)
     | {{ props.room.roomType }}
+    | style="max-width: 200px"
 
 q-item-section(side)
   q-item-label(caption)

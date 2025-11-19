@@ -141,11 +141,4 @@ const groupByTimestamp = (messages: any[], minutes: number) => {
 
 </script>
 <style lang="scss" scoped>
-$chat-message-border-radius: 12px;
-.q-message :deep(.q-message-text--received) {
-  border-radius: $chat-message-border-radius $chat-message-border-radius $chat-message-border-radius 0 !important;
-}
-.q-message :deep(.q-message-text--sent) {
-  border-radius: $chat-message-border-radius $chat-message-border-radius 0 $chat-message-border-radius !important;
-}
 </style>

@@ -344,4 +344,16 @@ onMounted(async () => {
     margin-top: -100%;
   }
 }
+
+$chat-message-border-radius: 12px;
+:deep(.q-message) {
+  .q-message-text--received {
+    border-radius: $chat-message-border-radius $chat-message-border-radius $chat-message-border-radius 0 !important;
+    max-width: 600px;
+  }
+  .q-message-text--sent {
+    border-radius: $chat-message-border-radius $chat-message-border-radius 0 $chat-message-border-radius !important;
+    max-width: 600px;
+  }
+}
 </style>

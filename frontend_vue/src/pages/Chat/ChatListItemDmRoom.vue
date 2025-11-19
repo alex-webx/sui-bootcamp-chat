@@ -20,7 +20,9 @@ template(v-else)
           q-icon.q-mb-xs.q-ml-xs(name="mdi-alert-circle" color="sea" size="16px" v-if="!contactedUserJoined" )
             q-tooltip O usuário ainda não aceitou o seu convite
 
-    q-item-label.text-italic(v-if="lastMessage" caption)
+    q-item-label.text-italic(
+      v-if="lastMessage" caption lines="2"
+    )
       | {{ users[lastMessage.sender]?.username }}:
       | {{ lastMessage.deletedAt ? 'mensagem removida' : lastMessage.content }}
       template(v-if="lastMessage.mediaUrl?.length")
@@ -89,4 +91,7 @@ watch(() => latestMessages.value[props.room.id], async (message) => {
 
 </script>
 <style lang="scss" scoped>
+.q-item__label {
+  max-width: 200px;
+}
 </style>
