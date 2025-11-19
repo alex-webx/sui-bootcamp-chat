@@ -17,7 +17,7 @@ const rightDrawerOpen = ref(false);
 const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'>>({ id: '', content: '', mediaUrl: [], replyTo: '' });
 
 const messageBlocks = ref<Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>([]);
-const messageBlockLoadCount = ref<number>(2);
+const messageBlockLoadCount = ref<number>(0);
 const messages = ref<Record<string, Message[]>>({});
 const bottomChatElement = ref<InstanceType<typeof HTMLDivElement>>();
 
@@ -49,6 +49,9 @@ export function useChat() {
 
   const sendMessage = async () => {
     if (userStore.profile && chatRoomStore.activeChatRoom) {
+
+      const isEdit = !!newMessage.value.id;
+
       if (chatRoomStore.activeChatRoom.roomType === ERoomType.DirectMessage) {
 
         let content = newMessage.value.content;
@@ -69,7 +72,7 @@ export function useChat() {
           }
         }
 
-        if (newMessage.value.id) {
+        if (isEdit) {
           const messageId = await chatRoomStore.editMessage(
             { id: newMessage.value.id, roomId: chatRoomStore.activeChatRoom.id },
             {
@@ -112,7 +115,10 @@ export function useChat() {
       if ((userStore.profile.roomsJoined || []).indexOf(chatRoomStore.activeChatRoom.id) < 0) {
         await userStore.fetchCurrentUserProfile();
       }
-      scrollTo('bottom');
+
+      if (!isEdit) {
+        scrollTo('bottom');
+      }
     }
   }
 
@@ -131,6 +137,7 @@ export function useChat() {
     };
     await chatRoomStore.refreshUserChatRoom(activeChatRoom);
     messageBlocks.value = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.id);
+    return messageBlocks.value;
   };
 
   const decryptDmMessage = async (dmService: DirectMessageService, jsonMessage: string) => {

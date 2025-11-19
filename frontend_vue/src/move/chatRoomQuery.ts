@@ -89,7 +89,7 @@ export const parseMessageBlock = (response: SuiObjectResponse): Models.MessageBl
 
   const messageBlock: Models.MessageBlock = {
     id: fields.id?.id,
-    blockNumber: fields.block_number as number,
+    blockNumber: Number(fields.block_number),
     messageIds: (fields.message_ids || []) as string[],
     roomId: fields.room_id,
     updatedAt: Number(fields.updated_at),

@@ -132,8 +132,8 @@ const loading = ref(false);
 
 const dmUser = computed(() => {
   if (activeChatRoom.value) {
-    const participandUserId = getDmParticipantId(activeChatRoom.value);
-    return users.value[participandUserId!];
+    const participantUserId = getDmParticipantId(activeChatRoom.value);
+    return users.value[participantUserId!];
   }
 });
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
@@ -153,7 +153,7 @@ const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) =>
 };
 
 watch(() => feeder.latestMessageBlocks.value[activeChatRoom.value?.id!], async () => {
-  await fetchMessageBlocks();
+  const msgBlocks = await fetchMessageBlocks();
 }, { immediate: true });
 
 </script>
