@@ -2,24 +2,26 @@
 q-chat-message(
   :sent="true"
   bg-color="primary" text-color="white"
+  :class="{ 'is-first': isFirst, 'is-last': isLast }"
 )
 
-  template(#name)
+  template(#name v-if="isFirst")
     span.text-weight-bold.text-ocean
       | {{ user.username }}
 
   template(#avatar)
     q-avatar.q-ml-sm
-      q-img(:src="user.avatarUrl || './logo_sui_chat_bordered.png'" :ratio="1" fit="cover")
+      q-img(v-if="isLast" :src="user.avatarUrl || './logo_sui_chat_bordered.png'" :ratio="1" fit="cover")
 
   template(#stamp)
-    .flex.items-center.text-caption
-      q-icon.q-mr-xs(name="mdi-lock")
+    .flex.items-center
+      q-icon(name="mdi-lock")
         q-tooltip Mensagem criptografada E2EE utilizando uma chave AES derivada de ECDH das duas partes
-      span.text-italic
-        | {{ fromNow(message.createdAt) }}
+      span
+        q-badge {{ fromNow(message.createdAt) }}
       q-space
-      q-btn.q-ml-md(icon="mdi-pound" dense size="xs" flat @click="exploreTxs([message])")
+      q-badge(v-if="message.editedAt" label="editada" dense flat no-caps)
+      q-btn(icon="mdi-pound" dense size="xs" flat @click="exploreTxs([message])")
         q-tooltip Verificar transação no Suiscan
 
 
@@ -56,17 +58,17 @@ q-chat-message(
               q-separator(vertical)
               q-btn.bg-sea(icon="mdi-trash-can-outline" size="md" outline @click="deleteMessage()")
               q-separator(vertical)
-              q-btn.bg-sea(icon="mdi-pencil-outline" size="md" outline @click="editMessage()")
+              q-btn.bg-sea(icon="mdi-pencil-outline" size="md" outline @click="startEditMessage()")
 
 
 </template>
 <script setup lang="ts">
 import { ref, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
-import { Dialog, openURL, Screen } from 'quasar';
+import { Dialog, openURL } from 'quasar';
 import { useChat } from '../useChat';
 import { shortenAddress } from '../../../utils/formatters';
-import { type MessageBlock, type Message, type UserProfile, chatRoomModule } from '../../../move';
+import { type Message, type UserProfile, getNetwork } from '../../../move';
 import moment from 'moment';
 
 const props = defineProps({
@@ -81,10 +83,16 @@ const props = defineProps({
   dmUser: {
     type: Object as PropType<UserProfile>,
     required: true
+  },
+  isFirst: {
+    type: Boolean
+  },
+  isLast: {
+    type: Boolean
   }
 });
 
-const { message, user, dmUser } = toRefs(props);
+const { message, user, dmUser, isFirst, isLast } = toRefs(props);
 const chatService = useChat();
 const isSelected = ref(false);
 
@@ -116,7 +124,7 @@ const exploreTxs = async (messages: Message[]) => {
   }
 
   if (txId) {
-    openURL(`https://suiscan.xyz/devnet/object/${txId}/fields`);
+    openURL(`https://suiscan.xyz/${getNetwork()}/object/${txId}/fields`);
   }
 };
 
@@ -128,14 +136,29 @@ const deleteMessage = async () => {
   }
 };
 
-const editMessage = async () => {
-
+const startEditMessage = async () => {
+  isSelected.value = false;
+  chatService.newMessage.value = {
+    id: message.value.id,
+    content: message.value.content || '',
+    mediaUrl: message.value.mediaUrl || [],
+    replyTo: message.value.replyTo || ''
+  };
 };
-
 
 </script>
 <style lang="scss" scoped>
 .deleted-message {
   background: rgba(255,255,255, 0.2);
+}
+
+:deep(.q-message-text:last-child:before) {
+  border: none;
+}
+
+.is-last :deep(.q-message-text--sent:last-child:before) {
+  border-left: 0 solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid currentColor;
 }
 </style>

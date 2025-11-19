@@ -441,18 +441,20 @@ public fun edit_message(
     room: &mut ChatRoom,    
     message: &mut Message,
     new_content: String,
+    new_media_url: vector<String>,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
 
     assert!(message.sender == sender, ENotAuthorized);
-    assert!(!string::is_empty(&new_content), EEmptyMessage);    
+    assert!(!string::is_empty(&new_content) || vector::length(&new_media_url) > 0, EEmptyMessage);    
 
     let timestamp = clock.timestamp_ms();
 
     message.content = new_content;
     message.edited_at = timestamp;
+    message.media_url = new_media_url;
 
     let message_block = df::borrow_mut<u64, MessageBlock>(&mut room.id, message.block_number);
     message_block.updated_at = timestamp;

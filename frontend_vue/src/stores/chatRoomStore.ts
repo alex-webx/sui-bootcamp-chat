@@ -156,7 +156,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
 
   const editMessage = async (
     message: Pick<Message, 'id' | 'roomId'>,
-    newMessage: Pick<Message, 'content'>
+    newMessage: Pick<Message, 'content' | 'mediaUrl'>
   ) => {
     if (!userStore.profile?.id) {
       return;

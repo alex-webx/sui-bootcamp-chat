@@ -162,7 +162,7 @@ export const txSendMessage = (
 
 export const txEditMessage = (
   message: Pick<Models.Message, 'id' | 'roomId'>,
-  newMessage: Pick<Models.Message, 'content'>
+  newMessage: Pick<Models.Message, 'content' | 'mediaUrl'>
 ) => {
 
   const tx = new Transaction();
@@ -173,6 +173,7 @@ export const txEditMessage = (
       tx.object(message.roomId),
       tx.object(message.id),
       tx.pure.string(newMessage.content),
+      tx.pure.vector('string', newMessage.mediaUrl),
       tx.object(config('SuiClockId')!)
     ],
   });

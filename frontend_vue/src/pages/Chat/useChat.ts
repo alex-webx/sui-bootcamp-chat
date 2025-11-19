@@ -14,10 +14,11 @@ const drawerWidth = computed(() => desktopMode.value ? 350 : Screen.width);
 const leftDrawerOpen = ref(true);
 const rightDrawerOpen = ref(false);
 
-const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo'>>({ content: '', mediaUrl: [], replyTo: '' });
+const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'>>({ id: '', content: '', mediaUrl: [], replyTo: '' });
+
 const messageBlocks = ref<Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>([]);
+const messageBlockLoadCount = ref<number>(2);
 const messages = ref<Record<string, Message[]>>({});
-const latestMessages = ref<Record<string, Message>>({});
 const bottomChatElement = ref<InstanceType<typeof HTMLDivElement>>();
 
 export function useChat() {
@@ -68,38 +69,66 @@ export function useChat() {
           }
         }
 
-        const messageId = await chatRoomStore.sendMessage(
-          chatRoomStore.activeChatRoom,
-          {
-            content: content,
-            mediaUrl: mediaUrl,
-            replyTo: newMessage.value.replyTo!
-          }
-        );
+        if (newMessage.value.id) {
+          const messageId = await chatRoomStore.editMessage(
+            { id: newMessage.value.id, roomId: chatRoomStore.activeChatRoom.id },
+            {
+              content: content,
+              mediaUrl: mediaUrl
+            }
+          );
+        } else {
+          const messageId = await chatRoomStore.sendMessage(
+            chatRoomStore.activeChatRoom,
+            {
+              content: content,
+              mediaUrl: mediaUrl,
+              replyTo: newMessage.value.replyTo!
+            }
+          );
+        }
       } else {
-        await chatRoomStore.sendMessage(
-          chatRoomStore.activeChatRoom,
-          {
-            content: newMessage.value.content,
-            mediaUrl: newMessage.value.mediaUrl,
-            replyTo: newMessage.value.replyTo!
-          }
-        );
+        if (newMessage.value.id) {
+           const messageId = await chatRoomStore.editMessage(
+            { id: newMessage.value.id, roomId: chatRoomStore.activeChatRoom.id },
+            {
+              content: newMessage.value.content,
+              mediaUrl: newMessage.value.mediaUrl
+            }
+          );
+        } else {
+          await chatRoomStore.sendMessage(
+            chatRoomStore.activeChatRoom,
+            {
+              content: newMessage.value.content,
+              mediaUrl: newMessage.value.mediaUrl,
+              replyTo: newMessage.value.replyTo!
+            }
+          );
+        }
       }
       await fetchMessageBlocks();
-      newMessage.value = { content: '', mediaUrl: [], replyTo: '' };
+      clearNewMessage();
       if ((userStore.profile.roomsJoined || []).indexOf(chatRoomStore.activeChatRoom.id) < 0) {
         await userStore.fetchCurrentUserProfile();
       }
+      scrollTo('bottom');
     }
   }
+
+  const scrollTo = (where: 'bottom') => {
+    if (where === 'bottom') {
+      setTimeout(() => {
+        bottomChatElement.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 500);
+    }
+  };
 
   const fetchMessageBlocks = async () => {
     const activeChatRoom = chatRoomStore.activeChatRoom;
     if (!activeChatRoom?.id) {
       return;
     };
-
     await chatRoomStore.refreshUserChatRoom(activeChatRoom);
     messageBlocks.value = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.id);
   };
@@ -132,8 +161,14 @@ export function useChat() {
 
   const getDmParticipant = (room: ChatRoom | null) => usersStore.users[getDmParticipantId(room)!];
 
+  const clearNewMessage = () => { newMessage.value = { id: '', content: '', mediaUrl: [], replyTo: '' }; };
+
   const selectChatRoom = (chatRoom: ChatRoom) => {
-    newMessage.value = { content: '', mediaUrl: [], replyTo: '' };
+    clearNewMessage();
+    messageBlocks.value = [];
+    messages.value = {};
+    messageBlockLoadCount.value = 2;
+
     if (desktopMode.value) {
       if (chatRoomStore.activeChatRoomId === chatRoom.id) {
         chatRoomStore.activeChatRoomId = undefined;
@@ -146,13 +181,6 @@ export function useChat() {
     }
   };
 
-  const getLastMessage = async (chatRoom: ChatRoom) => {
-    return await chatRoomModule.getLastMessage(chatRoom);
-  };
-
-  const fetchLastMessageFromJoinedRooms = async () => {
-    latestMessages.value = await chatRoomModule.getLastMessagesFromUserChatRoomsJoined(userStore.profile!);
-  };
 
   const deleteMessage = async (
     message: Pick<Message, 'id' | 'roomId'>
@@ -203,16 +231,6 @@ export function useChat() {
     });
   };
 
-  const editMessage = async (
-    message: Pick<Message, 'id' | 'roomId'>,
-    newMessage: Pick<Message, 'content'>
-  ) => {
-    alert('todo');
-    // const success = await chatRoomStore.editMessage(message, newMessage);
-    await fetchMessageBlocks();
-  }
-
-
   return {
     // ui
     breakpoint,
@@ -222,20 +240,15 @@ export function useChat() {
     leftDrawerOpen,
     rightDrawerOpen,
     bottomChatElement,
-    scrollTo: (where: 'bottom') => {
-      if (where === 'bottom') {
-        setTimeout(() => {
-          bottomChatElement.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 500);
-      }
-    },
+    scrollTo,
 
     chatRoomStore,
 
     newMessage,
+
     messageBlocks,
     messages,
-    latestMessages,
+    messageBlockLoadCount,
 
     createRoom,
     selectChatRoom,
@@ -245,11 +258,9 @@ export function useChat() {
     insertEmoji,
     sendMessage,
     deleteMessage,
-    editMessage,
+    clearNewMessage,
 
     fetchMessageBlocks,
-    fetchLastMessageFromJoinedRooms,
-    getLastMessage,
     getDmParticipant,
     getDmParticipantId
   };

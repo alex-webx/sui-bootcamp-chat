@@ -59,8 +59,8 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
 };
 
 export const parseMessage = (response: SuiObjectResponse): Models.Message => {
-    if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
-    throw new Error('ChatRoom inválido');
+  if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
+    throw new Error('Message inválido');
   }
 
   const fields = response.data.content.fields as any;
@@ -80,6 +80,24 @@ export const parseMessage = (response: SuiObjectResponse): Models.Message => {
   };
 };
 
+export const parseMessageBlock = (response: SuiObjectResponse): Models.MessageBlock => {
+  if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
+    throw new Error('MessageBlock inválido');
+  }
+
+  const fields = (response.data.content.fields as any)?.value?.fields as any;
+
+  const messageBlock: Models.MessageBlock = {
+    id: fields.id?.id,
+    blockNumber: fields.block_number as number,
+    messageIds: (fields.message_ids || []) as string[],
+    roomId: fields.room_id,
+    updatedAt: Number(fields.updated_at),
+    createdAt: Number(fields.created_at),
+  };
+  return messageBlock;
+}
+
 export const getAllChatRooms = async () => {
   const chatRoomRegistry = await getChatRoomRegistry();
   const roomsObjsRes = await getMultiObjects({ ids: chatRoomRegistry.rooms });
@@ -93,11 +111,7 @@ export const getChatRooms = async (chatRoomsIds: string[]) => {
   return rooms;
 };
 
-export const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: number | null = null) : Promise<Models.MessageBlock[]> => {
-  const chatRoom = await client.getObject({
-    id: chatRoomId, options: { showContent: true }}
-  );
-
+export const getChatRoomMessageBlocks = async (chatRoomId: string) : Promise<Models.MessageBlock[]> => {
   let hasNextPage = true;
   let cursor: string | null = null;
   let messageBlocksIds: string[] = [];
@@ -120,24 +134,12 @@ export const getChatRoomMessageBlocks = async (chatRoomId: string, lastBlocks: n
   }
 
   const messageBlocksResponse = await getMultiObjects({
-    ids: lastBlocks ? messageBlocksIds.slice(-1 * lastBlocks) : messageBlocksIds
+    ids: messageBlocksIds
   });
-
   const messageBlocks = messageBlocksResponse
-    .map(msgBlock => msgBlock.data?.content as any)
-    .map(msgBlock => {
-      const messageBlock: Models.MessageBlock = {
-        id: msgBlock.fields.value.fields.id,
-        blockNumber: msgBlock.fields.value.fields.block_number as number,
-        messageIds: (msgBlock.fields.value.fields.message_ids || []) as string[],
-        roomId: msgBlock.fields.value.fields.room_id,
-        updatedAt: Number(msgBlock.fields.value.fields.updated_at),
-        createdAt: Number(msgBlock.fields.value.fields.created_at),
-      };
-      return messageBlock;
-    });
+    .map(msgBlock => parseMessageBlock(msgBlock));
 
-  return messageBlocks;
+  return _.sortBy(messageBlocks, msgBlock => msgBlock.blockNumber);
 };
 
 export const getChatRoomMessagesFromBlock = async (messageBlock: Pick<Models.MessageBlock, 'messageIds'>) => {
@@ -146,48 +148,24 @@ export const getChatRoomMessagesFromBlock = async (messageBlock: Pick<Models.Mes
   return messages;
 };
 
-export const getLastMessage = async (chatRoom: Models.ChatRoom) => {
-  let latestBlockCount = 1;
-  let lastMessage: Models.Message | undefined;
-  let keep = true;
-
-  while (keep) {
-    const block = (await getChatRoomMessageBlocks(chatRoom.id, latestBlockCount++)).slice(0, 1)?.[0];
-    if (!block) {
-      keep = false;
-    }
-    const lastMessageId = block?.messageIds?.slice(-1)?.[0];
-    if (lastMessageId) {
-      const lastMessageRes = await client.getObject({ id: lastMessageId, options: { showContent: true } });
-      lastMessage = parseMessage(lastMessageRes);
-      keep = false;
+export const getLastMessageBlocksFromUserChatRoomsJoined = async (profile: Models.UserProfile) => {
+  const lastMsgBlocks: Record<string, Models.MessageBlock> = {};
+  if (profile.roomsJoined?.length) {
+    const rooms = await Promise.all((await getMultiObjects({ ids: profile.roomsJoined })).map(async res => await parseChatRoom(res)));
+    for (let room of rooms) {
+      const msgBlockRes = await client.getDynamicFieldObject({ parentId: room.id, name: { value: String(room.currentBlockNumber), type: 'u64' } });
+      const msgBlock = parseMessageBlock(msgBlockRes);
+      lastMsgBlocks[room.id] = msgBlock;
     }
   }
+  return lastMsgBlocks;
+}
 
-  return lastMessage;
-};
+export const getLastMessages = async (messageBlocks: Models.MessageBlock[]) => {
+  const lastMsgs: Record<string, Models.Message> = {};
+  const msgIds = messageBlocks.map(msgBlock => msgBlock.messageIds.slice(-1)[0]).filter(msgId => !!msgId) as string[];
+  const messagesRes = await getMultiObjects({ ids: msgIds });
+  const msgs = messagesRes.map(res => parseMessage(res))
+  return _.keyBy(msgs, msg => msg.roomId);
+}
 
-export const getLastMessagesFromUserChatRoomsJoined = async (profile: Models.UserProfile) => {
-  const lastMessages: Record<string, Models.Message> = {};
-
-  for (let chatRoomId of profile.roomsJoined) {
-    let latestBlockCount = 1;
-    let keep = true;
-
-    while (keep) {
-      const block = (await getChatRoomMessageBlocks(chatRoomId, latestBlockCount++)).slice(0, 1)?.[0];
-      if (!block) {
-        keep = false;
-      } else {
-        const lastMessageId = block?.messageIds?.slice(-1)?.[0];
-        if (lastMessageId) {
-          const lastMessageRes = await client.getObject({ id: lastMessageId, options: { showContent: true } });
-          lastMessages[chatRoomId] = parseMessage(lastMessageRes);
-          keep = false;
-        }
-      }
-    }
-  }
-
-  return lastMessages;
-};

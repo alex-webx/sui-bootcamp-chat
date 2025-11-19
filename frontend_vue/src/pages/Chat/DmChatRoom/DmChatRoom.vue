@@ -78,49 +78,55 @@ template(v-else)
     v-if="youJoined"
     style="margin-top: auto"
   )
-    //- q-virtual-scroll.content-end(
-    //-   :style=`{ width: '100%', maxWidth: '800px', maxHeight: desktopMode ? 'calc(-140px + 100vh)' : '100vh', padding: '16px 0 8px 0' }`
-    //-   :items="messageBlocks"
-    //-   v-slot="{ item: msgBlock, index }"
-    //-   ref="virtualScroll"
-    //- )
-    .q-px-md.full-width(v-for="msgBlock in messageBlocks")
-      q-chat-message(
-        :label="'Block Number #' + msgBlock.blockNumber + ' (' + msgBlock.messageIds.length + ')'"
-      )
+    .q-px-md.full-width(v-for="(msgBlock, msgBlockIndex) in messageBlocks" :key="msgBlock.id")
 
-      MessageBlock(
-        :messageBlock="msgBlock"
-        :user="profile"
-        :dmUser="dmUser"
-        @messagesLoaded="() => messagesEvent('loaded')"
-        @messagesChanged="() => messagesEvent('changed')"
+      .flex.full-width.flex-center.q-mb-md.block-separator(
+        v-if="msgBlockIndex === (messageBlocks.length - messageBlockLoadCount - 1)"
       )
+        q-btn.full-width(
+          @click="messageBlockLoadCount++" flat stack icon="mdi-chevron-up"
+          label="carregar mais mensagens" color="grey-7"
+        )
+
+      template(v-if="msgBlockIndex >= (messageBlocks.length - messageBlockLoadCount)")
+
+        .text-center.full-width.q-py-md(
+          v-if="msgBlockIndex === 0"
+        )
+          q-chip(color="deep-sea" dark) início da conversa com {{ dmUser.username }}
+
+        MessageBlock(
+          :messageBlock="msgBlock"
+          :user="profile"
+          :dmUser="dmUser"
+          @messagesLoaded="(blockNumber) => messagesEvent('loaded', blockNumber)"
+          @messagesChanged="(blockNumber) => messagesEvent('changed', blockNumber)"
+          :enabledLoading="msgBlockIndex >= (messageBlocks.length - messageBlockLoadCount)"
+        )
 
   div(ref="bottomChatElement")
 
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, watch, ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChat } from '../useChat';
 import { useUserStore, useUsersStore } from '../../../stores';
-import { useAsyncLoop } from '../../../utils/delay';
+import { useMessageFeeder } from '../useMessageFeeder';
 import MessageBlock from './MessageBlock.vue';
 
 const chatService = useChat();
 const userStore = useUserStore();
 const usersStore = useUsersStore();
+const feeder = useMessageFeeder();
 const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
-const { getChatRoomMessageBlocks, getChatRoomMessagesFromBlock, refreshUserChatRoom } = chatService.chatRoomStore;
 const {
-  getDmParticipantId, messages, messageBlocks, bottomChatElement, scrollTo, fetchMessageBlocks,
+  getDmParticipantId, messages, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
   breakpoint, screenWidth, desktopMode, drawerWidth
 } = chatService;
-
 
 const loading = ref(false);
 
@@ -134,52 +140,25 @@ const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(
 const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
 
 onMounted(async () => {
+  loading.value = true;
   await userStore.ensurePrivateKey();
+  loading.value = false;
 });
 
-useAsyncLoop(async isFirstExecution => {
-  if (isFirstExecution) {
-    loading.value = true;
-  }
-
-  try {
-    await fetchMessageBlocks();
-  } catch {}
-
-  if (isFirstExecution) {
-    loading.value = false;
-  }
-
-}, 1000, true);
-
-const messagesEvent = async (type: 'loaded' | 'changed') => {
-  if (type === 'loaded') {
+const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) => {
+  if (type === 'loaded' && blockNumber === messageBlocks.value.slice(-1)[0]?.blockNumber) {
+    console.log('messagesEvent scroll to bottom') ;
     scrollTo('bottom');
   }
 };
 
-// const groupByTimestamp = (messages: any[], minutes: number) => {
-//   if (messages.length === 0) return [];
-
-//   const limiteMs = minutes * 60 * 1000;
-//   const groups: { timestamp: number; sender: string, messages: any[] }[] = [];
-
-//   let currentGroup = { timestamp: messages[0].timestamp, sender: messages[0].sender, messages: [ messages[0] ] };
-
-//   for (let i = 1; i < messages.length; i++) {
-//     const diff = messages[i].createdAt - currentGroup.timestamp;
-
-//     if (diff <= limiteMs && messages[i].sender === currentGroup.sender) {
-//       currentGroup.messages.push(messages[i]);
-//     } else {
-//       groups.push(currentGroup);
-//       currentGroup = { timestamp: messages[i].createdAt, sender: messages[i].sender, messages: [ messages[i] ] };
-//     }
-//   }
-
-//   return groups;
-// };
+watch(() => feeder.latestMessageBlocks.value[activeChatRoom.value?.id!], async () => {
+  await fetchMessageBlocks();
+}, { immediate: true });
 
 </script>
 <style lang="scss" scoped>
+.block-separator {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba($ocean, 0.06) 40%, rgba($ocean, 0.06) 60%,  rgba(0, 0, 0, 0) 100%);
+}
 </style>

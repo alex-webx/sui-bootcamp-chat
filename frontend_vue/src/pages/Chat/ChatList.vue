@@ -34,7 +34,7 @@ q-list.text-dark
       template(v-else-if="chatRoomsCount === 1") Você participa de 1 sala
       template(v-else) Voce participa de {{ chatRoomsCount}} salas
       q-space
-      q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="fetchAllUserChatRoom()")
+      q-btn.q-ml-sm(icon="mdi-sync" flat dense size="sm" @click="refreshChatList()")
         q-tooltip Recarregar lista de salas
 
     q-item(
@@ -61,21 +61,20 @@ const usersStore = useUsersStore();
 const chatService = useChat();
 const chatRoomStore = chatService.chatRoomStore;
 
-const { selectChatRoom, fetchLastMessageFromJoinedRooms } = chatService;
+const { selectChatRoom } = chatService;
 const { fetchAllUserChatRoom } = chatRoomStore;
 const { chatRooms, activeChatRoomId } = storeToRefs(chatRoomStore);
 const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
+const { fetchCurrentUserProfile } = userStore;
 
 const chatRoomsCount = computed(() => Object.keys(chatRooms.value).length);
 
 const loading = ref(false);
 
-useAsyncLoop(async (isFirstExecution) => {
-  if (isFirstExecution) { loading.value = true; }
-  await fetchLastMessageFromJoinedRooms();
-  loading.value = false;
-}, 15000, true);
+const refreshChatList = async () => {
+  await fetchAllUserChatRoom();
+}
 
 </script>
 <style lang="scss" scoped>

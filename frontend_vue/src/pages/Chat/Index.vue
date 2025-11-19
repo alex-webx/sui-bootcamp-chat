@@ -9,6 +9,9 @@
   q-layout.WAL__layout.shadow-3(
     view="lHh LpR lFr" container
   )
+
+    //----- HEADER -----------------------------------------------------------------------------------------------------------------
+
     q-header(elevated dark)
       q-toolbar.bg-deep-sea.text-white
         q-btn.q-mr-sm(
@@ -35,6 +38,10 @@
                 | {{ activeChatRoom.name || users[dmParticipantId]?.username }}
 
         q-space
+
+
+
+    //----- LEFT DRAWER -----------------------------------------------------------------------------------------------------------------
 
     q-drawer.bg-grey-2(
       v-model="leftDrawerOpen"
@@ -94,6 +101,9 @@
           q-tab-panel.q-pa-none(name="users")
             UsersList
 
+
+    //----- RIGHT DRAWER -----------------------------------------------------------------------------------------------------------------
+
     q-drawer.bg-grey-3.text-dark(
       v-if="activeChatRoom"
       :modelValue="activeChatRoom && rightDrawerOpen"
@@ -140,18 +150,17 @@
                 q-chip(size="sm" color="grey-3") Administrador
 
 
+    //----- CONTENT -----------------------------------------------------------------------------------------------------------------
+
     q-page-container(
       style="display: flex; flex-direction: column; min-height: calc(100vh - 40px)"
       :key="activeChatRoom?.id || 0"
     )
       template(v-if="activeChatRoom")
 
-        ChatRoom(v-if="activeChatRoom.roomType === 1")
-          template(#empty)
-            q-card.rounded-borders
-              .flex.flex-center.column.q-ma-lg
-                q-icon(name="mdi-chat-sleep-outline" size="100px" color="medium-sea")
-                q-card-section Nenhum mensagem no grupo
+        div(v-if="activeChatRoom.roomType === 1")
+          h1 TODO
+
 
         DmChatRoom(
           v-if="activeChatRoom.roomType === 2"
@@ -167,27 +176,32 @@
         )
           img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
 
+
+    //----- FOOTER -----------------------------------------------------------------------------------------------------------------
+
     template(v-if="activeChatRoom")
       transition(
         appear
         enter-active-class="animated fadeInUp slower"
         leave-active-class="animated fadeOut slower"
       )
-        q-footer.bg-transparent
+        q-footer(:class="newMessage.id ? 'footer-edit-mode' : 'bg-deep-sea'")
           q-form(@submit="sendMessage()" ref="form")
 
-            .row.justify-center.full-width.new-media(
-              v-if="newMessage.mediaUrl?.length"
-              style="margin-top: auto;"
-            )
-              .column.flex.justify-center.bg-deep-sea.text-white.q-pa-md.q-pt-none.rounded-top(style="max-width: 30%")
-                .flex.justify-end
-                  q-btn.q-mb-sm(icon="close" flat round @click="removeGif()")
-                div
-                  video.fit(autoplay loop muted playisline style="max-height: 50vh")
-                    source(:src="newMessage.mediaUrl[0]")
+            q-toolbar.text-white.row(v-if="newMessage.id")
+              .full-width.q-pl-sm.text-body1 Editar mensagem
+              q-btn(icon="close" flat dense @click="clearNewMessage()")
 
-            q-toolbar.bg-deep-sea.text-white.row.q-py-xs
+            q-toolbar.justify-center.text-white.q-pt-md(v-if="newMessage.mediaUrl?.length")
+              .text-white(style="max-width: 30%")
+                .flex.row
+                  .col
+                    video.fit(autoplay loop muted playisline style="max-height: 50vh")
+                      source(:src="newMessage.mediaUrl[0]")
+                  .col-auto
+                    q-btn(icon="close" flat dense round @click="removeGif()")
+
+            q-toolbar.text-white.row.q-py-xs
               q-btn(icon="mdi-file-gif-box" flat round :disabled="sendingBusy")
                 q-menu(ref="tenorMenu")
                   q-card.bg-white(style="width: 300px; max-height: 400px")
@@ -210,9 +224,13 @@
                 leave-active-class="animated fadeOut"
               )
                 q-btn(
-                  round flat icon="send" type="submit"
+                  flat type="submit"
                   :disabled="!newMessage.content.length && newMessage.mediaUrl.length === 0"
                   :loading="sendingBusy"
+                  :round="!newMessage.id" :rounded="!!newMessage.id"
+                  :label="newMessage.id ? 'Editar' : undefined"
+                  :icon-right="newMessage.id ? 'send' : undefined"
+                  :icon="newMessage.id ? undefined : 'send'"
                 )
 
 </template>
@@ -225,12 +243,13 @@ import formatters from '../../utils/formatters';
 import { useWalletStore, useUsersStore, useUserStore } from '../../stores';
 import { useProfile } from './useProfile';
 import { useChat } from './useChat';
+import { useMessageFeeder } from './useMessageFeeder';
 import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
-import ChatRoom from './ChatRoom.vue';
 import DmChatRoom from './DmChatRoom/DmChatRoom.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import EditProfileDialog from './EditProfileDialog.vue';
+import { onBeforeUnmount } from 'vue';
 
 const $q = useQuasar();
 
@@ -239,11 +258,16 @@ const userStore = useUserStore();
 const usersStore = useUsersStore();
 
 const chatService = useChat();
+const feeder = useMessageFeeder();
+
+feeder.start();
+
+const { latestMessages } = feeder;
 
 const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
 const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId } = chatService;
-const { newMessage } = chatService;
+const { newMessage, clearNewMessage } = chatService;
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
 
@@ -281,6 +305,10 @@ onMounted(async () => {
     $q.loading.hide();
   }
 });
+
+onBeforeUnmount(() => {
+  feeder.stop();
+})
 
 </script>
 
@@ -331,22 +359,14 @@ onMounted(async () => {
   box-shadow: 0px 0px 1px rgba(0,0,0,0.2);
 }
 
-.new-media {
-  > div { z-index: 1; }
-  &::before {
-    content: ' ';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    backdrop-filter: blur(12px);
-    margin-top: -100%;
-  }
-}
-
 $chat-message-border-radius: 12px;
 :deep(.q-message) {
+  .q-message-text {
+    padding-bottom: 2px;
+  }
+  .q-message-stamp {
+    font-size: 12px;
+  }
   .q-message-text--received {
     border-radius: $chat-message-border-radius $chat-message-border-radius $chat-message-border-radius 0 !important;
     max-width: 600px;
@@ -355,5 +375,10 @@ $chat-message-border-radius: 12px;
     border-radius: $chat-message-border-radius $chat-message-border-radius 0 $chat-message-border-radius !important;
     max-width: 600px;
   }
+}
+
+.footer-edit-mode {
+  box-shadow: 0px 0px 10px 10px $ocean;
+  background: $light-ocean;
 }
 </style>

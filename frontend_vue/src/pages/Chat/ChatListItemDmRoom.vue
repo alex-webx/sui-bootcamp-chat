@@ -49,6 +49,7 @@ import { DirectMessageService } from 'src/utils/encrypt';
 import { useUsersStore } from '../../stores';
 import { storeToRefs } from 'pinia';
 import { formatDate, formatTime } from '../../utils/formatters';
+import { useMessageFeeder } from './useMessageFeeder';
 
 const props = defineProps({
   userAddress: {
@@ -67,14 +68,15 @@ const props = defineProps({
 
 const { users } = storeToRefs(useUsersStore());
 const { userStore } = useProfile();
-const { getDmParticipantId, getLastMessage, latestMessages } = useChat();
+const { getDmParticipantId } = useChat();
+const { latestMessages  } = useMessageFeeder();
 const contactedParticipantId = computed(() => getDmParticipantId(props.room));
 const contactedUser = computed(() => props.users[contactedParticipantId.value!]);
 
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(props.room.id) >= 0);
 const contactedUserJoined = computed(() => (contactedUser.value?.roomsJoined || []).indexOf(props.room.id) >= 0);
 const isToday = (timestamp: number) => moment(Number(timestamp)).isSame(moment(), 'date');
-const dmService = new DirectMessageService(userStore.profile?.keyPrivDecoded!, contactedUser.value?.keyPub!);
+const dmService = computed(() => new DirectMessageService(userStore.profile?.keyPrivDecoded!, contactedUser.value?.keyPub!));
 const lastMessage = ref<Message>();
 
 watch(() => latestMessages.value[props.room.id], async (message) => {
@@ -82,7 +84,7 @@ watch(() => latestMessages.value[props.room.id], async (message) => {
     if (!message.deletedAt) {
       try {
         const jsonMessage = JSON.parse(message?.content!) as string[];
-        message!.content = await dmService.decryptMessage({ iv: jsonMessage[0]!, ciphertext: jsonMessage[1]! });
+        message!.content = await dmService.value.decryptMessage({ iv: jsonMessage[0]!, ciphertext: jsonMessage[1]! });
       } catch { }
     }
   }

@@ -2,26 +2,27 @@
 q-chat-message(
   :sent="false"
   bg-color="white" text-color="dark"
+  :class="{ 'is-first': isFirst, 'is-last': isLast }"
 )
 
-  template(#name)
+  template(#name v-if="isFirst")
     span.text-weight-bold.text-medium-sea
       | {{ dmUser.username }}
 
   template(#avatar)
     q-avatar.q-mr-sm
-      q-img(:src="dmUser.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
+      q-img(v-if="isLast" :src="dmUser.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
 
   template(#stamp)
-    .flex.items-center.text-caption
-      q-icon.q-mr-xs(name="mdi-lock")
+   .flex.items-center
+      q-icon(name="mdi-lock")
         q-tooltip Mensagem criptografada E2EE utilizando uma chave AES derivada de ECDH das duas partes
-      span.text-italic
-        | {{ fromNow(message.createdAt) }}
+      span
+        q-badge(color="white" text-color="dark") {{ fromNow(message.createdAt) }}
       q-space
-      q-btn.q-ml-md(icon="mdi-pound" dense size="xs" flat @click="exploreTxs([message])")
+      q-badge(v-if="message.editedAt" label="editada" dense flat no-caps color="white" text-color="dark")
+      q-btn(icon="mdi-pound" dense size="xs" flat @click="exploreTxs([message])")
         q-tooltip Verificar transação no Suiscan
-
 
   template(v-if="message.deletedAt")
     .text-italic.text-caption.q-py-sm.q-px-md.rounded-borders.deleted-message
@@ -45,12 +46,8 @@ q-chat-message(
 import { ref, onMounted, computed, toRefs, onBeforeUnmount, type PropType, watch } from 'vue';
 import _ from 'lodash';
 import { Dialog, openURL, Screen } from 'quasar';
-import { storeToRefs } from 'pinia';
-import { useChatRoomStore, useUserStore, useUsersStore } from '../../../stores';
-import { useChat } from '../useChat';
-import { useAsyncLoop } from '../../../utils/delay';
 import { shortenAddress } from '../../../utils/formatters';
-import { type MessageBlock, type Message, type UserProfile, chatRoomModule } from '../../../move';
+import { type Message, type UserProfile, getNetwork } from '../../../move';
 import moment from 'moment';
 
 const props = defineProps({
@@ -65,10 +62,16 @@ const props = defineProps({
   dmUser: {
     type: Object as PropType<UserProfile>,
     required: true
+  },
+  isFirst: {
+    type: Boolean
+  },
+  isLast: {
+    type: Boolean
   }
 });
 
-const { message, user, dmUser } = toRefs(props);
+const { message, user, dmUser, isFirst, isLast } = toRefs(props);
 
 const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
 
@@ -98,7 +101,7 @@ const exploreTxs = async (messages: Message[]) => {
   }
 
   if (txId) {
-    openURL(`https://suiscan.xyz/devnet/object/${txId}/fields`);
+    openURL(`https://suiscan.xyz/${getNetwork()}/object/${txId}/fields`);
   }
 };
 
@@ -106,5 +109,15 @@ const exploreTxs = async (messages: Message[]) => {
 <style lang="scss" scoped>
 .deleted-message {
   background: rgba(0,0,0, 0.05);
+}
+
+:deep(.q-message-text:last-child:before) {
+  border: none;
+}
+
+.is-last :deep(.q-message-text--received:last-child:before) {
+  border-right: 0 solid transparent;
+  border-left: 8px solid transparent;
+  border-bottom: 8px solid currentColor;
 }
 </style>
