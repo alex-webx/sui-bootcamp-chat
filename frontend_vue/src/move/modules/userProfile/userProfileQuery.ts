@@ -1,6 +1,5 @@
 import { SuiObjectResponse } from '@mysten/sui/client';
-import { client } from '../../useClient';
-import { config, getFullTable, getMultiObjects } from '../../useUtils';
+import { client, config, getFullTable, getMultiObjects } from '../../useClient';
 import type * as Models from '../..';
 
 export const getUserProfileRegistry = async (): Promise<Models.UserProfileRegistry | undefined> => {

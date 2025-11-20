@@ -1,9 +1,7 @@
 import { SuiObjectResponse } from '@mysten/sui/client';
-import { client } from '../../useClient';
+import { client, config, getFullTable, getMultiObjects } from '../../useClient';
 import type * as Models from '../..';
 import _ from 'lodash';
-
-import { config, getFullTable, getMultiObjects } from '../../useUtils';
 
 export const getChatRoomRegistry = async () => {
   const response = await client.getObject({ id: config('ChatRoomRegistryId')!, options: { showContent: true }});
