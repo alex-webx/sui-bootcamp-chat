@@ -11,7 +11,7 @@ q-chat-message(
 
   template(#avatar)
     q-avatar.q-ml-sm
-      q-img(v-if="isLast" :src="user.avatarUrl || './logo_sui_chat_bordered.png'" :ratio="1" fit="cover")
+      q-img(v-if="isLast" :src="user.avatarUrl || './logo.png'" :ratio="1" fit="cover")
 
   template(#stamp)
     .flex.items-center

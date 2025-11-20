@@ -23,7 +23,7 @@ q-layout.bg-sea(view="lHh Lpr fff")
           q-form(@submit="submit()" ref="myForm")
             .colum.q-gutter-y-md
               .flex.flex-center.items-center
-                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                q-img(src="/logo.png" width="78px")
                 .text-h3.text-ocean.q-ml-sm SuiChat
 
               .col.text-center

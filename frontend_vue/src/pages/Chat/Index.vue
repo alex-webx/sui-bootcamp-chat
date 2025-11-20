@@ -62,6 +62,13 @@
 
         q-space
 
+        q-chip.text-caption.text-weight-bold(
+          color="white" icon="img:sui-logo-pack/symbol-sea/Sui_Symbol_Sea.svg"
+          :clickable="getNetwork() === 'devnet'" @click="getSuiFaucet()"
+        )
+          | {{  suiBalanceFormatted }}
+          q-tooltip(v-if="getNetwork() === 'devnet'") Faucet
+
         q-btn(round flat icon="more_vert")
           q-menu(auto-close :offset="[110, 8]")
             q-list(style="min-width: 150px")
@@ -174,7 +181,7 @@
           enter-active-class="animated jello slower"
           leave-active-class="animated fadeOut"
         )
-          img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 0.2")
+          img(src="/logo.png" style="width: 200px; opacity: 0.2")
 
 
     //----- FOOTER -----------------------------------------------------------------------------------------------------------------
@@ -236,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { Dialog, Notify, Screen, useQuasar } from 'quasar';
+import { Dialog, Notify, Screen, useQuasar, openURL } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import formatters from '../../utils/formatters';
@@ -244,6 +251,7 @@ import { useWalletStore, useUsersStore, useUserStore } from '../../stores';
 import { useProfile } from './useProfile';
 import { useChat } from './useChat';
 import { useMessageFeeder } from './useMessageFeeder';
+import { getFaucet, getNetwork } from '../../move';
 import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
 import DmChatRoom from './DmChatRoom/DmChatRoom.vue';
@@ -275,11 +283,11 @@ const style = computed(() => ({ height: $q.screen.height + 'px' }));
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
 const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
 
-const shortAddress = computed(() => walletStore.shortAddress);
-const profile = computed(() => userStore.profile);
-const tab = ref<'mensagens' | 'users'>('mensagens');
+const { shortAddress } = storeToRefs(walletStore);
+const { profile, suiBalanceFormatted } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
 const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
+const tab = ref<'mensagens' | 'users'>('mensagens');
 
 const sendingBusy = ref(false);
 const sendMessage = async () => {
@@ -289,7 +297,19 @@ const sendMessage = async () => {
   } finally {
     sendingBusy.value = false;
   }
+};
+
+const getSuiFaucet = async () => {
+  if (profile.value) {
+    try {
+      await getFaucet(profile.value?.owner);
+      await userStore.fetchCurrentUserProfile();
+    } catch {
+      openURL(`https://faucet.sui.io/?network=${getNetwork()}`);
+    }
+  }
 }
+
 
 onMounted(async () => {
 

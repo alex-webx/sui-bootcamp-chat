@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { UserProfile, userProfileModule } from '../move';
+import { UserProfile, userProfileModule, getSuiBalance } from '../move';
 import { useWalletStore } from './';
 import { UserProfileGenerator, UserProfileService } from '../utils/encrypt';
+import { formatCoinBalance } from '../utils/formatters';
 
 export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
 
   const profile = ref<UserProfile>();
+  const suiBalance = ref<BigInt>();
 
   const fetchCurrentUserProfile = async () => {
     if (!walletStore.address) {
@@ -26,6 +28,8 @@ export const useUserStore = defineStore('userStore', () => {
     if (walletStore.address === profile.value?.owner && preservedKeyPriv) {
       profile.value!.keyPrivDecoded = preservedKeyPriv;
     }
+
+    await getUserSuiBalance();
 
     return profile.value;
   };
@@ -94,8 +98,14 @@ export const useUserStore = defineStore('userStore', () => {
     return false;
   };
 
+  const getUserSuiBalance = async () => {
+    suiBalance.value = await getSuiBalance(profile.value?.owner!);
+  };
+
   return {
     profile,
+    suiBalance,
+    suiBalanceFormatted: computed(() => formatCoinBalance(suiBalance.value!, 9, 2)),
 
     fetchCurrentUserProfile,
     ensurePrivateKey,
@@ -105,6 +115,7 @@ export const useUserStore = defineStore('userStore', () => {
 
     resetState: async () => {
       profile.value = undefined;
+      suiBalance.value = undefined;
     }
   };
 });

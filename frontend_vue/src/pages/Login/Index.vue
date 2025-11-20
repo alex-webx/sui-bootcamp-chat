@@ -23,7 +23,7 @@ q-layout.bg-sea
           q-card-section
             .rows.flex-center.q-gutter-y-lg
               .flex.flex-center.items-center
-                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                q-img(src="/logo.png" width="78px")
                 .text-h3.text-ocean.q-ml-sm SuiChat
 
               .text-center

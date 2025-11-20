@@ -1,4 +1,5 @@
 import moment from 'moment';
+import Decimal from 'decimal.js';
 
 export const shortenAddress = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
 
@@ -28,12 +29,32 @@ export const randomColor = (address: string) => {
   return color;
 };
 
+export const formatCoinBalance = (
+  balanceInMist: BigInt,
+  coinDecimals: number = 9,
+  displayDecimals?: number // Parâmetro para a precisão solicitada
+): string => {
+  const balanceDecimal = new Decimal(balanceInMist.toString());
+  const factor = new Decimal(10).pow(coinDecimals);
+  const result = balanceDecimal.div(factor);
+
+  if (displayDecimals !== undefined) {
+    // Retorna o número com o número fixo de casas decimais, arredondando conforme necessário.
+    return result.toFixed(displayDecimals);
+  }
+
+  // Caso contrário, retorna o valor completo, removendo zeros à direita automaticamente.
+  return result.toString();
+};
+
 export default {
   shortenAddress,
 
   formatDate,
   formatTime,
   formatFullDate,
+
+  formatCoinBalance,
 
   randomColor
 };

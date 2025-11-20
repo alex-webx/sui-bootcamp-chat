@@ -37,7 +37,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide")
                 )
                   template(#after v-if="newChatRoom.imageUrl")
                     q-avatar(size="54px")
-                      q-img(:src="newChatRoom.imageUrl" :ratio="1" error-src="/logo_sui_chat_bordered.png" fit="cover")
+                      q-img(:src="newChatRoom.imageUrl" :ratio="1" error-src="/logo.png" fit="cover")
 
         q-step(
           :name="2" caption="2" title="2"
@@ -135,7 +135,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide")
                 .column.items-center
                   div
                     q-avatar(size="80px")
-                      q-img(:src="newChatRoom.imageUrl" :ratio="1" error-src="/logo_sui_chat_bordered.png" fit="cover")
+                      q-img(:src="newChatRoom.imageUrl" :ratio="1" error-src="/logo.png" fit="cover")
 
                   .text-subtitle1.text-weight-bold {{ newChatRoom.name }}
 

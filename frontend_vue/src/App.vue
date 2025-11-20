@@ -15,13 +15,7 @@ router-view( v-slot="{ Component }")
 
 <script setup lang="ts">
 import { inject, onMounted } from 'vue';
-import * as encrypt2 from './utils/encrypt';
-import { useRoute } from 'vue-router';
 
-const route = useRoute();
-
-onMounted(async () => {
-})
 </script>
 <style lang="scss">
 /* Define a duração e a função de temporização da transição para a propriedade filter */

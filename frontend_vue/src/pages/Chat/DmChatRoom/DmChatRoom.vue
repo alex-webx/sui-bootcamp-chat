@@ -9,7 +9,7 @@
     leave-active-class="animated tada slower"
   )
     .flex.flex-center.column
-      img(src="/logo_sui_chat_bordered.png" style="width: 200px; opacity: 1;")
+      img(src="/logo.png" style="width: 200px; opacity: 1;")
 
 template(v-else)
 
