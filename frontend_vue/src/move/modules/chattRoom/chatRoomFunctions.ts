@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import { Transaction, Inputs } from '@mysten/sui/transactions';
-import { useConfig } from '../../configs';
-import { parsers } from './useClient';
-import type * as Models from '.';
+import { useConfig } from '../../../../configs';
+import { parsers } from '../../useClient';
+import type * as Models from '../..';
 import { EPermission } from './chatRoomModels';
 
 const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);

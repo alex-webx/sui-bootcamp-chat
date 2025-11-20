@@ -1,7 +1,7 @@
 import { SuiObjectResponse } from '@mysten/sui/client';
-import { client } from './useClient';
-import { config, getFullTable, getMultiObjects } from './useUtils';
-import type * as Models from '.';
+import { client } from '../../useClient';
+import { config, getFullTable, getMultiObjects } from '../../useUtils';
+import type * as Models from '../..';
 
 export const getUserProfileRegistry = async (): Promise<Models.UserProfileRegistry | undefined> => {
   const userProfileRegistry = await client.getObject({ id: config('UserProfileRegistryId')!, options: { showContent: true }});

@@ -1,7 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { useConfig } from '../../configs';
-import { client, parsers } from './useClient';
-import type * as Models from '.';
+import { useConfig } from '../../../../configs';
+import { client, parsers } from '../../useClient';
+import type * as Models from '../..';
 
 const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
 
