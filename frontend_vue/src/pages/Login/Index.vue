@@ -19,11 +19,11 @@ q-layout.bg-sea
         DeployLabel
 
       .flex.flex-center.column
-        q-card.flex.flex-center.text-ocean.shadow-20.card-box
+        q-card.flex.flex-center.text-ocean.shadow-20.card-box.dialog-top-bordered
           q-card-section
             .rows.flex-center.q-gutter-y-lg
               .flex.flex-center.items-center
-                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                q-img(src="/logo.png" width="78px")
                 .text-h3.text-ocean.q-ml-sm SuiChat
 
               .text-center
@@ -37,11 +37,7 @@ q-layout.bg-sea
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRouter  } from 'vue-router';
-import ConnectButton from '../../components/ConnectButton.vue';
-import WavesBackground from '../../components/WavesBackground.vue';
 import { Dialog, Screen } from 'quasar';
-import SettingsMenu from '../../components/SettingsMenu.vue';
-import DeployLabel from '../../components/DeployLabel.vue';
 
 const router = useRouter();
 const screenHeight = computed(() => Screen.height);
@@ -53,7 +49,6 @@ const screenHeight = computed(() => Screen.height);
   border-radius: 16px;
   min-width: 260px;
   max-width: 80vw;
-  border-top: 8px solid $medium-sea;
   padding: 16px;
 }
 </style>

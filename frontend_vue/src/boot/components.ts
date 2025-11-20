@@ -1,12 +1,15 @@
 import { defineBoot } from '#q-app/wrappers';
 
-import '@anilkumarthakur/vue3-json-viewer/styles.css';
-import { JsonViewer } from '@anilkumarthakur/vue3-json-viewer';
-
-import EmojiPicker from 'vue3-emoji-picker';
-import 'vue3-emoji-picker/css';
+import WavesBackground from '../components/WavesBackground.vue';
+import SettingsMenu from '../components/SettingsMenu.vue';
+import DeployLabel from '../components/DeployLabel.vue';
+import TenorComponent from '../components/TenorComponent.vue';
+import ConnectButton from '../components/ConnectButton.vue';
 
 export default defineBoot(async ({ app, router, urlPath, store, redirect }) => {
-  app.component('JsonViewer', JsonViewer);
-  app.component('EmojiPicker', EmojiPicker);
+  app.component('ConnectButton', ConnectButton);
+  app.component('WavesBackground', WavesBackground);
+  app.component('SettingsMenu', SettingsMenu);
+  app.component('DeployLabel', DeployLabel);
+  app.component('TenorComponent', TenorComponent);
 });

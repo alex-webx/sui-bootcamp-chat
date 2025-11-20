@@ -56,14 +56,14 @@
 
 <script setup lang="ts" inherit-attrs="true">
 import { ref, computed, onMounted } from 'vue';
-import { useWalletStore, storedSuiState } from '../stores/walletStore';
-import { useUserStore } from '../stores/userStore';
+import { useWalletStore, useUserStore, useAppStore, storedSuiState } from '../stores';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { Dialog, Notify } from 'quasar';
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
+const appStore = useAppStore();
 const router = useRouter();
 const modal = ref(false);
 
@@ -79,6 +79,8 @@ const showModal = async () => {
 
 const selectWallet = async (walletName: string) => {
   let dialog: ReturnType<typeof Dialog.create> | null = null;
+  let timer: any;
+
   try {
     modal.value = false;
     abortController = new AbortController();
@@ -87,7 +89,8 @@ const selectWallet = async (walletName: string) => {
       title: 'Aprove a conexão em sua carteira. Aguardando...',
       message: `A solicitação será automaticamente abortada em (${timeoutLimitSeconds}s)`,
       cancel: {
-        label: 'Cancelar conexão'
+        label: 'Cancelar conexão',
+        disabled: true
       },
       ok: false,
       persistent: true,
@@ -97,18 +100,19 @@ const selectWallet = async (walletName: string) => {
 
     let countdown  = timeoutLimitSeconds;
 
-    const timer = setInterval(() => {
+    timer = setInterval(() => {
       countdown--
 
       if (countdown > 0) {
         dialog?.update({
-          message: `A solicitação será cancelada em (${countdown}s)`
+          message: `A solicitação será cancelada em (${countdown}s)`,
+          cancel: {
+            label: `Cancelar conexão`,
+            disabled: countdown > (timeoutLimitSeconds - 3)
+          }
         })
       } else {
-        clearInterval(timer);
-        if (dialog) {
-          dialog.hide();
-        }
+        dialog?.hide();
       }
     }, 1000);
 
@@ -119,15 +123,16 @@ const selectWallet = async (walletName: string) => {
   } catch {
     Notify.create({
       color: 'negative',
-      message: 'Conexão rejeitada!'
+      message: 'Conexão rejeitada pelo usuário!'
     });
   } finally {
+    clearInterval(timer);
     dialog?.hide();
   }
 };
 
 const handleDisconnect = async () => {
-  await walletStore.disconnect();
+  await appStore.resetState();
   router.push({ name: 'login' });
 };
 

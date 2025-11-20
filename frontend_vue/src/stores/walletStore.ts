@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import { getWallets, StandardEvents, StandardConnect, StandardFeatures, StandardConnectFeature } from '@mysten/wallet-standard';
-import type { WalletAccount, Wallet, StandardEventsFeature, Wallets } from '@mysten/wallet-standard';
+import { ref, computed, inject } from 'vue';
+import { getWallets, StandardConnect, StandardConnectFeature } from '@mysten/wallet-standard';
+import type { WalletAccount, Wallet, Wallets } from '@mysten/wallet-standard';
+import { Transaction } from '@mysten/sui/transactions';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import formatters from '../utils/formatters';
+import { client, getNetwork } from '../move';
 
 const getSuiWallets = (walletsApi: Wallets) => {
   return walletsApi.get().filter(wallet => !!wallet.chains.find(chain => chain.startsWith('sui:')));
@@ -17,6 +21,7 @@ export const storedSuiState = {
 export const useWalletStore = defineStore('wallet', () => {
 
   const wallets = ref<Wallet[]>([]);
+  const TestWallets = inject('TestWallets') as Record<string, Ed25519Keypair>;
 
   const account = ref<WalletAccount | null>(null);
   const isConnecting = ref(false);
@@ -28,7 +33,7 @@ export const useWalletStore = defineStore('wallet', () => {
     wallets.value = getSuiWallets(walletsApi);
 
     walletsApi.on('register', () => {
-      console.log('wallet registed')
+      console.log('wallet registered')
       wallets.value = getSuiWallets(walletsApi);
     });
   };
@@ -87,7 +92,6 @@ export const useWalletStore = defineStore('wallet', () => {
 
     const walletName = storedSuiState.wallet;
 
-    // storedSuiWallet.value = '';
     storedSuiState.account = '';
 
     const walletsApi = getWallets();
@@ -103,7 +107,7 @@ export const useWalletStore = defineStore('wallet', () => {
   const autoConnect = async () => {
     await detectWallets();
     const savedWallet = storedSuiState.wallet;
-    if (savedWallet) {
+    if (!!storedSuiState.wallet && !!storedSuiState.account) {
       try {
         await connect(savedWallet);
         return true;
@@ -114,6 +118,82 @@ export const useWalletStore = defineStore('wallet', () => {
     }
   };
 
+  const signAndExecuteTransaction = async (tx: Transaction) => {
+    const wallet = getConnectedWallet()!;
+    let digest = '';
+
+    // bypass test wallets
+    if (TestWallets[account.value?.address!]) {
+      console.log(`Auto-signAndExecuteTransaction with test wallet: address ${account.value?.address}`);
+      tx.setSender(account.value!.address);
+      const res = await TestWallets[account.value?.address!]?.signAndExecuteTransaction({
+        client: client,
+        transaction: tx
+      });
+      digest = res!.digest;
+    } else {
+      const res = await (wallet.features['sui:signAndExecuteTransaction'] as any).signAndExecuteTransaction({
+        account: account.value,
+        chain: `sui:${getNetwork()}`,
+        transaction: tx,
+        // options: {
+        //   showEffects: true,
+        //   showObjectChanges: true
+        // }
+      });
+      digest = res.digest;
+    }
+
+    return client.waitForTransaction({
+      digest,
+      options: {
+        showBalanceChanges: true,
+        showEvents: true,
+        showInput: true,
+        showRawEffects: true,
+        showRawInput: true,
+        showEffects: true,
+        showObjectChanges: true
+      }
+    });
+  };
+
+  const signMessage = async (message: string) => {
+    const wallet = getConnectedWallet()!;
+
+    // bypass test wallets
+    if (TestWallets[account.value?.address!]) {
+      console.log(`Auto-signPersonalMessage with test wallet: address ${account.value?.address}`);
+      return await TestWallets[account.value?.address!]?.signPersonalMessage(new TextEncoder().encode(message));
+    }
+
+    const result = await (wallet.features['sui:signPersonalMessage'] as any).signPersonalMessage({
+      message: new TextEncoder().encode(message),
+      account: account.value
+    });
+
+    return result as { bytes: string, signature: string };
+  };
+
+  const generateMasterSignature = async () => {
+    const owner = address.value;
+
+    try {
+      const res = await signMessage([
+          `SUI CHAT`,
+          ``,
+          `Eu estou assinando esta mensagem para geração de chaves que serão utilizadas para os algoritmos ECDH e E2EE.`,
+          ``,
+          `Carteira:`,
+          `${owner}`,
+        ].join('\n')
+      );
+      return res;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     // State
     account,
@@ -123,7 +203,7 @@ export const useWalletStore = defineStore('wallet', () => {
     // Getters
     isConnected,
     address,
-    shortAddress: computed(() => `${address.value?.slice(0, 6)}...${address.value?.slice(-4)}`),
+    shortAddress: computed(() => formatters.shortenAddress(address.value!)),
 
     // Actions
     connect,
@@ -131,7 +211,12 @@ export const useWalletStore = defineStore('wallet', () => {
     autoConnect,
     getConnectedWallet,
 
+    signAndExecuteTransaction,
+    signMessage,
+    generateMasterSignature,
+
     resetState: async () => {
+      await disconnect();
       account.value = null;
       wallets.value = [];
       isConnecting.value = false;

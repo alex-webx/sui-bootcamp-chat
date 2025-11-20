@@ -1,8 +1,5 @@
 import { defineStore } from 'pinia';
-import { useChatRoomStore } from './chatRoomStore';
-import { useUserStore } from './userStore';
-import { useUsersStore } from './usersStore';
-import { useWalletStore } from './walletStore';
+import { useChatRoomStore, useUserStore, useUsersStore, useWalletStore } from './';
 
 export const useAppStore = defineStore('appStore', () => {
   const chatRoomStore = useChatRoomStore();

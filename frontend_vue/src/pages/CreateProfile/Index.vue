@@ -18,12 +18,12 @@ q-layout.bg-sea(view="lHh Lpr fff")
       .absolute-bottom-right
         DeployLabel
 
-      q-card.text-ocean.shadow-20.card-box
+      q-card.text-ocean.shadow-20.card-box.dialog-top-bordered
         q-card-section
           q-form(@submit="submit()" ref="myForm")
             .colum.q-gutter-y-md
               .flex.flex-center.items-center
-                q-img(src="/logo_sui_chat_bordered.png" width="78px")
+                q-img(src="/logo.png" width="78px")
                 .text-h3.text-ocean.q-ml-sm SuiChat
 
               .col.text-center
@@ -36,12 +36,12 @@ q-layout.bg-sea(view="lHh Lpr fff")
 
               .col.text-center
                 div Você ainda não possui um perfil.
-                div Informe seus dados e confirme a transação.
+                div Informe seus dados, assine a mensagem e aprove a transação.
 
               .col
                 q-input(
                   label="Nome de usuário *" outlined maxlength="50" stack-label
-                  v-model="form.username" :max="50" :maxlength="50"
+                  v-model="form.username" :max="50" :maxlength="50" autofocus
                   :rules=`[
                     val => val.length < 50 || 'Máximo de 50 caracteres',
                     val => val.length || '* Campo obrigatório'
@@ -52,6 +52,12 @@ q-layout.bg-sea(view="lHh Lpr fff")
                   label="Avatar (URL ou data:image)" outlined stack-label
                   v-model="form.avatarUrl"
                 )
+                  template(#after v-if="form.avatarUrl")
+                    q-avatar(size="50px")
+                      q-img(:src="form.avatarUrl" :ratio="1")
+                        template(#error)
+                          q-icon(name="mdi-account" size="50px" color="grey")
+
               .col
                 .row.justify-between
                   .col-xs-12.col-sm.text-center
@@ -74,16 +80,13 @@ q-layout.bg-sea(view="lHh Lpr fff")
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { useUserStore } from '../../stores/userStore';
-import { useWalletStore } from '../../stores/walletStore';
+import { useUserStore, useWalletStore, useAppStore } from '../../stores';
 import { Screen, QForm, Loading, Notify } from 'quasar';
-import WavesBackground from '../../components/WavesBackground.vue';
-import SettingsMenu from '../../components/SettingsMenu.vue';
-import DeployLabel from '../../components/DeployLabel.vue';
 
 const router = useRouter();
 const userStore = useUserStore();
 const walletStore = useWalletStore();
+const appStore = useAppStore();
 
 const { account, address, shortAddress } = storeToRefs(walletStore);
 
@@ -92,7 +95,7 @@ const myForm = ref<InstanceType<typeof QForm>>();
 const screenHeight = computed(() => Screen.height);
 
 const disconnect = async () => {
-  await walletStore.disconnect();
+  await appStore.resetState();
   router.push({ name: 'login' });
 }
 
@@ -126,7 +129,6 @@ const submit = async () => {
   border-radius: 16px;
   min-width: 260px;
   max-width: 80vw;
-  border-top: 8px solid $medium-sea;
   padding: 8px 16px;
 }
 </style>

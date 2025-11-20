@@ -2,11 +2,34 @@
   user-select: none;
 }
 
+html, body {
+  background-color: $ocean;
+}
+
 .rounded {
-  border-radius: 16px !important;
+  border-radius: 16px !important; 
+}
+.rounded-top {
+  border-top-left-radius: 16px !important; 
+  border-top-right-radius: 16px !important; 
 }
 
 .pretty-scrollbars {
   scrollbar-width: thin; /* auto | thin | none */
   scrollbar-color: $medium-sea rgba(255, 255, 255, 0.1); /* cor_do_thumb cor_da_trilha */
+}
+
+.dialog-top-bordered {
+  border-top: 8px solid $medium-sea;
+}
+
+.q-message-text {
+  box-shadow: 0px 0px 5px 0px rgba(0,0,0,0.3);
+}
+
+.q-tooltip {
+  font-size: 16px;
+  background: $deep-sea;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0px 0px 6px 0px rgba(0, 0, 0, 1);
 }

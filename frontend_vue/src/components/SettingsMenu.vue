@@ -20,10 +20,10 @@
 </template>
 
 <script setup lang="ts">
-import { useSuiClientStore } from '../stores/suiClientStore';
+import { client, getNetwork, setNetwork } from '../move';
 import { Dialog } from 'quasar';
 import SettingsMenuDialog from './SettingsMenuDialog.vue';
-import { computed } from 'vue';
+import { computed, watch, toRef } from 'vue';
 import { useAppStore } from '../stores/appStore';
 import { useRouter } from 'vue-router';
 
@@ -33,25 +33,16 @@ const props = defineProps({
   showSettings: { type: Boolean, default: true }
 });
 
-const suiClientStore = useSuiClientStore();
 const appStore = useAppStore();
 const router = useRouter();
 
 const network = computed({
   get() {
-    return suiClientStore.network;
+    return getNetwork();
   },
-  async set(value) {
-    await suiClientStore.setNetwork(value);
-
-    const deployOk = await appStore.checkDeploy();
-    if (!deployOk) {
-      await appStore.resetState();
-      setTimeout(() => { router.push({ name: 'config' }) });
-    } else {
-      await appStore.resetState();
-      reload();
-    }
+  set(network) {
+    setNetwork(network);
+    reload();
   }
 });
 

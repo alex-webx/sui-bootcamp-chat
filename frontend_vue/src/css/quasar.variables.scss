@@ -26,6 +26,7 @@ $warning   : #F2C037;
 $sea: #4DA2FF;
 $medium-sea: #3d80c9;
 $deep-sea: #2d5d91;
+$light-ocean: #043a63;
 $ocean: #011829;
 $deep-ocean: #030f1c;
 $aqua: #c0e6ff;
@@ -33,13 +34,14 @@ $cloud: #ffffff;
 
 
 $colors: (
-    sea: #4DA2FF,
-    medium-sea: #3d80c9,
-    deep-sea: #2d5d91,
-    ocean: #011829,
-    deep-ocean: #030f1c,
-    aqua: #c0e6ff,    
-    cloud: #ffffff 
+  sea: $sea,
+  medium-sea: $medium-sea,
+  deep-sea: $deep-sea,
+  light-ocean: $light-ocean,
+  ocean: $ocean,
+  deep-ocean: $deep-ocean,
+  aqua: $aqua,
+  cloud: $cloud
 );
 
 @each $name, $color in $colors {  

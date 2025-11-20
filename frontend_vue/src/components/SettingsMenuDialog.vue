@@ -38,16 +38,18 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" full-width)
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Loading, QForm, useDialogPluginComponent } from 'quasar';
-import { getAllNetworkConfigs, resetAllNetworkConfigs, setNetworkConfig } from '../../configs';
+import { useConfig } from '../../configs';
 
 const emits = defineEmits({
   ...useDialogPluginComponent.emitsObject
 });
 const { dialogRef, onDialogHide, onDialogCancel, onDialogOK } = useDialogPluginComponent();
 
+const config = useConfig();
+
 const myForm = ref<InstanceType<typeof QForm>>();
-let original = getAllNetworkConfigs();
-const form = ref<ReturnType<typeof getAllNetworkConfigs>>(getAllNetworkConfigs());
+let original = config.getAllNetworkConfigs();
+const form = ref<ReturnType<typeof config.getAllNetworkConfigs>>(config.getAllNetworkConfigs());
 
 const submit = async () => {
   if (myForm.value?.validate(true)) {
@@ -55,7 +57,7 @@ const submit = async () => {
       const k = key as keyof typeof original;
       const value = form.value[k];
       if (value !== original[k]) {
-        setNetworkConfig(k, value);
+        config.setNetworkConfig(k, value);
       }
     });
     onDialogOK();
@@ -63,7 +65,7 @@ const submit = async () => {
 }
 
 const resetToDefault = () => {
-  resetAllNetworkConfigs();
+  config.resetAllNetworkConfigs();
   onDialogOK();
 };
 
