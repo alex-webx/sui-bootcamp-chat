@@ -131,7 +131,7 @@ const { profile } = storeToRefs(userStore);
 const { activeChatRoom, activeChatRoomId } = storeToRefs(chatService.chatRoomStore);
 const {
   getDmParticipantId, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
-  breakpoint, screenWidth, desktopMode, drawerWidth
+  breakpoint, screenWidth, desktopMode, drawerWidth, canInvite,
 } = chatService;
 
 const loading = ref(false);
@@ -144,26 +144,6 @@ const dmUser = computed(() => {
 });
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
 const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
-
-const canInvite = computed(() => {
-  if (activeChatRoom.value?.permissionInvite! === EPermission.Nobody) {
-    return false;
-  }
-  if ((activeChatRoom.value?.permissionInvite! & EPermission.Anyone) === EPermission.Anyone) {
-    return true;
-  }
-  if ((activeChatRoom.value?.permissionInvite! & EPermission.Admin) === EPermission.Admin && profile.value?.owner === activeChatRoom.value?.owner) {
-    return true;
-  }
-  if ((activeChatRoom.value?.permissionInvite! & EPermission.Moderators) === EPermission.Moderators && !!activeChatRoom.value?.moderators?.[profile.value?.owner!]) {
-    return true;
-  }
-  if ((activeChatRoom.value?.permissionInvite! & EPermission.Participants) === EPermission.Participants && !!activeChatRoom.value?.participants?.[profile.value?.owner!]) {
-    return true;
-  }
-  return false;
-});
-
 
 const invite = async () => {
   const privKey = userStore.profile?.keyPrivDecoded!;

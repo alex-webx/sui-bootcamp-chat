@@ -195,7 +195,11 @@
         enter-active-class="animated fadeInUp slower"
         leave-active-class="animated fadeOut slower"
       )
-        q-footer(:class="newMessage.id ? 'footer-edit-mode' : 'bg-deep-sea'")
+
+        q-footer.bg-transparent(v-if="!canSendMessage")
+          q-toolbar
+
+        q-footer(v-else :class="newMessage.id ? 'footer-edit-mode' : 'bg-deep-sea'")
           q-form(@submit="sendMessage()" ref="form")
 
             q-toolbar.text-white.row(v-if="newMessage.id")
@@ -278,7 +282,7 @@ const { latestMessages } = feeder;
 
 const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
-const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId, clearNewMessage } = chatService;
+const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId, clearNewMessage, canSendMessage } = chatService;
 const { newMessage } = chatService;
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;

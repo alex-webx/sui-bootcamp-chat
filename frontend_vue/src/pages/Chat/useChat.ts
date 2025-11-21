@@ -4,7 +4,7 @@ import { Dialog, Notify, Screen } from 'quasar';
 import { useChatRoomStore, useUsersStore, useUserStore, useWalletStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
-import { type ChatRoom, ERoomType, Message, MessageBlock, chatRoomModule } from '../../move';
+import { type ChatRoom, EPermission, ERoomType, Message, MessageBlock, chatRoomModule } from '../../move';
 import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
 
 const breakpoint = 800;
@@ -257,6 +257,54 @@ export function useChat() {
     });
   };
 
+  const canInvite = computed(() => {
+    const profileOwner = userStore.profile?.owner;
+    const room = chatRoomStore.activeChatRoom;
+    const permissionInvite = room?.permissionInvite;
+    const roomOwner = room?.owner;
+
+    if (permissionInvite! === EPermission.Nobody) {
+      return false;
+    }
+    if ((permissionInvite! & EPermission.Anyone) === EPermission.Anyone) {
+      return true;
+    }
+    if ((permissionInvite! & EPermission.Admin) === EPermission.Admin && profileOwner === room?.owner) {
+      return true;
+    }
+    if ((permissionInvite! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) {
+      return true;
+    }
+    if ((permissionInvite! & EPermission.Participants) === EPermission.Participants && !!room?.participants?.[profileOwner!]) {
+      return true;
+    }
+    return false;
+  });
+
+  const canSendMessage = computed(() => {
+    const profileOwner = userStore.profile?.owner;
+    const room = chatRoomStore.activeChatRoom;
+    const permissionSendMessage = room?.permissionSendMessage;
+    const roomOwner = room?.owner;
+
+    if (permissionSendMessage! === EPermission.Nobody) {
+      return false;
+    }
+    if ((permissionSendMessage! & EPermission.Anyone) === EPermission.Anyone) {
+      return true;
+    }
+    if ((permissionSendMessage! & EPermission.Admin) === EPermission.Admin && profileOwner === room?.owner) {
+      return true;
+    }
+    if ((permissionSendMessage! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) {
+      return true;
+    }
+    if ((permissionSendMessage! & EPermission.Participants) === EPermission.Participants && !!room?.participants?.[profileOwner!]) {
+      return true;
+    }
+    return false;
+  });
+
   return {
     // ui
     breakpoint,
@@ -287,6 +335,9 @@ export function useChat() {
 
     fetchMessageBlocks,
     getDmParticipant,
-    getDmParticipantId
+    getDmParticipantId,
+
+    canInvite,
+    canSendMessage
   };
 };
