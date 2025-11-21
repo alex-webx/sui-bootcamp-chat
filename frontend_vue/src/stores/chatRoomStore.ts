@@ -1,9 +1,9 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import _ from 'lodash';
-import { EPermission, chatRoomModule, ERoomType } from '../move';
-import type { ChatRoom, Message, MessageBlock, UserProfile } from '../move';
-import { DirectMessageService } from '../utils/encrypt';
+import { EPermission, ERoomType, chatRoomModule } from '../move';
+import type { ChatRoom, RoomKey, Message, MessageBlock, UserProfile } from '../move';
+import { PrivateGroupService, PublicChannelService } from '../utils/encrypt';
 import { useUsersStore, useUserStore, useWalletStore } from './';
 
 export const useChatRoomStore = defineStore('chatRoomStore', () => {
@@ -17,65 +17,54 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const createChatRoom = async(roomMetaData: {
     name: string,
     imageUrl: string,
-    isEncrypted: boolean,
     maxParticipants: number,
-    isPublic: boolean,
-    isAnnouncements: boolean
+    isRestricted: boolean,
+    isAnnouncements: boolean,
+    inviteLevel: 'administrator' | 'moderators' | 'all'
   }) => {
     if (!userStore.profile?.id) {
       throw 'no profile';
     }
 
-    if (roomMetaData.isAnnouncements) {
+    const profile = userStore.profile;
 
-      const { tx, parser } = chatRoomModule.txCreateAnnouncementsRoom({
-        userProfile: userStore.profile,
-        room: {
-          name: roomMetaData.name,
-          imageUrl: roomMetaData.imageUrl,
-          maxParticipants: roomMetaData.maxParticipants,
-          permissionInvite: roomMetaData.isPublic ?
-            (EPermission.Admin & EPermission.Moderators & EPermission.Participants & EPermission.Anyone) :
-            (EPermission.Admin & EPermission.Moderators)
-        },
-        userRoomKey: new Uint8Array()// await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
-      });
+    const roomAesKeyMaterial = await PrivateGroupService.generateRoomKeyMaterial();
+    const inviteObj = await PrivateGroupService.generateWrappedKeyForRecipient(
+      roomAesKeyMaterial,
+      profile.keyPrivDecoded!,
+      profile.keyPub,
+      profile.keyPub
+    );
 
-      return parser(await walletStore.signAndExecuteTransaction(tx));
+    const roomKey: RoomKey = {
+      encodedPrivKey: inviteObj.encodedAesKey,
+      iv: inviteObj.iv,
+      pubKey: inviteObj.inviterPublicKey
+    };
 
-    } else if (roomMetaData.isPublic) {
+    const permissionInvite = EPermission.Admin |
+      (roomMetaData.inviteLevel === 'moderators' ? EPermission.Moderators : 0) |
+      (roomMetaData.inviteLevel === 'all' ? (EPermission.Moderators | EPermission.Participants | EPermission.Anyone) : 0);
 
-      const { tx, parser } = chatRoomModule.txCreatePublicRoom({
-        userProfile: userStore.profile,
-        room: {
-          name: roomMetaData.name,
-          imageUrl: roomMetaData.imageUrl,
-          maxParticipants: roomMetaData.maxParticipants,
-          roomKey: new Uint8Array(),// await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
-        }
-      });
+    const permissionSendMessage = EPermission.Admin |
+      (roomMetaData.isAnnouncements ? EPermission.Moderators : (EPermission.Moderators | EPermission.Participants | EPermission.Anyone));
 
-      return parser(await walletStore.signAndExecuteTransaction(tx));
+    const roomType = roomMetaData.isRestricted ? ERoomType.PrivateGroup : ERoomType.PublicGroup;
 
-    } else {
-      //const roomKey = // await encrypt.generateSymmetricKey();
+    const { tx, parser } = chatRoomModule.txCreateRoom({
+      userProfile: profile,
+      room: {
+        name: roomMetaData.name,
+        imageUrl: roomMetaData.imageUrl,
+        maxParticipants: roomMetaData.maxParticipants,
+        roomKey,
+        permissionInvite,
+        permissionSendMessage,
+        roomType
+      }
+    });
 
-      const { tx, parser } = chatRoomModule.txCreatePrivateRoom({
-        userProfile: userStore.profile,
-        room: {
-          name: roomMetaData.name,
-          imageUrl: roomMetaData.imageUrl,
-          maxParticipants: roomMetaData.maxParticipants,
-          permissionInvite: roomMetaData.isPublic ?
-            (EPermission.Admin & EPermission.Moderators & EPermission.Participants & EPermission.Anyone) :
-            (EPermission.Admin & EPermission.Moderators),
-          permissionSendMessage: (EPermission.Admin & EPermission.Moderators & EPermission.Participants)
-        },
-        userRoomKey: new Uint8Array()//await CryptService.encryptMessage(new Uint8Array(roomKey), userStore.profile.keyPub),
-      });
-      debugger;
-      return parser(await walletStore.signAndExecuteTransaction(tx));
-    }
+    return parser(await walletStore.signAndExecuteTransaction(tx));
   };
 
   const createDmRoom = async (
@@ -165,6 +154,14 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     return parser(await walletStore.signAndExecuteTransaction(tx));
   };
 
+  const inviteParticipant = async (args: {
+    room: Pick<ChatRoom, 'id'>,
+    inviteeAddress: string,
+    roomKey: RoomKey
+  }) => {
+    const tx = chatRoomModule.txInviteParticipant(args.room, args.inviteeAddress, args.roomKey);
+    return await walletStore.signAndExecuteTransaction(tx);
+  };
 
   const getChatRoomMessageBlocks = async (chatRoomId: string) => {
     return await chatRoomModule.getChatRoomMessageBlocks(chatRoomId);
@@ -194,6 +191,8 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     sendMessage,
     editMessage,
     deleteMessage,
+    inviteParticipant,
+
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,
     checkChatRoomRegistry,
@@ -209,3 +208,6 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   };
 });
 
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useChatRoomStore, import.meta.hot));
+}

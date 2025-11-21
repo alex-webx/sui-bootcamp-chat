@@ -1,26 +1,46 @@
 <template lang="pug">
 q-item-section(avatar)
   q-avatar(size="48px")
-    q-img(:src="props.room.imageUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
+    q-img(:src="room.imageUrl || '/user-circles-set.png'" :ratio="1" fit="cover")
 
 q-item-section
-  q-item-label(lines="1") {{ props.room.name }}
-  q-item-label(caption)
-    | {{ props.room.roomType }}
-    | style="max-width: 200px"
+  q-item-label(lines="1")
+    .flex.items-center
+      div {{ room.name }}
+
+      div(caption lines="1" v-if="!youJoined")
+        q-icon.q-mb-xs.q-ml-xs(name="mdi-alert-circle" color="sea" size="16px" v-if="!youJoined")
+          q-tooltip Você ainda não entrou na sala
+
+  q-item-label.text-italic(
+    v-if="lastMessage" caption lines="2"
+  )
+    | {{ users[lastMessage.sender]?.username }}:
+    | {{ lastMessage.deletedAt ? 'mensagem removida' : lastMessage.content }}
+    template(v-if="lastMessage.mediaUrl?.length")
+      span.q-mx-xs imagem
+      q-icon( name="mdi-image-outline")
+
 
 q-item-section(side)
-  q-item-label(caption)
-    | [todo: horário]
-  q-badge()
-    | [todo]
+  q-item-label(caption v-if="lastMessage && !isToday(lastMessage.createdAt)")
+    div {{ formatDate(lastMessage.createdAt) }}
+  q-item-label(caption v-if="lastMessage")
+    div {{ formatTime(lastMessage.createdAt) }}
+
 
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, toRefs, type PropType } from 'vue';
+import { watch, onMounted, ref, computed, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
+import moment from 'moment';
+import { type UserProfile, type ChatRoom, type Message, ERoomType } from '../../move';
+import { useProfile } from './useProfile';
+import { PrivateGroupService, PublicChannelService } from 'src/utils/encrypt';
+import { useUsersStore } from '../../stores';
 import { storeToRefs } from 'pinia';
-import { type UserProfile, type ChatRoom } from '../../move';
+import { formatDate, formatTime } from '../../utils/formatters';
+import { useMessageFeeder } from './useMessageFeeder';
 
 const props = defineProps({
   userAddress: {
@@ -37,14 +57,46 @@ const props = defineProps({
   }
 })
 
-const contactedParticipantId = computed(() => {
-  return Object.keys(props.room.participants).find(id => id !== props.userAddress)!;
+const { users } = storeToRefs(useUsersStore());
+const { userStore } = useProfile();
+const { latestMessages  } = useMessageFeeder();
+
+const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(props.room.id) >= 0);
+const isToday = (timestamp: number) => moment(Number(timestamp)).isSame(moment(), 'date');
+const participant = computed(() => props.room.participants[userStore.profile?.owner!]);
+
+const decryptService = computed(() => {
+  if (props.room.roomType === ERoomType.PrivateGroup) {
+    const svc = new PrivateGroupService({
+      encodedAesKey: participant.value?.roomKey?.encodedPrivKey!,
+      iv: participant.value?.roomKey?.iv!,
+      inviterPublicKey: participant.value?.roomKey?.pubKey!
+    }, userStore.profile?.keyPrivDecoded!);
+    return (iv: string, ciphertext: string) => svc.decryptMessage(iv, ciphertext);
+  } else if (props.room.roomType == ERoomType.PublicGroup) {
+    const svc = new PublicChannelService(props.room.owner);
+    return (iv: string, ciphertext: string) => svc.deObfuscateMessage(iv, ciphertext);
+  }
 });
 
-const contactedUser = computed(() => {
-  return props.users[contactedParticipantId.value];
-});
+
+const lastMessage = ref<Message>();
+
+watch(() => latestMessages.value[props.room.id], async (message) => {
+  if (message) {
+    if (!message.deletedAt) {
+      try {
+        const jsonMessage = JSON.parse(message?.content!) as string[];
+        message!.content = await decryptService.value?.(jsonMessage[0]!, jsonMessage[1]!)!;
+      } catch { }
+    }
+  }
+  lastMessage.value = message;
+}, { immediate: true, deep: true });
 
 </script>
 <style lang="scss" scoped>
+.q-item__label {
+  max-width: 200px;
+}
 </style>

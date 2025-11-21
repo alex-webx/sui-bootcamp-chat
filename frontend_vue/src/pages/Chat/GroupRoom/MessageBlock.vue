@@ -14,9 +14,10 @@
     :isFirst="message.sender !== messages[msgIndex - 1]?.sender"
     :isLast="message.sender !== messages[msgIndex + 1]?.sender"
   )
-  MessageDmUser(
+
+  MessageOtherUser(
     v-else
-    :dmUser="props.dmUser"
+    :otherUser="getOtherUser(message.sender)"
     :message="message"
     :isFirst="message.sender !== messages[msgIndex - 1]?.sender"
     :isLast="message.sender !== messages[msgIndex + 1]?.sender"
@@ -32,10 +33,10 @@ import { storeToRefs } from 'pinia';
 import { useChatRoomStore, useUserStore, useUsersStore } from '../../../stores';
 import { useChat } from '../useChat';
 import { useAsyncLoop } from '../../../utils/delay';
-import { type MessageBlock, type Message, type UserProfile, chatRoomModule } from '../../../move';
-import { DirectMessageService } from '../../../utils/encrypt';
+import { type MessageBlock, type Message, type UserProfile, chatRoomModule, type ChatRoom, ERoomType } from '../../../move';
+import { PrivateGroupService, PublicChannelService } from '../../../utils/encrypt';
 import MessageUser from './MessageUser.vue';
-import MessageDmUser from './MessageDmUser.vue';
+import MessageOtherUser from './MessageOtherUser.vue';
 
 const props = defineProps({
   messageBlock: {
@@ -46,8 +47,12 @@ const props = defineProps({
     type: Object as PropType<UserProfile>,
     required: true
   },
-  dmUser: {
-    type: Object as PropType<UserProfile>,
+  users: {
+    type: Object as PropType<Record<string, UserProfile>>,
+    required: true
+  },
+  room: {
+    type: Object as PropType<ChatRoom>,
     required: true
   },
   enabledLoading: {
@@ -65,11 +70,18 @@ const firstExecution = ref(true);
 const loading = ref(false);
 const messages = ref<Message[]>([]);
 const decryptService = computed(() => {
-  const privKey = props.user?.keyPrivDecoded!;
-  const dmUserPubKey =  props.dmUser.keyPub;
-  const dmService = new DirectMessageService(privKey, dmUserPubKey);
-  return dmService;
+  if (props.room.roomType === ERoomType.PrivateGroup) {
+    const privKey = props.user?.keyPrivDecoded!;
+    const roomKey =  props.room.participants[props.user.owner]?.roomKey!;
+    const svc = new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
+    return (iv: string, ciphertext: string) => svc.decryptMessage(iv, ciphertext);
+  } else if (props.room.roomType == ERoomType.PublicGroup) {
+    const svc = new PublicChannelService(props.room.owner);
+    return (iv: string, ciphertext: string) => svc.deObfuscateMessage(iv, ciphertext);
+  }
 });
+
+const getOtherUser = (userId: string) => props.users[userId];
 
 const loadMessages = async() => {
   if (props.enabledLoading) {
@@ -81,14 +93,17 @@ const loadMessages = async() => {
       if (msg.content) {
         try {
           const content = JSON.parse(msg.content) as [string, string];
-          msg.content = await decryptService.value.decryptMessage({ iv: content[0]!, ciphertext: content[1]! });
-        } catch {}
+          msg.content = await decryptService.value!(content[0]!, content[1]!);
+        } catch(err) {
+          console.error('error')
+          console.error(err);
+        }
       }
 
       msg.mediaUrl = await Promise.all((msg.mediaUrl || []).map(async url => {
         try {
           const content = JSON.parse(url) as [string, string];
-          return await decryptService.value.decryptMessage({ iv: content[0]!, ciphertext: content[1]! });
+          return await decryptService.value!(content[0]!, content[1]!);
         } catch {
           return url;
         }

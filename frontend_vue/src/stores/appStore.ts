@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { useChatRoomStore, useUserStore, useUsersStore, useWalletStore } from './';
 
 export const useAppStore = defineStore('appStore', () => {
@@ -23,3 +23,7 @@ export const useAppStore = defineStore('appStore', () => {
     checkDeploy
   };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useAppStore, import.meta.hot));
+}

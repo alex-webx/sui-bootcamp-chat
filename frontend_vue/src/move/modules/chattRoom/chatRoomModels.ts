@@ -1,6 +1,7 @@
 export enum ERoomType {
-  Multi = 1,
-  DirectMessage = 2
+  PrivateGroup = 1,
+  PublicGroup = 2,
+  DirectMessage = 3
 };
 export enum EPermission {
   Nobody = 0,
@@ -15,13 +16,6 @@ export type ChatRoomRegistry= {
   rooms: string[];
 };
 
-export type ParticipantInfo = {
-  addedBy: string;
-  timestamp: number;
-  roomKey: Uint8Array;
-  inviterKeyPub: Uint8Array;
-};
-
 export type ModeratorInfo = {
   addedBy: string;
   timestamp: number;
@@ -32,6 +26,12 @@ export type BanInfo = {
   timestamp: number;
 };
 
+export type RoomKey = {
+  pubKey: Uint8Array,
+  iv: Uint8Array,
+  encodedPrivKey: Uint8Array
+}
+
 export type ChatRoom = {
   id: string;
   name: string;
@@ -40,15 +40,29 @@ export type ChatRoom = {
   messageCount: number;
   currentBlockNumber: number;
   imageUrl: string;
-  bannedUsers: string[];
-  moderators: string[];
+  bannedUsers: Record<string, BanInfo>;
+  moderators: Record<string, ModeratorInfo>;
   participants: Record<string, ParticipantInfo>;
   maxParticipants: number;
-  isEncrypted: boolean;
   roomType: ERoomType;
-  roomKey: Uint8Array;
+  roomKey?: RoomKey,
   permissionInvite: EPermission;
   permissionSendMessage: EPermission;
+};
+
+export type ParticipantInfo = {
+  addedBy: string;
+  timestamp: number;
+  roomKey?: RoomKey;
+};
+
+export type MessageBlock = {
+  id: string;
+  roomId: string;
+  blockNumber: number;
+  messageIds: string[];
+  createdAt: number;
+  updatedAt: number;
 };
 
 export type Message = {
@@ -63,13 +77,4 @@ export type Message = {
   replyTo?: string;
   editedAt: number;
   deletedAt: number;
-};
-
-export type MessageBlock = {
-  id: string;
-  roomId: string;
-  blockNumber: number;
-  messageIds: string[];
-  createdAt: number;
-  updatedAt: number;
 };

@@ -120,30 +120,33 @@
     )
       .absolute.q-pa-sm
         q-btn(
-          round flat icon="mdi-chevron-right"
+          round flat icon="mdi-chevron-right" color="white"
           @click="toggleRighttDrawer()"
         )
 
-      .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box(v-if="activeChatRoom.roomType === 1")
-        div
-          q-avatar(size="80px")
-            q-img(:src="activeChatRoom.imageUrl")
+      .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box.bg-light-ocean.text-white(v-if="activeChatRoom.roomType === 1 || activeChatRoom.roomType === 2")
+        div(v-if="activeChatRoom.imageUrl")
+          q-avatar(size="100px")
+            q-img(:src="activeChatRoom.imageUrl" error-src="/user-circles-set-sm.png" :ratio="1" fit="cover")
 
         .text-center
-          .text-subtitle2 {{ activeChatRoom.name }}
+          .text-subtitle1 {{ activeChatRoom.name }}
           .text-caption {{ activeChatRoom.messageCount }} {{activeChatRoom.messageCount > 1 ? 'mensagens' : 'mensagem' }}
 
-      .q-pt-xl.q-pb-sm(v-else="activeChatRoom.roomType === 2")
+      .q-pt-xl.q-pb-sm(v-else="activeChatRoom.roomType === 3")
 
 
       .q-ma-none.flex.column.q-px-md.q-py-md.q-gutter-y-sm.card-box.text-caption(style="line-height: 11px")
         div Criado em: {{ formatFullDate(activeChatRoom.createdAt) }}
-        div ID do chat: {{ shortenAddress(activeChatRoom.id) }}
+        div(@click="openURL(`https://suiscan.xyz/devnet/object/${activeChatRoom.id}/fields`)") ID do chat: {{ shortenAddress(activeChatRoom.id) }}
+        div Tipo: {{ roomTypeToString(activeChatRoom.roomType) }}
         div Bloco de mensagens atual: {{ activeChatRoom.currentBlockNumber }}
+        div Convites: {{ permissionToString(activeChatRoom.permissionInvite).join(', ') }}
+        div Enviar mensagem: {{ permissionToString(activeChatRoom.permissionSendMessage).join(', ') }}
 
       .q-ma-none.flex.flex-center.column.q-py-sm.q-gutter-y-sm.card-box
         q-list.full-width
-          q-item Participantes
+          q-item Participantes ({{Object.keys(activeChatRoom.participants).length}})
 
           q-item(v-for="(participant, participantUserId) in activeChatRoom.participants" :key="participantUserId")
             q-item-section(avatar)
@@ -154,7 +157,7 @@
               q-item-label(caption) {{ shortenAddress(participantUserId) }}
             q-item-section(side)
               q-item-label(v-if="activeChatRoom.owner === participantUserId")
-                q-chip(size="sm" color="grey-3") Administrador
+                q-chip(size="sm" color="positive" outline) Administrador
 
 
     //----- CONTENT -----------------------------------------------------------------------------------------------------------------
@@ -165,12 +168,12 @@
     )
       template(v-if="activeChatRoom")
 
-        div(v-if="activeChatRoom.roomType === 1")
-          h1 TODO
-
+        GroupRoom(
+          v-if="activeChatRoom.roomType === 1 || activeChatRoom.roomType === 2"
+        )
 
         DmChatRoom(
-          v-if="activeChatRoom.roomType === 2"
+          v-else-if="activeChatRoom.roomType === 3"
         )
 
       .q-pa-md.row.justify-center.full-width(
@@ -251,10 +254,11 @@ import { useWalletStore, useUsersStore, useUserStore } from '../../stores';
 import { useProfile } from './useProfile';
 import { useChat } from './useChat';
 import { useMessageFeeder } from './useMessageFeeder';
-import { getFaucet, getNetwork } from '../../move';
+import { EPermission, ERoomType, getFaucet, getNetwork } from '../../move';
 import UsersList from './UsersList.vue';
 import ChatList from './ChatList.vue';
 import DmChatRoom from './DmChatRoom/DmChatRoom.vue';
+import GroupRoom from './GroupRoom/GroupRoom.vue';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import EditProfileDialog from './EditProfileDialog.vue';
 import { onBeforeUnmount } from 'vue';
@@ -274,8 +278,8 @@ const { latestMessages } = feeder;
 
 const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
-const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId } = chatService;
-const { newMessage, clearNewMessage } = chatService;
+const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId, clearNewMessage } = chatService;
+const { newMessage } = chatService;
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
 
@@ -288,6 +292,24 @@ const { profile, suiBalanceFormatted } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
 const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
 const tab = ref<'mensagens' | 'users'>('mensagens');
+
+const permissionToString = (permission: EPermission) => {
+  const perms: string[] = [];
+  if (permission === EPermission.Nobody) { return ['Ninguém']; }
+  else if ((permission & EPermission.Anyone) === EPermission.Anyone) { return ['Qualquer um']; }
+
+  if ((permission & EPermission.Participants) === EPermission.Participants) { perms.push('Membros'); }
+  if ((permission & EPermission.Admin) === EPermission.Admin) { perms.push('Administrador'); }
+  if ((permission & EPermission.Moderators) === EPermission.Moderators) { perms.push('Moderadores'); }
+
+  return perms;
+};
+
+const roomTypeToString = (roomType: ERoomType) => {
+  if (roomType === ERoomType.DirectMessage) { return 'Mensagem direta'; }
+  else if (roomType === ERoomType.PrivateGroup) { return 'Privado (somente se convidado)'; }
+  else if (roomType === ERoomType.PublicGroup) { return 'Público (qualque um)'; }
+}
 
 const sendingBusy = ref(false);
 const sendMessage = async () => {

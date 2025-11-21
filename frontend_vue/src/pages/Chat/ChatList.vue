@@ -13,9 +13,9 @@ q-list.text-dark
   template(v-else)
     mixin chat-room-item-content()
 
-      //- Public Room
+      //- Public/Private Room
       ChatListItemRoom(
-        v-if="room.roomType === 1"
+        v-if="room.roomType === 1 || room.roomType === 2"
         :room="room"
         :userAddress="profile.owner"
         :users="users"
@@ -23,7 +23,7 @@ q-list.text-dark
 
       //- DM ROOM
       ChatListItemDmRoom(
-        v-else-if="room.roomType === 2"
+        v-else-if="room.roomType === 3"
         :room="room"
         :userAddress="profile.owner"
         :users="users"

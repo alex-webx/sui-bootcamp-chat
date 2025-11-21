@@ -1,11 +1,11 @@
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { Dialog, Notify, Screen } from 'quasar';
 import { useChatRoomStore, useUsersStore, useUserStore, useWalletStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
 import { type ChatRoom, ERoomType, Message, MessageBlock, chatRoomModule } from '../../move';
-import { DirectMessageService } from '../../utils/encrypt';
+import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
 
 const breakpoint = 800;
 const screenWidth = computed(() => Screen.width);
@@ -16,9 +16,8 @@ const rightDrawerOpen = ref(false);
 
 const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'>>({ id: '', content: '', mediaUrl: [], replyTo: '' });
 
-const messageBlocks = ref<Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>([]);
-const messageBlockLoadCount = ref<number>(0);
-const messages = ref<Record<string, Message[]>>({});
+const messageBlocks = ref<Record<string, Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>>({});
+const messageBlockLoadCount = ref<Record<string, number>>({});
 const bottomChatElement = ref<InstanceType<typeof HTMLDivElement>>();
 
 export function useChat() {
@@ -48,18 +47,22 @@ export function useChat() {
   }
 
   const sendMessage = async () => {
-    if (userStore.profile && chatRoomStore.activeChatRoom) {
+    const profile = userStore.profile;
+    const activeChatRoom = chatRoomStore.activeChatRoom;
+
+    if (profile && activeChatRoom) {
 
       const isEdit = !!newMessage.value.id;
+      let { content, mediaUrl, replyTo } = newMessage.value;
 
-      if (chatRoomStore.activeChatRoom.roomType === ERoomType.DirectMessage) {
+      if (!content?.length && !mediaUrl.length) {
+        return;
+      }
 
-        let content = newMessage.value.content;
-        let mediaUrl = newMessage.value.mediaUrl;
-
-        if (content?.length || mediaUrl.length) {
+      switch(activeChatRoom.roomType) {
+        case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
-          const dmUser = getDmParticipant(chatRoomStore.activeChatRoom);
+          const dmUser = getDmParticipant(activeChatRoom);
           const dmService = new DirectMessageService(privKey!, dmUser?.keyPub!);
 
           if (content?.length) {
@@ -70,49 +73,64 @@ export function useChat() {
             const encMedia = await Promise.all(mediaUrl.map(mediaUrl => dmService.encryptMessage(mediaUrl)));
             mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
           }
+          break;
         }
+          case ERoomType.PrivateGroup: {
+            const privKey = await userStore.ensurePrivateKey();
+            const roomKey = chatRoomStore.activeChatRoom.participants[profile.owner]?.roomKey;
+            const privGroupService = new PrivateGroupService({
+              encodedAesKey: roomKey?.encodedPrivKey!,
+              inviterPublicKey: roomKey?.pubKey!,
+              iv: roomKey?.iv!
+            }, privKey!);
 
-        if (isEdit) {
-          const messageId = await chatRoomStore.editMessage(
-            { id: newMessage.value.id, roomId: chatRoomStore.activeChatRoom.id },
-            {
-              content: content,
-              mediaUrl: mediaUrl
+            if (content?.length) {
+              const encContent = await privGroupService.encryptMessage(content);
+              content = JSON.stringify([encContent.iv, encContent.ciphertext]);
             }
-          );
-        } else {
-          const messageId = await chatRoomStore.sendMessage(
-            chatRoomStore.activeChatRoom,
-            {
-              content: content,
-              mediaUrl: mediaUrl,
-              replyTo: newMessage.value.replyTo!
+            if (mediaUrl.length) {
+              const encMedia = await Promise.all(mediaUrl.map(mediaUrl => privGroupService.encryptMessage(mediaUrl)));
+              mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
             }
-          );
+          break;
         }
-      } else {
-        if (newMessage.value.id) {
-           const messageId = await chatRoomStore.editMessage(
-            { id: newMessage.value.id, roomId: chatRoomStore.activeChatRoom.id },
-            {
-              content: newMessage.value.content,
-              mediaUrl: newMessage.value.mediaUrl
-            }
-          );
-        } else {
-          await chatRoomStore.sendMessage(
-            chatRoomStore.activeChatRoom,
-            {
-              content: newMessage.value.content,
-              mediaUrl: newMessage.value.mediaUrl,
-              replyTo: newMessage.value.replyTo!
-            }
-          );
+        case ERoomType.PublicGroup: {
+          const pubService = new PublicChannelService(activeChatRoom.owner!);
+
+          if (content?.length) {
+            const encContent = await pubService.obfuscateMessage(content);
+            content = JSON.stringify([encContent.iv, encContent.ciphertext]);
+          }
+          if (mediaUrl.length) {
+            const encMedia = await Promise.all(mediaUrl.map(mediaUrl => pubService.obfuscateMessage(mediaUrl)));
+            mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
+          }
+          break;
         }
       }
+
+      if (isEdit) {
+        const messageId = await chatRoomStore.editMessage(
+          { id: newMessage.value.id, roomId: chatRoomStore.activeChatRoom.id },
+          {
+            content: content,
+            mediaUrl: mediaUrl
+          }
+        );
+      } else {
+        const messageId = await chatRoomStore.sendMessage(
+          chatRoomStore.activeChatRoom,
+          {
+            content: content,
+            mediaUrl: mediaUrl,
+            replyTo: replyTo!
+          }
+        );
+      }
+
       await fetchMessageBlocks();
       clearNewMessage();
-      if ((userStore.profile.roomsJoined || []).indexOf(chatRoomStore.activeChatRoom.id) < 0) {
+      if ((profile.roomsJoined || []).indexOf(chatRoomStore.activeChatRoom.id) < 0) {
         await userStore.fetchCurrentUserProfile();
       }
 
@@ -136,7 +154,7 @@ export function useChat() {
       return;
     };
     await chatRoomStore.refreshUserChatRoom(activeChatRoom);
-    messageBlocks.value = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.id);
+    messageBlocks.value[activeChatRoom.id] = await chatRoomStore.getChatRoomMessageBlocks(activeChatRoom.id);
     return messageBlocks.value;
   };
 
@@ -172,20 +190,21 @@ export function useChat() {
 
   const selectChatRoom = (chatRoom: ChatRoom) => {
     clearNewMessage();
-    messageBlocks.value = [];
-    messages.value = {};
-    messageBlockLoadCount.value = 2;
+    messageBlocks.value = { [chatRoom.id]: [] };
+    messageBlockLoadCount.value = { [chatRoom.id]: 2 };
 
-    if (desktopMode.value) {
-      if (chatRoomStore.activeChatRoomId === chatRoom.id) {
-        chatRoomStore.activeChatRoomId = undefined;
+    nextTick(() => {
+      if (desktopMode.value) {
+        if (chatRoomStore.activeChatRoomId === chatRoom.id) {
+          chatRoomStore.activeChatRoomId = undefined;
+        } else {
+          chatRoomStore.activeChatRoomId = chatRoom.id;
+        }
       } else {
         chatRoomStore.activeChatRoomId = chatRoom.id;
+        leftDrawerOpen.value = false;
       }
-    } else {
-      chatRoomStore.activeChatRoomId = chatRoom.id;
-      leftDrawerOpen.value = false;
-    }
+    });
   };
 
 
@@ -253,9 +272,8 @@ export function useChat() {
 
     newMessage,
 
-    messageBlocks,
-    messages,
-    messageBlockLoadCount,
+    messageBlocks: computed(() => messageBlocks.value[chatRoomStore.activeChatRoomId!]),
+    messageBlockLoadCount: computed(() => messageBlockLoadCount.value[chatRoomStore.activeChatRoomId!]),
 
     createRoom,
     selectChatRoom,

@@ -124,7 +124,7 @@ const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const {
-  getDmParticipantId, messages, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
+  getDmParticipantId, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
   breakpoint, screenWidth, desktopMode, drawerWidth
 } = chatService;
 
@@ -146,7 +146,7 @@ onMounted(async () => {
 });
 
 const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) => {
-  if (type === 'loaded' && blockNumber === messageBlocks.value.slice(-1)[0]?.blockNumber) {
+  if (type === 'loaded' && blockNumber === messageBlocks.value?.slice(-1)[0]?.blockNumber) {
     console.log('messagesEvent scroll to bottom') ;
     scrollTo('bottom');
   }

@@ -1,20 +1,27 @@
 import _ from 'lodash';
+import { bcs, PureTypeName } from '@mysten/sui/bcs';
 import { Transaction, Inputs } from '@mysten/sui/transactions';
 import { useConfig } from '../../../../configs';
 import { parsers } from '../../useClient';
 import type * as Models from '../..';
-import { EPermission } from './chatRoomModels';
+import { EPermission, ERoomType, RoomKey } from './chatRoomModels';
 
 const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
+
+const RoomKeyStruct = bcs.struct(`${config('PackageId')}::chat_room::RoomKey`, {
+  pub_key: bcs.vector(bcs.u8()),
+  iv: bcs.vector(bcs.u8()),
+  encoded_priv_key: bcs.vector(bcs.u8())
+});
 
 export const txCreateRoom = (
   data: {
     userProfile: Pick<Models.UserProfile, 'id'>,
-    room: Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'isEncrypted' | 'roomKey' | 'permissionInvite' | 'permissionSendMessage'>,
-    userRoomKey: Uint8Array
+    room: Required<Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'roomKey' | 'roomType' | 'permissionInvite' | 'permissionSendMessage'>>
   }
 ) => {
   const tx = new Transaction();
+
   tx.moveCall({
     target: `${config('PackageId')}::chat_room::create_room`,
     arguments: [
@@ -23,9 +30,10 @@ export const txCreateRoom = (
       tx.pure.string(data.room.name),
       tx.pure.string(data.room.imageUrl),
       tx.pure.u64(data.room.maxParticipants),
-      tx.pure.bool(data.room.isEncrypted),
-      tx.pure.vector('u8', data.room.roomKey),
-      tx.pure.vector('u8', data.userRoomKey),
+      tx.pure.u8(data.room.roomType),
+      tx.pure.vector('u8', data.room.roomKey.pubKey),
+      tx.pure.vector('u8', data.room.roomKey.iv),
+      tx.pure.vector('u8', data.room.roomKey.encodedPrivKey),
       tx.pure.u8(data.room.permissionInvite),
       tx.pure.u8(data.room.permissionSendMessage),
       tx.object(config('SuiClockId')!)
@@ -34,68 +42,6 @@ export const txCreateRoom = (
 
   const parser = parsers.isCreated('chat_room::ChatRoom');
   return { tx, parser };
-};
-
-export const txCreatePublicRoom = (
-  data: {
-    userProfile: Pick<Models.UserProfile, 'id'>,
-    room: Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'roomKey'>
-  }
-) => {
-  return txCreateRoom({
-    userProfile: data.userProfile,
-    room: {
-      ...data.room,
-      ...{
-        isEncrypted: false,
-        permissionInvite: EPermission.Admin & EPermission.Moderators & EPermission.Participants & EPermission.Anyone,
-        permissionSendMessage: EPermission.Admin & EPermission.Moderators & EPermission.Participants & EPermission.Anyone
-      }
-    },
-    userRoomKey: new Uint8Array()
-  })
-};
-
-export const txCreatePrivateRoom = (
-  data: {
-    userProfile: Pick<Models.UserProfile, 'id'>,
-    room: Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'permissionInvite' | 'permissionSendMessage'>,
-    userRoomKey: Uint8Array
-  }
-) => {
-  return txCreateRoom({
-    userProfile: data.userProfile,
-    room: {
-      ...data.room,
-      ...{
-        isEncrypted: true,
-        roomKey: new Uint8Array(),
-      }
-    },
-    userRoomKey: data.userRoomKey
-  })
-};
-
-export const txCreateAnnouncementsRoom = (
-  data: {
-    userProfile: Pick<Models.UserProfile, 'id'>,
-    room: Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'permissionInvite'>,
-    userRoomKey: Uint8Array
-  }
-) => {
-  return txCreateRoom({
-    userProfile: data.userProfile,
-    room: {
-      ...data.room,
-      ...{
-        isEncrypted: true,
-        roomKey: new Uint8Array(),
-        permissionInvite: data.room.permissionInvite,
-        permissionSendMessage: EPermission.Nobody
-      }
-    },
-    userRoomKey: data.userRoomKey
-  })
 };
 
 export const txCreateDmRoom = (
@@ -203,7 +149,7 @@ export const txDeleteMessage = (
 export const txInviteParticipant = (
   chatRoom: Pick<Models.ChatRoom, 'id'>,
   inviteeAddress: string,
-  inviteeRoomKey: Uint8Array,
+  roomKey: Models.RoomKey
 ) => {
 
   const tx = new Transaction();
@@ -212,7 +158,9 @@ export const txInviteParticipant = (
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(inviteeAddress),
-      tx.pure.vector('u8', inviteeRoomKey),
+      tx.pure.vector('u8', roomKey.pubKey),
+      tx.pure.vector('u8', roomKey.iv),
+      tx.pure.vector('u8', roomKey.encodedPrivKey),
       tx.object(config('SuiClockId')!)
     ],
   });

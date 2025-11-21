@@ -20,6 +20,14 @@ const parseChatRoomRegistry = async (response: SuiObjectResponse): Promise<Model
   };
 };
 
+export const parseRoomKey = (roomKey: any): Models.RoomKey | undefined => {
+  return roomKey ? {
+    encodedPrivKey: new Uint8Array(roomKey.fields.encoded_priv_key),
+    iv: new Uint8Array(roomKey.fields.iv),
+    pubKey: new Uint8Array(roomKey.fields.pub_key)
+  } : undefined;
+};
+
 export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models.ChatRoom> => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
     throw new Error('ChatRoom inválido');
@@ -28,13 +36,33 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
   const fields = response.data.content.fields as any;
 
   const participantsTable = await getFullTable(fields.participants);
+  const participants = _.mapValues(participantsTable, (item: any) => {
+    const info: Models.ParticipantInfo = {
+      addedBy: item.fields.added_by,
+      roomKey: parseRoomKey(item.fields.room_key)!,
+      timestamp: item.fields.timestamp,
+    };
+    return info;
+  });
 
-  const participants = _.mapValues(participantsTable, (item: any) => ({
-    addedBy: item.fields.added_by,
-    roomKey: new Uint8Array(item.fields.room_key),
-    timestamp: item.fields.timestamp,
-    inviterKeyPub: new Uint8Array(item.fields.inviter_key_pub)
-  }));
+  const moderatorsTable = await getFullTable(fields.moderators);
+  const moderators = _.mapValues(moderatorsTable, (item: any) => {
+    const info: Models.ModeratorInfo = {
+      addedBy: item.fields.added_by,
+      timestamp: item.fields.timestamp,
+    };
+    return info;
+  });
+
+  const bannedUsersTable = await getFullTable(fields.banned_users);
+  const bannedUsers = _.mapValues(bannedUsersTable, (item: any) => {
+    const info: Models.BanInfo = {
+      bannedBy: item.fields.added_by,
+      timestamp: item.fields.timestamp,
+    };
+    return info;
+  });
+
 
   return {
     id: response.data.objectId,
@@ -44,12 +72,11 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
     currentBlockNumber: Number(fields.current_block_number),
     messageCount: Number(fields.message_count),
     createdAt: Number(fields.created_at),
-    bannedUsers: fields.banned_users || [],
-    moderators: fields.moderators || [],
-    isEncrypted: fields.is_encrypted,
+    bannedUsers: bannedUsers,
+    moderators: moderators,
     maxParticipants: Number(fields.max_participants),
     participants: participants,
-    roomKey: new Uint8Array(fields.room_key),
+    roomKey: parseRoomKey(fields.room_key)!,
     roomType: Number(fields.room_type),
     permissionInvite: Number(fields.permission_invite),
     permissionSendMessage: Number(fields.permission_send_message)

@@ -609,9 +609,6 @@ export class DirectMessageService {
 }
 
 
-// Importe ou defina aqui as funções auxiliares de codificação/decodificação
-// (arrayBufferToBase64Url, base64UrlToArrayBuffer) do nosso arquivo CryptoUtils.ts.
-
 export class PublicChannelService {
     // A chave agora é um campo privado que pode ser nulo inicialmente
     private obfuscationKey: CryptoKey | null = null;
@@ -630,65 +627,65 @@ export class PublicChannelService {
      * Se já estiver derivada, retorna imediatamente.
      */
     private async ensureKeyIsReady(): Promise<void> {
-        if (!this.obfuscationKey) {
-            console.log("Chave de ofuscação não encontrada em memória, derivando automaticamente...");
-            const encoder = new TextEncoder();
-            const data = encoder.encode(this.creatorAddress);
+      if (!this.obfuscationKey) {
+        console.log("Chave de ofuscação não encontrada em memória, derivando automaticamente...");
+        const encoder = new TextEncoder();
+        const data = encoder.encode(this.creatorAddress);
 
-            const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
 
-            this.obfuscationKey = await window.crypto.subtle.importKey(
-                "raw",
-                hashBuffer,
-                { name: "AES-GCM", length: 256 },
-                false,
-                ["encrypt", "decrypt"]
-            );
-        }
+        this.obfuscationKey = await window.crypto.subtle.importKey(
+            "raw",
+            hashBuffer,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+        );
+      }
     }
 
     /**
      * Criptografa uma mensagem para um canal público.
      */
     public async obfuscateMessage(plaintext: string): Promise<{iv: string, ciphertext: string}> {
-        // Garante que a chave esteja pronta antes de prosseguir
-        await this.ensureKeyIsReady();
+      // Garante que a chave esteja pronta antes de prosseguir
+      await this.ensureKeyIsReady();
 
-        // Agora podemos usar this.obfuscationKey com segurança, pois ensureKeyIsReady garante que não é nulo
-        const encoder = new TextEncoder();
-        const data = encoder.encode(plaintext);
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      // Agora podemos usar this.obfuscationKey com segurança, pois ensureKeyIsReady garante que não é nulo
+      const encoder = new TextEncoder();
+      const data = encoder.encode(plaintext);
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
 
-        const encryptedBuffer = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv.buffer },
-            this.obfuscationKey!, // Usamos '!' (non-null assertion) pois garantimos a existência logo acima
-            data
-        );
+      const encryptedBuffer = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv.buffer },
+        this.obfuscationKey!, // Usamos '!' (non-null assertion) pois garantimos a existência logo acima
+        data
+      );
 
-        return {
-            iv: arrayBufferToBase64Url(iv),
-            ciphertext: arrayBufferToBase64Url(encryptedBuffer)
-        };
+      return {
+        iv: arrayBufferToBase64Url(iv),
+        ciphertext: arrayBufferToBase64Url(encryptedBuffer)
+      };
     }
 
     /**
      * Descriptografa uma mensagem ofuscada em um canal público.
      */
     public async deObfuscateMessage(iv: string, ciphertext: string): Promise<string> {
-        // Garante que a chave esteja pronta antes de prosseguir
-        await this.ensureKeyIsReady();
+      // Garante que a chave esteja pronta antes de prosseguir
+      await this.ensureKeyIsReady();
 
-        const ciphertextBuffer = base64UrlToArrayBuffer(ciphertext);
-        const ivBuffer = base64UrlToArrayBuffer(iv);
+      const ciphertextBuffer = base64UrlToArrayBuffer(ciphertext);
+      const ivBuffer = base64UrlToArrayBuffer(iv);
 
-        const decryptedBuffer = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: ivBuffer },
-            this.obfuscationKey!, // Usamos '!' (non-null assertion) pois garantimos a existência logo acima
-            ciphertextBuffer
-        );
+      const decryptedBuffer = await window.crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBuffer },
+          this.obfuscationKey!, // Usamos '!' (non-null assertion) pois garantimos a existência logo acima
+          ciphertextBuffer
+      );
 
-        const decoder = new TextDecoder();
-        return decoder.decode(decryptedBuffer);
+      const decoder = new TextDecoder();
+      return decoder.decode(decryptedBuffer);
     }
 
     public static async example() {
@@ -711,136 +708,512 @@ export class PublicChannelService {
     }
 }
 
-// Importe a interface UserProfileData e as funções auxiliares de Base64 se necessário
-// (arrayBufferToBase64Url, base64UrlToArrayBuffer de CryptoUtils.ts).
-
 // Interface para armazenar a chave da sala embrulhada na Blockchain (mapeado por usuário/sala)
 export interface WrappedRoomKeyData {
-    wrappedKey: Uint8Array;     // A chave AES da sala, embrulhada (Base64URL)
-    iv: Uint8Array;             // O IV usado para este embrulho específico (Base64URL)
-    inviterPublicKey: Uint8Array; // A chave pública ECDH (SPKI Base64URL) de quem convidou
+  encodedAesKey: Uint8Array;     // A chave AES da sala, embrulhada (Base64URL)
+  iv: Uint8Array;             // O IV usado para este embrulho específico (Base64URL)
+  inviterPublicKey: Uint8Array; // A chave pública ECDH (SPKI Base64URL) de quem convidou
 }
 
-// Importe a interface UserProfileData e as funções auxiliares de Base64 (se ainda precisar delas em outro lugar)
-// import { base64UrlToArrayBuffer } from './CryptoUtils';
+// export class PrivateGroupService {
+
+//   private roomAesKey: CryptoKey | null = null;
+//   private inviterPublicKeyBytes: Uint8Array | null = null;
+
+//   /**
+//    * Inicializa o serviço, desembrulhando a chave mestra da sala.
+//    *
+//    * @param wrappedRoomKeyData Os dados do objeto mapeado na Blockchain (agora Uint8Array).
+//    * @param userPrivateKeyLocal Chave privada ECDH do usuário local (como CryptoKey).
+//    */
+//   public async initialize(wrappedRoomKeyData: WrappedRoomKeyData, userPrivateKeyLocal: CryptoKey): Promise<void> {
+//     this.inviterPublicKeyBytes = wrappedRoomKeyData.inviterPublicKey;
+
+//     // Desembrulha a chave da sala (AES) usando ECDH
+//     this.roomAesKey = await this.unwrapRoomKey(
+//       wrappedRoomKeyData.wrappedKey.buffer as ArrayBuffer, // Passa o ArrayBuffer subjacente
+//       wrappedRoomKeyData.iv.buffer as ArrayBuffer,         // Passa o ArrayBuffer subjacente
+//       wrappedRoomKeyData.inviterPublicKey.buffer as ArrayBuffer, // Passa o ArrayBuffer subjacente
+//       userPrivateKeyLocal
+//     );
+//   }
+
+//   /**
+//    * Desembrulha a chave AES da sala usando a chave privada do usuário local e a pública do convidador.
+//    */
+//   private async unwrapRoomKey(
+//     wrappedKeyBuffer: ArrayBuffer,
+//     ivBuffer: ArrayBuffer,
+//     inviterPubKeyBuffer: ArrayBuffer,
+//     userPrivateKeyLocal: CryptoKey
+//   ): Promise<CryptoKey> {
+//     // 1. Importar a chave pública de quem convidou (ArrayBuffer -> CryptoKey)
+//     const inviterPublicKey = await this.importEcdhPublicKey(inviterPubKeyBuffer);
+
+//     // 2. Derivar a CHAVE SECRETA COMPARTILHADA
+//     const sharedSecretECDH = await this.deriveSharedAesKey(userPrivateKeyLocal, inviterPublicKey);
+
+//     // 3. Descriptografar o objeto da chave mestra da sala usando a chave compartilhada
+//     const roomKeyBuffer = await window.crypto.subtle.decrypt(
+//       { name: "AES-GCM", iv: ivBuffer },
+//       sharedSecretECDH,
+//       wrappedKeyBuffer
+//     );
+
+//     // 4. Importar o material bruto da chave AES da sala (256 bits) para uma CryptoKey utilizável
+//     return window.crypto.subtle.importKey(
+//       "raw",
+//       roomKeyBuffer,
+//       { name: "AES-GCM", length: 256 },
+//       false,
+//       ["encrypt", "decrypt"]
+//     );
+//   }
+
+//   // --- Métodos de Mensagens (Usam a chave mestra da sala para I/O string/string) ---
+//   // NOTA: Estes métodos ainda usam Base64URL para a entrada/saída das mensagens reais,
+//   // pois as mensagens (ciphertext + iv) provavelmente serão strings na Sui/frontend.
+
+//   public async encryptMessage(plaintext: string): Promise<{iv: string, ciphertext: string}> {
+//     if (!this.roomAesKey) throw new Error("Serviço não inicializado. Chave da sala não carregada.");
+
+//     const iv = window.crypto.getRandomValues(new Uint8Array(12));
+//     const encryptedBuffer = await window.crypto.subtle.encrypt(
+//       { name: "AES-GCM", iv: iv.buffer },
+//       this.roomAesKey!,
+//       new TextEncoder().encode(plaintext)
+//     );
+
+//     return {
+//       iv: arrayBufferToBase64Url(iv), // Exporta IV para string B64URL
+//       ciphertext: arrayBufferToBase64Url(encryptedBuffer) // Exporta Ciphertext para string B64URL
+//     };
+//   }
+
+//   public async decryptMessage(iv: string, ciphertext: string): Promise<string> {
+//     if (!this.roomAesKey) throw new Error("Serviço não inicializado. Chave da sala não carregada.");
+
+//     const decryptedBuffer = await window.crypto.subtle.decrypt(
+//       { name: "AES-GCM", iv: base64UrlToArrayBuffer(iv) }, // Importa IV da string B64URL
+//       this.roomAesKey!,
+//       base64UrlToArrayBuffer(ciphertext) // Importa Ciphertext da string B64URL
+//     );
+
+//     return new TextDecoder().decode(decryptedBuffer);
+//   }
+
+//   // --- Métodos Auxiliares de Criptografia (Reutilizados) ---
+//   private async importEcdhPublicKey(publicKeyBuffer: ArrayBuffer): Promise<CryptoKey> {
+//     return window.crypto.subtle.importKey("spki", publicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
+//   }
+
+//   private async deriveSharedAesKey(privateKeyLocal: CryptoKey, publicKeyRemote: CryptoKey): Promise<CryptoKey> {
+//     return window.crypto.subtle.deriveKey(
+//       { name: "ECDH", public: publicKeyRemote },
+//       privateKeyLocal,
+//       { name: "AES-GCM", length: 256 },
+//       false,
+//       ["encrypt", "decrypt"]
+//     );
+//   }
+
+//   /**
+//    * [FLUXO 1] Gera uma nova chave mestra AES-256 para a sala (somente o criador executa isso UMA vez).
+//    * @returns O material bruto da chave AES como Uint8Array (32 bytes).
+//    */
+//   public static async generateRoomKeyMaterial(): Promise<Uint8Array> {
+//     return window.crypto.getRandomValues(new Uint8Array(32));
+//   }
+
+//    /**
+//    * [FLUXO 2] Cria o objeto WrappedRoomKeyData para um destinatário específico (incluindo o próprio criador).
+//    * Este objeto é o que deve ser salvo na Blockchain.
+//    *
+//    * @param roomAesKeyMaterial O material bruto da chave mestra da sala (Uint8Array de 32 bytes).
+//    * @param inviterPrivateKey A chave privada ECDH (CryptoKey) de quem está convidando (criador/admin).
+//    * @param recipientPublicKeySpkiBuffer A chave pública SPKI do destinatário (ArrayBuffer ou Uint8Array.buffer).
+//    * @returns O objeto WrappedRoomKeyData pronto para ser armazenado na Blockchain.
+//    */
+//   public static async generateWrappedKeyForRecipient(
+//     roomAesKeyMaterial: Uint8Array,
+//     inviterPrivateKey: CryptoKey,
+//     recipientPublicKeySpkiBuffer: Uint8Array
+//   ): Promise<WrappedRoomKeyData> {
+
+//     // 1. Importar a chave pública do destinatário (SPKI -> CryptoKey)
+//     const recipientPublicKey = await window.crypto.subtle.importKey(
+//         "spki",
+//         recipientPublicKeySpkiBuffer.buffer as ArrayBuffer,
+//         { name: "ECDH", namedCurve: "P-256" },
+//         true,
+//         [] // Chaves públicas não são usadas para encrypt/decrypt diretamente, apenas para deriveKey
+//     );
+
+//     // 2. Derivar o segredo compartilhado (InviterPrivate + RecipientPublic)
+//     const sharedSecretKeyWrapper = await window.crypto.subtle.deriveKey(
+//         { name: "ECDH", public: recipientPublicKey },
+//         inviterPrivateKey,
+//         { name: "AES-GCM", length: 256 }, // Usamos AES-GCM para embrulhar/desembrulhar
+//         false,
+//         ["encrypt", "decrypt"] // Precisamos usar esta chave para embrulhar (encrypt)
+//     );
+
+//     // 3. Alice embrulha a chave mestra da sala usando o segredo compartilhado
+//     const ivWrap = window.crypto.getRandomValues(new Uint8Array(12));
+//     const wrappedRoomKeyBuffer = await window.crypto.subtle.encrypt(
+//         { name: "AES-GCM", iv: ivWrap }, // Passa o Uint8Array do IV diretamente
+//         sharedSecretKeyWrapper,
+//         roomAesKeyMaterial.buffer as ArrayBuffer // O material bruto da chave AES da sala (Uint8Array)
+//     );
+
+//     // 4. Retorna o objeto que será armazenado na blockchain
+//     return {
+//         wrappedKey: new Uint8Array(wrappedRoomKeyBuffer),
+//         iv: ivWrap,
+//         // A chave pública do criador precisa ser incluída para que o destinatário saiba
+//         // com quem derivar o segredo compartilhado durante o desembrulho (initialize)
+//         inviterPublicKey: new Uint8Array(inviterPrivateKey.algorithm.public.buffer), // Assumindo que a chave pública está acessível aqui ou passada como parâmetro
+//     };
+//   }
+
+//   public static async example () {
+//     // Importe todas as classes e utilitários necessários (CryptoUtils.ts, UserProfileGenerator.ts, UserProfileService.ts, PrivateGroupService.ts)
+
+//     console.log("--- Demonstração do Fluxo de Grupo Privado CORRIGIDO ---");
+
+//     // Simulação da Master Password (assinatura da carteira Sui)
+//     const masterPassAlice = "SIG_ALICE_AIZ8UKhTlnJFQ";
+//     const masterPassBob = "SIG_BOB_CIZ8UKhTlnJFQ";
+
+//     // 1. Setup inicial: Gerar e "armazenar na blockchain" os perfis de Alice e Bob
+//     const userProfileGenerator = new UserProfileGenerator();
+//     const aliceProfileData = await userProfileGenerator.generateProfileKeys(masterPassAlice);
+//     const bobProfileData = await userProfileGenerator.generateProfileKeys(masterPassBob);
+
+//     // 2. Recuperar as chaves privadas como CryptoKey usáveis (usando UserProfileService)
+//     const userProfileService = new UserProfileService();
+//     const alicePrivateKey: CryptoKey = await userProfileService.unwrapPrivateKey(aliceProfileData, masterPassAlice);
+//     const bobPrivateKey: CryptoKey = await userProfileService.unwrapPrivateKey(bobProfileData, masterPassBob);
+
+//     console.log("Perfis e chaves privadas recuperadas com sucesso.");
+
+
+//     // 3. ALICE (ADMIN) GERA O OBJETO DE CONVITE PARA BOB (A SER SALVO NA SUI)
+
+//     // A. Alice gera a chave mestra AES aleatória para a sala (somente ela faz isso na criação)
+//     const roomAesKeyMaterial = window.crypto.getRandomValues(new Uint8Array(32));
+
+//     // B. Alice prepara a chave pública de Bob para a derivação ECDH
+//     const bobPubKeyForAliceImport = await window.crypto.subtle.importKey(
+//         "spki",
+//         bobProfileData.publicKeySpki.buffer as ArrayBuffer, // Usa o buffer do Uint8Array
+//         { name: "ECDH", namedCurve: "P-256" },
+//         true,
+//         []
+//     );
+
+//     // C. Alice deriva o segredo compartilhado com Bob (AlicePrivate + BobPublic)
+//     const aliceBobSharedSecretKeyWrapper = await window.crypto.subtle.deriveKey(
+//         { name: "ECDH", public: bobPubKeyForAliceImport },
+//         alicePrivateKey,
+//         { name: "AES-GCM", length: 256 },
+//         false,
+//         ["encrypt", "decrypt"]
+//     );
+
+//     // D. Alice embrulha a chave mestra da sala usando o segredo compartilhado
+//     const ivWrap = window.crypto.getRandomValues(new Uint8Array(12));
+//     const wrappedRoomKeyForBobBuffer = await window.crypto.subtle.encrypt(
+//         { name: "AES-GCM", iv: ivWrap.buffer },
+//         aliceBobSharedSecretKeyWrapper, // Usa a chave com o uso 'encrypt'
+//         roomAesKeyMaterial // O material bruto da chave AES da sala
+//     );
+
+//     // E. Cria o objeto que será armazenado na blockchain, mapeado para Bob e a Sala (Usando Uint8Array agora)
+//     const bobInviteObject: WrappedRoomKeyData = {
+//         wrappedKey: new Uint8Array(wrappedRoomKeyForBobBuffer),
+//         iv: ivWrap,
+//         inviterPublicKey: aliceProfileData.publicKeySpki // A chave pública de Alice (Uint8Array)
+//     };
+//     console.log("Objeto de convite para Bob gerado e salvo na Sui:", bobInviteObject);
+
+//     // Alice prepara a sua própria chave pública pra importação
+//     const alicePubKeyForAliceImport  = await window.crypto.subtle.importKey(
+//         "spki",
+//         aliceProfileData.publicKeySpki.buffer as ArrayBuffer, // Usa o buffer do Uint8Array
+//         { name: "ECDH", namedCurve: "P-256" },
+//         true,
+//         []
+//     );
+
+//     const aliceAliceSharedSecretKeyWrapper = await window.crypto.subtle.deriveKey(
+//         { name: "ECDH", public: alicePubKeyForAliceImport },
+//         alicePrivateKey,
+//         { name: "AES-GCM", length: 256 },
+//         false,
+//         ["encrypt", "decrypt"]
+//     );
+//     const ivWrapAlice = window.crypto.getRandomValues(new Uint8Array(12));
+//     const wrappedRoomKeyForAliceBuffer = await window.crypto.subtle.encrypt(
+//         { name: "AES-GCM", iv: ivWrapAlice.buffer },
+//         aliceAliceSharedSecretKeyWrapper,
+//         roomAesKeyMaterial
+//     );
+
+//     const aliceInviteObject: WrappedRoomKeyData = {
+//         wrappedKey: new Uint8Array(wrappedRoomKeyForAliceBuffer),
+//         iv: ivWrapAlice,
+//         inviterPublicKey: aliceProfileData.publicKeySpki
+//     };
+
+
+//     const message = "Olá Alice, recebi o convite do grupo com sucesso!";
+
+//     // 4. BOB ENTRA NA SALA E DESEMBRULHA (usando PrivateGroupService)
+//     const bobService = new PrivateGroupService();
+//     console.log("\nBob está inicializando o serviço de grupo com seu objeto de convite...");
+//     await bobService.initialize(bobInviteObject, bobPrivateKey);
+
+//     console.log("Bob recuperou a chave mestra da sala com sucesso!");
+
+
+//     // 5. BOB LÊ/ENVIA MENSAGENS (usando a chave mestra da sala)
+
+//     // Bob criptografa a mensagem (retorna strings Base64URL para transporte/armazenamento)
+//     const encryptedByBob = await bobService.encryptMessage(message);
+//     console.log("Mensagem criptografada por Bob:", encryptedByBob.ciphertext);
+
+//     // Bob descriptografa a própria mensagem para testar
+//     let decryptedByBob = await bobService.decryptMessage(encryptedByBob.iv, encryptedByBob.ciphertext);
+//     console.log("Mensagem descriptografada por Bob:", decryptedByBob);
+
+
+
+//     // 6. ALICE LÊ a mensagem de BOB (usando seu próprio invite object da blockchain)
+//     console.log("\nAlice recupera a mensagem de Bob da 'blockchain'.");
+//     console.log("Alice recupera SEU PRÓPRIO objeto de convite da 'blockchain' para inicialização.");
+
+//     const aliceService = new PrivateGroupService();
+
+//     // Alice inicializa seu serviço de grupo exatamente como Bob fez:
+//     // Usando seu objeto de convite (aliceInviteObject) e sua chave privada (alicePrivateKey) para desembrulhar a roomKey.
+//     await aliceService.initialize(aliceInviteObject, alicePrivateKey);
+
+//     console.log("Alice inicializou seu serviço de grupo desembrulhando a chave com sucesso.");
+
+//     // Alice descriptografa a mensagem que Bob enviou
+//     let decryptedByAlice = await aliceService.decryptMessage(encryptedByBob.iv, encryptedByBob.ciphertext);
+//     console.log("Mensagem descriptografada por Alice:", decryptedByAlice);
+
+//     if (decryptedByAlice === message) {
+//         console.log("VERIFICAÇÃO: Alice leu a mensagem original com sucesso.");
+//     }
+
+//     if (message === decryptedByBob && message === decryptedByAlice) {
+//         console.log("\nSUCESSO: O fluxo completo do grupo privado funcionou perfeitamente.");
+//     }
+//   }
+
+// }
+
 
 export class PrivateGroupService {
 
-    private roomAesKey: CryptoKey | null = null;
-    private inviterPublicKeyBytes: Uint8Array | null = null;
+  // ----------------------------------------------------------------------
+  // NOVOS MÉTODOS ESTÁTICOS PARA CRIAÇÃO E CONVITE DE SALA
+  // ----------------------------------------------------------------------
 
-    /**
-     * Inicializa o serviço, desembrulhando a chave mestra da sala.
-     *
-     * @param wrappedRoomKeyData Os dados do objeto mapeado na Blockchain (agora Uint8Array).
-     * @param userPrivateKeyLocal Chave privada ECDH do usuário local (como CryptoKey).
-     */
-    public async initialize(wrappedRoomKeyData: WrappedRoomKeyData, userPrivateKeyLocal: CryptoKey): Promise<void> {
-        this.inviterPublicKeyBytes = wrappedRoomKeyData.inviterPublicKey;
+  /**
+   * [FLUXO 1] Gera uma nova chave mestra AES-256 para a sala (somente o criador executa isso UMA vez).
+   * @returns O material bruto da chave AES como Uint8Array (32 bytes).
+   */
+  public static async generateRoomKeyMaterial(): Promise<Uint8Array> {
+    return window.crypto.getRandomValues(new Uint8Array(32));
+  }
 
-        // Desembrulha a chave da sala (AES) usando ECDH
-        this.roomAesKey = await this.unwrapRoomKey(
-            wrappedRoomKeyData.wrappedKey.buffer as ArrayBuffer, // Passa o ArrayBuffer subjacente
-            wrappedRoomKeyData.iv.buffer as ArrayBuffer,         // Passa o ArrayBuffer subjacente
-            wrappedRoomKeyData.inviterPublicKey.buffer as ArrayBuffer, // Passa o ArrayBuffer subjacente
-            userPrivateKeyLocal
-        );
+  /**
+   * [FLUXO 2] Cria o objeto WrappedRoomKeyData para um destinatário específico (incluindo o próprio criador).
+   * Este objeto é o que deve ser salvo na Blockchain.
+   *
+   * @param roomAesKeyMaterial O material bruto da chave mestra da sala (Uint8Array de 32 bytes).
+   * @param inviterPrivateKey A chave privada ECDH (CryptoKey) de quem está convidando (criador/admin).
+   * @param recipientPublicKeySpkiBuffer A chave pública SPKI do destinatário (ArrayBuffer ou Uint8Array.buffer).
+   * @returns O objeto WrappedRoomKeyData pronto para ser armazenado na Blockchain.
+   */
+  public static async generateWrappedKeyForRecipient(
+    roomAesKeyMaterial: Uint8Array,
+    inviterPrivateKey: CryptoKey,
+    inviterPublicKeySpki: Uint8Array,
+    recipientPublicKeySpkiBuffer: Uint8Array
+  ): Promise<WrappedRoomKeyData> {
+
+    // 1. Importar a chave pública do destinatário (SPKI -> CryptoKey)
+    const recipientPublicKey = await window.crypto.subtle.importKey(
+        "spki",
+        recipientPublicKeySpkiBuffer.buffer as ArrayBuffer,
+        { name: "ECDH", namedCurve: "P-256" },
+        true,
+        [] // Chaves públicas não são usadas para encrypt/decrypt diretamente, apenas para deriveKey
+    );
+
+    // 2. Derivar o segredo compartilhado (InviterPrivate + RecipientPublic)
+    const sharedSecretKeyWrapper = await window.crypto.subtle.deriveKey(
+        { name: "ECDH", public: recipientPublicKey },
+        inviterPrivateKey,
+        { name: "AES-GCM", length: 256 }, // Usamos AES-GCM para embrulhar/desembrulhar
+        false,
+        ["encrypt", "decrypt"] // Precisamos usar esta chave para embrulhar (encrypt)
+    );
+
+    // 3. Alice embrulha a chave mestra da sala usando o segredo compartilhado
+    const ivWrap = window.crypto.getRandomValues(new Uint8Array(12));
+    const wrappedRoomKeyBuffer = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: ivWrap }, // Passa o Uint8Array do IV diretamente
+        sharedSecretKeyWrapper,
+        roomAesKeyMaterial.buffer as ArrayBuffer // O material bruto da chave AES da sala (Uint8Array)
+    );
+
+    // 4. Retorna o objeto que será armazenado na blockchain
+    return {
+        encodedAesKey: new Uint8Array(wrappedRoomKeyBuffer),
+        iv: ivWrap,
+        // A chave pública do criador precisa ser incluída para que o destinatário saiba
+        // com quem derivar o segredo compartilhado durante o desembrulho (initialize)
+        inviterPublicKey: inviterPublicKeySpki, // Assumindo que a chave pública está acessível aqui ou passada como parâmetro
+    };
+  }
+
+  // ----------------------------------------------------------------------
+  // MÉTODOS DE INSTÂNCIA (USO APÓS A INICIALIZAÇÃO/DESEMBRULHO)
+  // ----------------------------------------------------------------------
+
+  private roomAesKey: CryptoKey | null = null;
+  private inviterPublicKeyBytes: Uint8Array | null = null;
+
+  public async exportRoomAesKey () {
+    await this.initialize();
+    if (this.roomAesKey) {
+      const keyBuffer = await crypto.subtle.exportKey(
+        'raw',
+        this.roomAesKey
+      );
+      return new Uint8Array(keyBuffer);
     }
+  }
 
-    /**
-     * Desembrulha a chave AES da sala usando a chave privada do usuário local e a pública do convidador.
-     */
-    private async unwrapRoomKey(
-        wrappedKeyBuffer: ArrayBuffer,
-        ivBuffer: ArrayBuffer,
-        inviterPubKeyBuffer: ArrayBuffer,
-        userPrivateKeyLocal: CryptoKey
-    ): Promise<CryptoKey> {
-        // 1. Importar a chave pública de quem convidou (ArrayBuffer -> CryptoKey)
-        const inviterPublicKey = await this.importEcdhPublicKey(inviterPubKeyBuffer);
+  /**
+   * @param wrappedRoomKeyData Os dados do objeto mapeado na Blockchain.
+   * @param userPrivateKeyLocal Chave privada ECDH do usuário local (como CryptoKey).
+   */
+  public constructor(private wrappedRoomKeyData: WrappedRoomKeyData, private userPrivateKeyLocal: CryptoKey) {
+  }
 
-        // 2. Derivar a CHAVE SECRETA COMPARTILHADA
-        const sharedSecretECDH = await this.deriveSharedAesKey(userPrivateKeyLocal, inviterPublicKey);
+  /**
+   * Inicializa o serviço, desembrulhando a chave mestra da sala.
+   */
+  private async initialize(): Promise<void> {
+    this.inviterPublicKeyBytes = this.wrappedRoomKeyData.inviterPublicKey;
 
-        // 3. Descriptografar o objeto da chave mestra da sala usando a chave compartilhada
-        const roomKeyBuffer = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: ivBuffer },
-            sharedSecretECDH,
-            wrappedKeyBuffer
-        );
+    // Desembrulha a chave da sala (AES) usando ECDH
+    this.roomAesKey = await this.unwrapRoomKey(
+      this.wrappedRoomKeyData.encodedAesKey,
+      this.wrappedRoomKeyData.iv,
+      this.wrappedRoomKeyData.inviterPublicKey,
+      this.userPrivateKeyLocal
+    );
+  }
 
-        // 4. Importar o material bruto da chave AES da sala (256 bits) para uma CryptoKey utilizável
-        return window.crypto.subtle.importKey(
-            "raw",
-            roomKeyBuffer,
-            { name: "AES-GCM", length: 256 },
-            false,
-            ["encrypt", "decrypt"]
-        );
-    }
+  // --- Métodos de Mensagens (Usam a chave mestra da sala para I/O string/string) ---
+  public async encryptMessage(plaintext: string): Promise<{iv: string, ciphertext: string}> {
+    await this.initialize();
 
-    // --- Métodos de Mensagens (Usam a chave mestra da sala para I/O string/string) ---
-    // NOTA: Estes métodos ainda usam Base64URL para a entrada/saída das mensagens reais,
-    // pois as mensagens (ciphertext + iv) provavelmente serão strings na Sui/frontend.
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encryptedBuffer = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv }, // Passando Uint8Array diretamente
+      this.roomAesKey!,
+      new TextEncoder().encode(plaintext)
+    );
 
-    public async encryptMessage(plaintext: string): Promise<{iv: string, ciphertext: string}> {
-        if (!this.roomAesKey) throw new Error("Serviço não inicializado. Chave da sala não carregada.");
+    return {
+      iv: arrayBufferToBase64Url(iv),
+      ciphertext: arrayBufferToBase64Url(encryptedBuffer)
+    };
+  }
 
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));
-        const encryptedBuffer = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv.buffer },
-            this.roomAesKey!,
-            new TextEncoder().encode(plaintext)
-        );
+  public async decryptMessage(iv: string, ciphertext: string): Promise<string> {
+    await this.initialize();
 
-        return {
-            iv: arrayBufferToBase64Url(iv), // Exporta IV para string B64URL
-            ciphertext: arrayBufferToBase64Url(encryptedBuffer) // Exporta Ciphertext para string B64URL
-        };
-    }
+    const decryptedBuffer = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: base64UrlToArrayBuffer(iv) },
+      this.roomAesKey!,
+      base64UrlToArrayBuffer(ciphertext)
+    );
 
-    public async decryptMessage(iv: string, ciphertext: string): Promise<string> {
-        if (!this.roomAesKey) throw new Error("Serviço não inicializado. Chave da sala não carregada.");
+    return new TextDecoder().decode(decryptedBuffer);
+  }
 
-        const decryptedBuffer = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: base64UrlToArrayBuffer(iv) }, // Importa IV da string B64URL
-            this.roomAesKey!,
-            base64UrlToArrayBuffer(ciphertext) // Importa Ciphertext da string B64URL
-        );
+  // ----------------------------------------------------------------------
+  // MÉTODOS PRIVADOS AUXILIARES (EXISTENTES, AJUSTADOS PARA TIPOS MODERNOS)
+  // ----------------------------------------------------------------------
 
-        return new TextDecoder().decode(decryptedBuffer);
-    }
+  private async unwrapRoomKey(
+    wrappedKey: Uint8Array,
+    iv: Uint8Array,
+    inviterPubKey: Uint8Array,
+    userPrivateKeyLocal: CryptoKey
+  ): Promise<CryptoKey> {
+    // 1. Importar a chave pública de quem convidou
+    const inviterPublicKey = await this.importEcdhPublicKey(inviterPubKey);
 
-    // --- Métodos Auxiliares de Criptografia (Reutilizados) ---
-    private async importEcdhPublicKey(publicKeyBuffer: ArrayBuffer): Promise<CryptoKey> {
-        return window.crypto.subtle.importKey("spki", publicKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
-    }
+    // 2. Derivar a CHAVE SECRETA COMPARTILHADA (AQUI A MÁGICA ECDH ACONTECE)
+    const sharedSecretECDH = await this.deriveSharedAesKey(userPrivateKeyLocal, inviterPublicKey);
 
-    private async deriveSharedAesKey(privateKeyLocal: CryptoKey, publicKeyRemote: CryptoKey): Promise<CryptoKey> {
-        return window.crypto.subtle.deriveKey(
-            { name: "ECDH", public: publicKeyRemote },
-            privateKeyLocal,
-            { name: "AES-GCM", length: 256 },
-            false,
-            ["encrypt", "decrypt"]
-        );
-    }
+    // 3. Descriptografar o objeto da chave mestra da sala usando a chave compartilhada
+    const roomKeyBuffer = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv.buffer as ArrayBuffer }, // Passando Uint8Array
+      sharedSecretECDH,
+      wrappedKey.buffer as ArrayBuffer // Passando Uint8Array
+    );
 
-public static async example () {
-    // Importe todas as classes e utilitários necessários (CryptoUtils.ts, UserProfileGenerator.ts, UserProfileService.ts, PrivateGroupService.ts)
+    // 4. Importar o material bruto da chave AES da sala (256 bits) para uma CryptoKey utilizável
+    return window.crypto.subtle.importKey(
+      "raw",
+      roomKeyBuffer,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
+  }
 
-    console.log("--- Demonstração do Fluxo de Grupo Privado CORRIGIDO ---");
+  private async importEcdhPublicKey(publicKeyBuffer: Uint8Array): Promise<CryptoKey> {
+    return window.crypto.subtle.importKey("spki", publicKeyBuffer.buffer as ArrayBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []);
+  }
+
+  private async deriveSharedAesKey(privateKeyLocal: CryptoKey, publicKeyRemote: CryptoKey): Promise<CryptoKey> {
+    return window.crypto.subtle.deriveKey(
+      { name: "ECDH", public: publicKeyRemote },
+      privateKeyLocal,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  public static async example() {
+    console.log("--- Demonstração do Fluxo de Grupo Privado (Utilizando PrivateGroupService atualizado) ---");
 
     // Simulação da Master Password (assinatura da carteira Sui)
     const masterPassAlice = "SIG_ALICE_AIZ8UKhTlnJFQ";
     const masterPassBob = "SIG_BOB_CIZ8UKhTlnJFQ";
 
     // 1. Setup inicial: Gerar e "armazenar na blockchain" os perfis de Alice e Bob
+    // (Assumindo que estas classes existem e funcionam)
     const userProfileGenerator = new UserProfileGenerator();
     const aliceProfileData = await userProfileGenerator.generateProfileKeys(masterPassAlice);
     const bobProfileData = await userProfileGenerator.generateProfileKeys(masterPassBob);
 
     // 2. Recuperar as chaves privadas como CryptoKey usáveis (usando UserProfileService)
+    // (Assumindo que estas classes existem e funcionam)
     const userProfileService = new UserProfileService();
     const alicePrivateKey: CryptoKey = await userProfileService.unwrapPrivateKey(aliceProfileData, masterPassAlice);
     const bobPrivateKey: CryptoKey = await userProfileService.unwrapPrivateKey(bobProfileData, masterPassBob);
@@ -848,107 +1221,58 @@ public static async example () {
     console.log("Perfis e chaves privadas recuperadas com sucesso.");
 
 
-    // 3. ALICE (ADMIN) GERA O OBJETO DE CONVITE PARA BOB (A SER SALVO NA SUI)
+    // 3. ALICE (ADMIN) GERA O OBJETO DE CONVITE PARA BOB E PARA ELA MESMA (A SER SALVO NA SUI)
 
-    // A. Alice gera a chave mestra AES aleatória para a sala (somente ela faz isso na criação)
-    const roomAesKeyMaterial = window.crypto.getRandomValues(new Uint8Array(32));
+    // A. Alice gera a chave mestra AES aleatória para a sala (SOMENTE UMA VEZ)
+    const roomAesKeyMaterial = await PrivateGroupService.generateRoomKeyMaterial();
+    console.log(`Chave mestra da sala gerada (${roomAesKeyMaterial.length} bytes).`);
 
-    // B. Alice prepara a chave pública de Bob para a derivação ECDH
-    const bobPubKeyForAliceImport = await window.crypto.subtle.importKey(
-        "spki",
-        bobProfileData.publicKeySpki.buffer as ArrayBuffer, // Usa o buffer do Uint8Array
-        { name: "ECDH", namedCurve: "P-256" },
-        true,
-        []
+
+    // B. Alice gera o objeto de convite para BOB, que será salvo na Blockchain
+    const bobInviteObject: WrappedRoomKeyData = await PrivateGroupService.generateWrappedKeyForRecipient(
+      roomAesKeyMaterial,                 // A chave bruta da sala
+      alicePrivateKey,                    // A chave privada da Alice (convidante)
+      aliceProfileData.publicKeySpki,     // A chave pública da Alice (para referência no desembrulho)
+      bobProfileData.publicKeySpki        // A chave pública do Bob (destinatário)
     );
-
-    // C. Alice deriva o segredo compartilhado com Bob (AlicePrivate + BobPublic)
-    const aliceBobSharedSecretKeyWrapper = await window.crypto.subtle.deriveKey(
-        { name: "ECDH", public: bobPubKeyForAliceImport },
-        alicePrivateKey,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"]
-    );
-
-    // D. Alice embrulha a chave mestra da sala usando o segredo compartilhado
-    const ivWrap = window.crypto.getRandomValues(new Uint8Array(12));
-    const wrappedRoomKeyForBobBuffer = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: ivWrap.buffer },
-        aliceBobSharedSecretKeyWrapper, // Usa a chave com o uso 'encrypt'
-        roomAesKeyMaterial // O material bruto da chave AES da sala
-    );
-
-    // E. Cria o objeto que será armazenado na blockchain, mapeado para Bob e a Sala (Usando Uint8Array agora)
-    const bobInviteObject: WrappedRoomKeyData = {
-        wrappedKey: new Uint8Array(wrappedRoomKeyForBobBuffer),
-        iv: ivWrap,
-        inviterPublicKey: aliceProfileData.publicKeySpki // A chave pública de Alice (Uint8Array)
-    };
     console.log("Objeto de convite para Bob gerado e salvo na Sui:", bobInviteObject);
 
-    // Alice prepara a sua própria chave pública pra importação
-    const alicePubKeyForAliceImport  = await window.crypto.subtle.importKey(
-        "spki",
-        aliceProfileData.publicKeySpki.buffer as ArrayBuffer, // Usa o buffer do Uint8Array
-        { name: "ECDH", namedCurve: "P-256" },
-        true,
-        []
-    );
 
-    const aliceAliceSharedSecretKeyWrapper = await window.crypto.subtle.deriveKey(
-        { name: "ECDH", public: alicePubKeyForAliceImport },
-        alicePrivateKey,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"]
+    // C. Alice gera o objeto de convite para ELA MESMA, que será salvo na Blockchain
+    const aliceInviteObject: WrappedRoomKeyData = await PrivateGroupService.generateWrappedKeyForRecipient(
+      roomAesKeyMaterial,                 // A chave bruta da sala
+      alicePrivateKey,                    // A chave privada da Alice (convidante)
+      aliceProfileData.publicKeySpki,     // A chave pública da Alice (para referência no desembrulho)
+      aliceProfileData.publicKeySpki      // Alice é o próprio destinatário
     );
-    const ivWrapAlice = window.crypto.getRandomValues(new Uint8Array(12));
-    const wrappedRoomKeyForAliceBuffer = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: ivWrapAlice.buffer },
-        aliceAliceSharedSecretKeyWrapper,
-        roomAesKeyMaterial
-    );
-
-    const aliceInviteObject: WrappedRoomKeyData = {
-        wrappedKey: new Uint8Array(wrappedRoomKeyForAliceBuffer),
-        iv: ivWrapAlice,
-        inviterPublicKey: aliceProfileData.publicKeySpki
-    };
+    console.log("Objeto de convite para Alice gerado e salvo na Sui:", aliceInviteObject);
 
 
     const message = "Olá Alice, recebi o convite do grupo com sucesso!";
 
-    // 4. BOB ENTRA NA SALA E DESEMBRULHA (usando PrivateGroupService)
-    const bobService = new PrivateGroupService();
-    console.log("\nBob está inicializando o serviço de grupo com seu objeto de convite...");
-    await bobService.initialize(bobInviteObject, bobPrivateKey);
 
+    // 4. BOB ENTRA NA SALA E DESEMBRULHA (usando PrivateGroupService)
+    console.log("\nBob está inicializando o serviço de grupo com seu objeto de convite...");
+    const bobService = new PrivateGroupService(bobInviteObject, bobPrivateKey);
     console.log("Bob recuperou a chave mestra da sala com sucesso!");
 
 
     // 5. BOB LÊ/ENVIA MENSAGENS (usando a chave mestra da sala)
+    // NOTA: Os métodos encryptMessage/decryptMessage precisam das funções Base64URL funcionando para este passo.
+    // Substitua as chamadas abaixo pelas suas implementações reais se necessário:
 
-    // Bob criptografa a mensagem (retorna strings Base64URL para transporte/armazenamento)
     const encryptedByBob = await bobService.encryptMessage(message);
     console.log("Mensagem criptografada por Bob:", encryptedByBob.ciphertext);
 
-    // Bob descriptografa a própria mensagem para testar
     let decryptedByBob = await bobService.decryptMessage(encryptedByBob.iv, encryptedByBob.ciphertext);
     console.log("Mensagem descriptografada por Bob:", decryptedByBob);
 
+    // 6. ALICE LÊ a mensagem de BOB
 
-
-    // 6. ALICE LÊ a mensagem de BOB (usando seu próprio invite object da blockchain)
-    console.log("\nAlice recupera a mensagem de Bob da 'blockchain'.");
-    console.log("Alice recupera SEU PRÓPRIO objeto de convite da 'blockchain' para inicialização.");
-
-    const aliceService = new PrivateGroupService();
+    console.log("\nAlice recupera SEU PRÓPRIO objeto de convite da 'blockchain' para inicialização.");
 
     // Alice inicializa seu serviço de grupo exatamente como Bob fez:
-    // Usando seu objeto de convite (aliceInviteObject) e sua chave privada (alicePrivateKey) para desembrulhar a roomKey.
-    await aliceService.initialize(aliceInviteObject, alicePrivateKey);
-
+    const aliceService = new PrivateGroupService(aliceInviteObject, alicePrivateKey);
     console.log("Alice inicializou seu serviço de grupo desembrulhando a chave com sucesso.");
 
     // Alice descriptografa a mensagem que Bob enviou
@@ -963,7 +1287,6 @@ public static async example () {
         console.log("\nSUCESSO: O fluxo completo do grupo privado funcionou perfeitamente.");
     }
   }
-
 }
 
 
@@ -974,3 +1297,5 @@ export const runTests = async () => {
   await PublicChannelService.example();
   await PrivateGroupService.example();
 }
+
+

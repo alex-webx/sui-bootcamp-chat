@@ -7,11 +7,11 @@ q-chat-message(
 
   template(#name v-if="isFirst")
     span.text-weight-bold.text-medium-sea
-      | {{ dmUser.username }}
+      | {{ otherUser.username }}
 
   template(#avatar)
     q-avatar.q-mr-sm
-      q-img(v-if="isLast" :src="dmUser.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
+      q-img(v-if="isLast" :src="otherUser.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
 
   template(#stamp)
    .flex.items-center
@@ -59,7 +59,7 @@ const props = defineProps({
     type: Object as PropType<Message>,
     required: true
   },
-  dmUser: {
+  otherUser: {
     type: Object as PropType<UserProfile>,
     required: true
   },
@@ -71,7 +71,7 @@ const props = defineProps({
   }
 });
 
-const { message, dmUser, isFirst, isLast } = toRefs(props);
+const { message, otherUser, isFirst, isLast } = toRefs(props);
 
 const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
 

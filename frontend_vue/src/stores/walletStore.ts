@@ -6,6 +6,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import formatters from '../utils/formatters';
 import { client, getNetwork } from '../move';
+import { acceptHMRUpdate } from 'pinia';
 
 const getSuiWallets = (walletsApi: Wallets) => {
   return walletsApi.get().filter(wallet => !!wallet.chains.find(chain => chain.startsWith('sui:')));
@@ -223,3 +224,7 @@ export const useWalletStore = defineStore('wallet', () => {
     }
   };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useWalletStore, import.meta.hot));
+}

@@ -4,6 +4,7 @@ import { UserProfile, userProfileModule, getSuiBalance } from '../move';
 import { useWalletStore } from './';
 import { UserProfileGenerator, UserProfileService } from '../utils/encrypt';
 import { formatCoinBalance } from '../utils/formatters';
+import { acceptHMRUpdate } from 'pinia';
 
 export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
@@ -119,3 +120,7 @@ export const useUserStore = defineStore('userStore', () => {
     }
   };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot));
+}
