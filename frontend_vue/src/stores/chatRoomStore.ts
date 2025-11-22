@@ -57,11 +57,11 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
         name: roomMetaData.name,
         imageUrl: roomMetaData.imageUrl,
         maxParticipants: roomMetaData.maxParticipants,
-        roomKey,
         permissionInvite,
         permissionSendMessage,
         roomType
-      }
+      },
+      roomKey
     });
 
     return parser(await walletStore.signAndExecuteTransaction(tx));
@@ -157,7 +157,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const inviteParticipant = async (args: {
     room: Pick<ChatRoom, 'id'>,
     inviteeAddress: string,
-    roomKey: RoomKey
+    roomKey?: RoomKey
   }) => {
     const tx = chatRoomModule.txInviteParticipant(args.room, args.inviteeAddress, args.roomKey);
     return await walletStore.signAndExecuteTransaction(tx);

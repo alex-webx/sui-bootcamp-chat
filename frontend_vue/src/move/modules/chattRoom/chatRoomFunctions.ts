@@ -17,7 +17,8 @@ const RoomKeyStruct = bcs.struct(`${config('PackageId')}::chat_room::RoomKey`, {
 export const txCreateRoom = (
   data: {
     userProfile: Pick<Models.UserProfile, 'id'>,
-    room: Required<Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'roomKey' | 'roomType' | 'permissionInvite' | 'permissionSendMessage'>>
+    room: Required<Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'roomType' | 'permissionInvite' | 'permissionSendMessage'>>,
+    roomKey: RoomKey
   }
 ) => {
   const tx = new Transaction();
@@ -31,9 +32,9 @@ export const txCreateRoom = (
       tx.pure.string(data.room.imageUrl),
       tx.pure.u64(data.room.maxParticipants),
       tx.pure.u8(data.room.roomType),
-      tx.pure.vector('u8', data.room.roomKey.pubKey),
-      tx.pure.vector('u8', data.room.roomKey.iv),
-      tx.pure.vector('u8', data.room.roomKey.encodedPrivKey),
+      tx.pure.vector('u8', data.roomKey.pubKey),
+      tx.pure.vector('u8', data.roomKey.iv),
+      tx.pure.vector('u8', data.roomKey.encodedPrivKey),
       tx.pure.u8(data.room.permissionInvite),
       tx.pure.u8(data.room.permissionSendMessage),
       tx.object(config('SuiClockId')!)
@@ -149,7 +150,7 @@ export const txDeleteMessage = (
 export const txInviteParticipant = (
   chatRoom: Pick<Models.ChatRoom, 'id'>,
   inviteeAddress: string,
-  roomKey: Models.RoomKey
+  roomKey?: Models.RoomKey
 ) => {
 
   const tx = new Transaction();
@@ -158,9 +159,9 @@ export const txInviteParticipant = (
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(inviteeAddress),
-      tx.pure.vector('u8', roomKey.pubKey),
-      tx.pure.vector('u8', roomKey.iv),
-      tx.pure.vector('u8', roomKey.encodedPrivKey),
+      roomKey?.pubKey ? tx.pure.option('vector<u8>', roomKey.pubKey as any) : tx.pure.option('vector<u8>', undefined),
+      roomKey?.iv ? tx.pure.option('vector<u8>', roomKey.iv as any) : tx.pure.option('vector<u8>', undefined),
+      roomKey?.encodedPrivKey ? tx.pure.option('vector<u8>', roomKey.encodedPrivKey as any) : tx.pure.option('vector<u8>', undefined),
       tx.object(config('SuiClockId')!)
     ],
   });

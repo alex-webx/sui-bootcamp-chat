@@ -45,7 +45,6 @@ export type ChatRoom = {
   participants: Record<string, ParticipantInfo>;
   maxParticipants: number;
   roomType: ERoomType;
-  roomKey?: RoomKey,
   permissionInvite: EPermission;
   permissionSendMessage: EPermission;
 };

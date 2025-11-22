@@ -115,7 +115,7 @@ import { computed, watch, ref, onMounted } from 'vue';
 import { Notify, Dialog } from 'quasar';
 import { storeToRefs } from 'pinia';
 import { useChat } from '../useChat';
-import { EPermission } from '../../../move';
+import { EPermission, ERoomType } from '../../../move';
 import { PrivateGroupService } from '../../../utils/encrypt';
 import { shortenAddress } from '../../../utils/formatters';
 import { useUserStore, useUsersStore } from '../../../stores';
@@ -146,8 +146,6 @@ const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(
 const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
 
 const invite = async () => {
-  const privKey = userStore.profile?.keyPrivDecoded!;
-  const roomKey =  activeChatRoom.value?.participants[userStore.profile?.owner!]?.roomKey!;
 
   const addresses = Object.keys(users.value);
 
@@ -177,24 +175,33 @@ const invite = async () => {
     })
 
     try {
-      const svc = new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
-      const aesRoomKey = await svc.exportRoomAesKey();
-      const inviteKey = await PrivateGroupService.generateWrappedKeyForRecipient(
-        aesRoomKey!,
-        privKey,
-        userStore.profile?.keyPub!,
-        users.value[address]?.keyPub!
-      );
+      const privKey = userStore.profile?.keyPrivDecoded!;
 
-      const res = await chatService.chatRoomStore.inviteParticipant({
-        room: activeChatRoom.value!,
-        inviteeAddress: address,
-        roomKey: {
-          encodedPrivKey: inviteKey.encodedAesKey,
-          iv: inviteKey.iv,
-          pubKey: inviteKey.inviterPublicKey
-        }
-      });
+      if (activeChatRoom.value?.roomType === ERoomType.PrivateGroup) {
+        const roomKey =  activeChatRoom.value?.participants[userStore.profile?.owner!]?.roomKey!;
+        const svc = new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
+        const aesRoomKey = await svc.exportRoomAesKey();
+        const inviteKey = await PrivateGroupService.generateWrappedKeyForRecipient(
+          aesRoomKey!,
+          privKey,
+          userStore.profile?.keyPub!,
+          users.value[address]?.keyPub!
+        );
+        const res = await chatService.chatRoomStore.inviteParticipant({
+          room: activeChatRoom.value!,
+          inviteeAddress: address,
+          roomKey: {
+            encodedPrivKey: inviteKey.encodedAesKey,
+            iv: inviteKey.iv,
+            pubKey: inviteKey.inviterPublicKey
+          }
+        });
+      } else if (activeChatRoom.value?.roomType === ERoomType.PublicGroup) {
+        const res = await chatService.chatRoomStore.inviteParticipant({
+          room: activeChatRoom.value!,
+          inviteeAddress: address,
+        });
+      }
 
       notif({
         message: 'Convidado adicionado com sucesso!',
@@ -204,7 +211,7 @@ const invite = async () => {
         icon: 'done',
         color: 'positive'
       });
-    } catch {
+    } catch (exc) {
       notif({
         message: 'Não foi possível adicionar o convidado!',
         caption: '',
@@ -212,6 +219,7 @@ const invite = async () => {
         timeout: 2500,
         color: 'negative'
       });
+      console.error(exc);
     }
   });
 };

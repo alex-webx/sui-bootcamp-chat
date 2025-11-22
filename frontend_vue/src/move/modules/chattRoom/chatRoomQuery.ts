@@ -76,7 +76,6 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
     moderators: moderators,
     maxParticipants: Number(fields.max_participants),
     participants: participants,
-    roomKey: parseRoomKey(fields.room_key)!,
     roomType: Number(fields.room_type),
     permissionInvite: Number(fields.permission_invite),
     permissionSendMessage: Number(fields.permission_send_message)

@@ -60,8 +60,7 @@ public struct ChatRoom has key, store {
     moderators: Table<address, ModeratorInfo>, 
     participants: Table<address, ParticipantInfo>,
     max_participants: u64,
-    room_type: u8,
-    room_key: Option<RoomKey>,  // <- usado apenas para salas públicas
+    room_type: u8,    
     permission_invite: u8,
     permission_send_message: u8
 }
@@ -180,8 +179,7 @@ public fun create_room(
         moderators: table::new(ctx),
         participants: table::new(ctx),
         max_participants,
-        room_type: room_type,
-        room_key: option::none(),
+        room_type: room_type,        
         permission_invite,
         permission_send_message
     };
@@ -192,13 +190,7 @@ public fun create_room(
         room_key: option::none()
     };
 
-    if (room_type == ROOM_TYPE_PUBLIC_GROUP) {
-        room.room_key = option::some(RoomKey {
-            pub_key: room_pub_key,
-            iv: room_iv,
-            encoded_priv_key: room_encoded_priv_key
-        });
-    } else if (room_type == ROOM_TYPE_PRIVATE_GROUP) {
+    if (room_type == ROOM_TYPE_PRIVATE_GROUP) {
         user_info.room_key = option::some(RoomKey {
             pub_key: room_pub_key,
             iv: room_iv,
@@ -259,7 +251,6 @@ public fun create_dm_room(
         participants: table::new(ctx),
         max_participants: 2,
         room_type: ROOM_TYPE_DM,
-        room_key: option::none(),
         permission_invite,
         permission_send_message
     };
@@ -540,9 +531,9 @@ public fun delete_message(
 public fun invite_participant(
     room: &mut ChatRoom,    
     invitee_address: address,
-    room_pub_key: vector<u8>,
-    room_iv: vector<u8>,
-    room_encoded_priv_key: vector<u8>,
+    room_pub_key: &mut Option<vector<u8>>,
+    room_iv: &mut Option<vector<u8>>,
+    room_encoded_priv_key: &mut Option<vector<u8>>,
     clock: &Clock,
     ctx: &mut TxContext
 ) {
@@ -553,15 +544,30 @@ public fun invite_participant(
     if (!table::contains(&room.participants, invitee_address)) {
         assert!(room.max_participants == 0 || room.max_participants >= table::length(&room.participants) + 1, EMaxRoomParticipantsLimit);
 
-        let participantInfo = ParticipantInfo {
-            added_by: sender,
-            timestamp: clock.timestamp_ms(),
-            room_key: option::some(RoomKey {
-                pub_key: room_pub_key,  
-                iv: room_iv,
-                encoded_priv_key: room_encoded_priv_key  
-            })
+        let participantInfo: ParticipantInfo;
+
+        if (room.room_type == ROOM_TYPE_PUBLIC_GROUP) {
+            participantInfo = ParticipantInfo {
+                added_by: sender,
+                timestamp: clock.timestamp_ms(),
+                room_key: option::none()
+            };
+        } else {
+            let pub_key = option::extract(room_pub_key);
+            let iv = option::extract(room_iv);
+            let encoded_priv_key = option::extract(room_encoded_priv_key);
+
+            participantInfo = ParticipantInfo {
+                added_by: sender,
+                timestamp: clock.timestamp_ms(),
+                room_key: option::some(RoomKey {
+                    pub_key: pub_key,
+                    iv: iv,
+                    encoded_priv_key: encoded_priv_key
+                })
+            };
         };
+
         table::add(&mut room.participants, invitee_address, participantInfo);
     };
 }
