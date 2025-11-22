@@ -31,21 +31,14 @@ public struct ChatRoomRegistry has key {
     rooms: vector<ID>
 }
 
-public struct ModeratorInfo has store, drop, copy {
+public struct ModeratorInfo has store, drop, copy {    
     added_by: address,
     timestamp: u64,
 }
 
-public struct BanInfo has store, drop, copy {
+public struct BanInfo has store, drop, copy {    
     banned_by: address,
     timestamp: u64,
-}
-
-#[allow(unused_field)]
-public struct RoomKey has store, drop, copy {
-    pub_key: vector<u8>,
-    iv: vector<u8>,
-    encoded_priv_key: vector<u8>
 }
 
 public struct ChatRoom has key, store {
@@ -65,8 +58,15 @@ public struct ChatRoom has key, store {
     permission_send_message: u8
 }
 
+#[allow(unused_field)]
+public struct RoomKey has store, drop, copy {
+    pub_key: vector<u8>,
+    iv: vector<u8>,
+    encoded_priv_key: vector<u8>
+}
 
 public struct ParticipantInfo has store, drop, copy {
+    owner: address,
     added_by: address,
     timestamp: u64,
     room_key: Option<RoomKey> // <- usado apenas em salas privadas
@@ -185,6 +185,7 @@ public fun create_room(
     };
 
     let mut user_info = ParticipantInfo {
+        owner: sender,
         added_by: sender,
         timestamp,
         room_key: option::none()
@@ -256,12 +257,14 @@ public fun create_dm_room(
     };
 
     let invitee_user_info = ParticipantInfo {
+        owner: invitee_address,
         added_by: sender,
         timestamp,
         room_key: option::none()
     };
 
     let inviter_user_info = ParticipantInfo {
+        owner: sender,
         added_by: sender,
         timestamp: 0,
         room_key: option::none()
@@ -440,6 +443,7 @@ public fun send_message(
         assert!(room.max_participants == 0 || room.max_participants >= table::length(&room.participants) + 1, EMaxRoomParticipantsLimit);
 
         let participantInfo = ParticipantInfo {
+            owner: sender,
             added_by: sender,
             timestamp: timestamp,
             room_key: option::none()
@@ -548,6 +552,7 @@ public fun invite_participant(
 
         if (room.room_type == ROOM_TYPE_PUBLIC_GROUP) {
             participantInfo = ParticipantInfo {
+                owner: invitee_address,
                 added_by: sender,
                 timestamp: clock.timestamp_ms(),
                 room_key: option::none()
@@ -558,6 +563,7 @@ public fun invite_participant(
             let encoded_priv_key = option::extract(room_encoded_priv_key);
 
             participantInfo = ParticipantInfo {
+                owner: invitee_address,
                 added_by: sender,
                 timestamp: clock.timestamp_ms(),
                 room_key: option::some(RoomKey {

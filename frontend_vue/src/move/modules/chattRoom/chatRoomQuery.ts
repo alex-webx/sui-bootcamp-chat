@@ -38,6 +38,7 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
   const participantsTable = await getFullTable(fields.participants);
   const participants = _.mapValues(participantsTable, (item: any) => {
     const info: Models.ParticipantInfo = {
+      owner: item.fields.owner,
       addedBy: item.fields.added_by,
       roomKey: parseRoomKey(item.fields.room_key)!,
       timestamp: item.fields.timestamp,

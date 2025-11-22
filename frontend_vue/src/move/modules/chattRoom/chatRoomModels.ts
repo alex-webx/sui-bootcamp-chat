@@ -50,6 +50,7 @@ export type ChatRoom = {
 };
 
 export type ParticipantInfo = {
+  owner: string;
   addedBy: string;
   timestamp: number;
   roomKey?: RoomKey;

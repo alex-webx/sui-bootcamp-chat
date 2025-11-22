@@ -157,7 +157,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const inviteParticipant = async (args: {
     room: Pick<ChatRoom, 'id'>,
     inviteeAddress: string,
-    roomKey?: RoomKey
+    roomKey?: RoomKey | undefined
   }) => {
     const tx = chatRoomModule.txInviteParticipant(args.room, args.inviteeAddress, args.roomKey);
     return await walletStore.signAndExecuteTransaction(tx);

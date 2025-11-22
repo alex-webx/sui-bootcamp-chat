@@ -165,6 +165,12 @@ const invite = async () => {
       color: 'grey'
     }
   }).onOk(async address => {
+
+    if (activeChatRoom.value?.participants[address]) {
+      Notify.create({ message: 'O usuário já está presente nesta sala', color: 'primary' });
+      return;
+    }
+
     const notif = Notify.create({
       group: false,
       timeout: 0,
@@ -176,10 +182,11 @@ const invite = async () => {
 
     try {
       const privKey = userStore.profile?.keyPrivDecoded!;
+      let roomKey: Parameters<typeof chatService.chatRoomStore.inviteParticipant>[0]['roomKey'];
 
       if (activeChatRoom.value?.roomType === ERoomType.PrivateGroup) {
-        const roomKey =  activeChatRoom.value?.participants[userStore.profile?.owner!]?.roomKey!;
-        const svc = new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
+        const userRoomKey =  activeChatRoom.value?.participants[userStore.profile?.owner!]?.roomKey!;
+        const svc = new PrivateGroupService({ encodedAesKey: userRoomKey.encodedPrivKey, iv: userRoomKey.iv, inviterPublicKey: userRoomKey.pubKey }, privKey);
         const aesRoomKey = await svc.exportRoomAesKey();
         const inviteKey = await PrivateGroupService.generateWrappedKeyForRecipient(
           aesRoomKey!,
@@ -187,21 +194,20 @@ const invite = async () => {
           userStore.profile?.keyPub!,
           users.value[address]?.keyPub!
         );
-        const res = await chatService.chatRoomStore.inviteParticipant({
-          room: activeChatRoom.value!,
-          inviteeAddress: address,
-          roomKey: {
-            encodedPrivKey: inviteKey.encodedAesKey,
-            iv: inviteKey.iv,
-            pubKey: inviteKey.inviterPublicKey
-          }
-        });
+        roomKey = {
+          encodedPrivKey: inviteKey.encodedAesKey,
+          iv: inviteKey.iv,
+          pubKey: inviteKey.inviterPublicKey
+        };
       } else if (activeChatRoom.value?.roomType === ERoomType.PublicGroup) {
-        const res = await chatService.chatRoomStore.inviteParticipant({
-          room: activeChatRoom.value!,
-          inviteeAddress: address,
-        });
+        // no room key needed
       }
+
+      const res = await chatService.chatRoomStore.inviteParticipant({
+        room: activeChatRoom.value!,
+        inviteeAddress: address,
+        roomKey
+      });
 
       notif({
         message: 'Convidado adicionado com sucesso!',
