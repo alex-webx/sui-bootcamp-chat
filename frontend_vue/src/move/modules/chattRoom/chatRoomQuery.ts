@@ -143,6 +143,13 @@ export const getUserMemberInfos = async (address: string) => {
   return memberInfos;
 };
 
+export const getUsersMemberInfosById = async (membersInfosIds: string[]) => {
+  const res = await getMultiObjects({ ids: membersInfosIds });
+
+  const memberInfos = res.map(parseMemberInfo);
+  return memberInfos;
+};
+
 export const getAllChatRooms = async () => {
   const chatRoomRegistry = await getChatRoomRegistry();
   const roomsObjsRes = await getMultiObjects({ ids: chatRoomRegistry.rooms });
