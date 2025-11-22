@@ -1,5 +1,5 @@
 import { SuiObjectResponse } from '@mysten/sui/client';
-import { client, config, getFullTable, getMultiObjects } from '../../useClient';
+import { client, config, getFullTable, getMultiObjects, getAllOwnedObjects } from '../../useClient';
 import type * as Models from '../..';
 import _ from 'lodash';
 
@@ -10,7 +10,7 @@ export const getChatRoomRegistry = async () => {
 
 const parseChatRoomRegistry = async (response: SuiObjectResponse): Promise<Models.ChatRoomRegistry> => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
-    throw new Error('Não é um moveObject');
+    throw new Error('Invalid ChatRoomRegistry');
   }
 
   const fields = response.data.content.fields as { id: { id: string }, rooms: string[] };
@@ -28,23 +28,31 @@ export const parseRoomKey = (roomKey: any): Models.RoomKey | undefined => {
   } : undefined;
 };
 
-export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models.ChatRoom> => {
+export const parseMemberInfo = (response: SuiObjectResponse): Models.MemberInfo => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
-    throw new Error('ChatRoom inválido');
+    throw new Error('Invalid MemberInfo');
   }
 
   const fields = response.data.content.fields as any;
 
-  const participantsTable = await getFullTable(fields.participants);
-  const participants = _.mapValues(participantsTable, (item: any) => {
-    const info: Models.ParticipantInfo = {
-      owner: item.fields.owner,
-      addedBy: item.fields.added_by,
-      roomKey: parseRoomKey(item.fields.room_key)!,
-      timestamp: item.fields.timestamp,
-    };
-    return info;
-  });
+  return {
+    id: String(fields.id.id),
+    addedBy: String(fields.added_by),
+    owner: String(fields.owner),
+    roomId: String(fields.room_id),
+    timestamp: Number(fields.timestamp),
+    roomKey: parseRoomKey(fields.room_key)!,
+  };
+}
+
+export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models.ChatRoom> => {
+  if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
+    throw new Error('Invalid ChatRoom');
+  }
+
+  const fields = response.data.content.fields as any;
+
+  const members = await getFullTable(fields.members) as Record<string, string>;
 
   const moderatorsTable = await getFullTable(fields.moderators);
   const moderators = _.mapValues(moderatorsTable, (item: any) => {
@@ -75,8 +83,8 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
     createdAt: Number(fields.created_at),
     bannedUsers: bannedUsers,
     moderators: moderators,
-    maxParticipants: Number(fields.max_participants),
-    participants: participants,
+    maxMembers: Number(fields.max_members),
+    members: members,
     roomType: Number(fields.room_type),
     permissionInvite: Number(fields.permission_invite),
     permissionSendMessage: Number(fields.permission_send_message)
@@ -85,7 +93,7 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
 
 export const parseMessage = (response: SuiObjectResponse): Models.Message => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
-    throw new Error('Message inválido');
+    throw new Error('Invalid Message');
   }
 
   const fields = response.data.content.fields as any;
@@ -107,7 +115,7 @@ export const parseMessage = (response: SuiObjectResponse): Models.Message => {
 
 export const parseMessageBlock = (response: SuiObjectResponse): Models.MessageBlock => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
-    throw new Error('MessageBlock inválido');
+    throw new Error('Invalid MessageBlock');
   }
 
   const fields = (response.data.content.fields as any)?.value?.fields as any;
@@ -122,6 +130,18 @@ export const parseMessageBlock = (response: SuiObjectResponse): Models.MessageBl
   };
   return messageBlock;
 }
+
+export const getUserMemberInfos = async (address: string) => {
+  const res = await getAllOwnedObjects({
+    owner: address,
+    filter: {
+      StructType: `${config('PackageId')}::chat_room::MemberInfo`
+    }
+  });
+
+  const memberInfos = res.map(parseMemberInfo);
+  return memberInfos;
+};
 
 export const getAllChatRooms = async () => {
   const chatRoomRegistry = await getChatRoomRegistry();

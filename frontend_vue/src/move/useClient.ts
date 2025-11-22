@@ -115,3 +115,24 @@ export const getDynamicFields = async (args: { parentId: string, pageSize?: numb
   }
   return fields;
 };
+
+export const getAllOwnedObjects = async (args: Pick<Parameters<typeof client.getOwnedObjects>[0], 'cursor' | 'filter' | 'owner' | 'limit'> ) => {
+  let hasNextPage = true;
+  let cursor: string | null = null;
+  let objectsRes: SuiObjectResponse[] = [];
+
+  while (hasNextPage) {
+    const response = await client.getOwnedObjects({
+      owner: args.owner,
+      options: { showContent: true },
+      filter: args.filter || null,
+      cursor: cursor,
+      limit: args.limit|| 50
+    });
+
+    cursor = response.nextCursor!;
+    hasNextPage = response.hasNextPage;
+    objectsRes.push(...response.data);
+  }
+  return objectsRes;
+}

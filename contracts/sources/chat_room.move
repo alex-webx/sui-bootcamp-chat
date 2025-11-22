@@ -10,8 +10,8 @@ use sui::dynamic_field as df;
 const EUserBanned                 : u64 = 001;
 const ENotAuthorized              : u64 = 002;
 const EEmptyMessage               : u64 = 003;
-const EInvalidMaxParticipants     : u64 = 004;
-const EMaxRoomParticipantsLimit   : u64 = 005;
+const EInvalidMaxMembers          : u64 = 004;
+const EMaxRoomMembersLimit        : u64 = 005;
 const ENotAuthorizedToSendMessage : u64 = 006;
 const ENotAuthorizedToInvite      : u64 = 007;
 
@@ -21,9 +21,10 @@ const ROOM_TYPE_PRIVATE_GROUP : u8 = 1;
 const ROOM_TYPE_PUBLIC_GROUP  : u8 = 2;
 const ROOM_TYPE_DM            : u8 = 3;
 
+const PERMISSION_NOBODY           : u8 = 0;
 const PERMISSION_ADMIN            : u8 = 1;
 const PERMISSION_MODERATORS       : u8 = 2;
-const PERMISSION_PARTICIPANTS     : u8 = 4;
+const PERMISSION_MEMBERS          : u8 = 4;
 const PERMISSION_ANYONE           : u8 = 8;
 
 public struct ChatRoomRegistry has key {
@@ -51,8 +52,8 @@ public struct ChatRoom has key, store {
     image_url: String,    
     banned_users: Table<address, BanInfo>,
     moderators: Table<address, ModeratorInfo>, 
-    participants: Table<address, ParticipantInfo>,
-    max_participants: u64,
+    members: Table<address, ID>,
+    max_members: u64,
     room_type: u8,    
     permission_invite: u8,
     permission_send_message: u8
@@ -65,10 +66,12 @@ public struct RoomKey has store, drop, copy {
     encoded_priv_key: vector<u8>
 }
 
-public struct ParticipantInfo has store, drop, copy {
+public struct MemberInfo has key, store {
+    id: UID,
     owner: address,
     added_by: address,
     timestamp: u64,
+    room_id: ID,
     room_key: Option<RoomKey> // <- usado apenas em salas privadas
 }
 
@@ -149,7 +152,7 @@ public fun create_room(
     registry: &mut ChatRoomRegistry,
     name: String,
     image_url: String,
-    max_participants: u64,
+    max_members: u64,
     room_type: u8,
     room_pub_key: vector<u8>,
     room_iv: vector<u8>,
@@ -159,7 +162,7 @@ public fun create_room(
     clock: &Clock,    
     ctx: &mut TxContext
 ) {
-    assert!(max_participants == 0 || max_participants > 1, EInvalidMaxParticipants);
+    assert!(max_members == 0 || max_members > 1, EInvalidMaxMembers);
     assert!(room_type == ROOM_TYPE_PRIVATE_GROUP || room_type == ROOM_TYPE_PUBLIC_GROUP, ENotAuthorized);
     
     let room_uid = object::new(ctx);
@@ -177,27 +180,36 @@ public fun create_room(
         current_block_number: 0,
         banned_users: table::new(ctx),
         moderators: table::new(ctx),
-        participants: table::new(ctx),
-        max_participants,
+        members: table::new(ctx),
+        max_members,
         room_type: room_type,        
         permission_invite,
         permission_send_message
     };
 
-    let mut user_info = ParticipantInfo {
+    let member_info_uid = object::new(ctx);
+    let member_info_id = member_info_uid.uid_to_inner();
+    let mut member_info = MemberInfo {
+        id: member_info_uid,
         owner: sender,
         added_by: sender,
         timestamp,
+        room_id,
         room_key: option::none()
     };
 
     if (room_type == ROOM_TYPE_PRIVATE_GROUP) {
-        user_info.room_key = option::some(RoomKey {
+        member_info.room_key = option::some(RoomKey {
             pub_key: room_pub_key,
             iv: room_iv,
             encoded_priv_key: room_encoded_priv_key
         });
     };
+
+    transfer::transfer(member_info, sender);
+
+    user_profile::add_user_profile_rooms_joined(profile, room_id);
+    table::add(&mut room.members, sender, member_info_id);
 
     let first_block = MessageBlock {
         id: object::new(ctx),
@@ -212,10 +224,6 @@ public fun create_room(
 
     df::add(&mut room.id, 0u64, first_block);
 
-    user_profile::add_user_profile_rooms_joined(profile, room_id);
-
-    table::add(&mut room.participants, sender, user_info);
-
     transfer::share_object(room);
     
     event::emit(ChatRoomCreatedEvent {        
@@ -224,6 +232,7 @@ public fun create_room(
     });
 }
 
+#[allow(lint(self_transfer))]
 public fun create_dm_room(
     registry: &mut ChatRoomRegistry,
     profile: &mut UserProfile,
@@ -237,7 +246,7 @@ public fun create_dm_room(
     let timestamp = clock.timestamp_ms();
 
     let permission_invite: u8 = 0;
-    let permission_send_message: u8 = PERMISSION_ADMIN + PERMISSION_MODERATORS + PERMISSION_PARTICIPANTS + PERMISSION_ANYONE;
+    let permission_send_message: u8 = PERMISSION_ADMIN + PERMISSION_MODERATORS + PERMISSION_MEMBERS + PERMISSION_ANYONE;
 
     let mut room = ChatRoom {
         id: room_uid,
@@ -249,29 +258,42 @@ public fun create_dm_room(
         current_block_number: 0,
         banned_users: table::new(ctx),
         moderators: table::new(ctx),
-        participants: table::new(ctx),
-        max_participants: 2,
+        members: table::new(ctx),
+        max_members: 2,
         room_type: ROOM_TYPE_DM,
         permission_invite,
         permission_send_message
     };
 
-    let invitee_user_info = ParticipantInfo {
+    let invitee_member_info_uid = object::new(ctx);    
+    let invitee_member_info_id = invitee_member_info_uid.uid_to_inner();
+    let invitee_member_info = MemberInfo {
+        id: invitee_member_info_uid,
         owner: invitee_address,
         added_by: sender,
         timestamp,
+        room_id,
         room_key: option::none()
     };
 
-    let inviter_user_info = ParticipantInfo {
+    let inviter_member_info_uid = object::new(ctx);    
+    let inviter_member_info_id = inviter_member_info_uid.uid_to_inner();
+    let inviter_member_info = MemberInfo {
+        id: inviter_member_info_uid,
         owner: sender,
         added_by: sender,
         timestamp: 0,
+        room_id,
         room_key: option::none()
     };
     
-    table::add(&mut room.participants, invitee_address, invitee_user_info);
-    table::add(&mut room.participants, sender, inviter_user_info);
+    table::add(&mut room.members, invitee_address, invitee_member_info_id);
+    table::add(&mut room.members, sender, inviter_member_info_id);
+
+    transfer::transfer(invitee_member_info, invitee_address);
+    transfer::transfer(inviter_member_info, sender); // <- already a owner object
+
+    user_profile::add_user_profile_rooms_joined(profile, room_id);
 
     let first_block = MessageBlock {
         id: object::new(ctx),
@@ -285,9 +307,7 @@ public fun create_dm_room(
     vector::push_back(&mut registry.rooms, room_id);
 
     df::add(&mut room.id, 0u64, first_block);
-
-    user_profile::add_user_profile_rooms_joined(profile, room_id);
-
+    
     transfer::share_object(room);
     
     event::emit(ChatRoomCreatedEvent {        
@@ -296,26 +316,26 @@ public fun create_dm_room(
     });
 }
 
-public fun accept_dm_room(
-    room: &mut ChatRoom,
-    profile: &mut UserProfile,
-    clock: &Clock,
-    ctx: &mut TxContext
-) {
-    let sender = tx_context::sender(ctx);
+// public fun accept_dm_room(
+//     room: &mut ChatRoom,
+//     profile: &mut UserProfile,
+//     clock: &Clock,
+//     ctx: &mut TxContext
+// ) {
+//     let sender = tx_context::sender(ctx);
 
-    assert!(room.room_type == ROOM_TYPE_DM, ENotAuthorized);
-    assert!(table::contains(&room.participants, sender), ENotAuthorized);
+//     assert!(room.room_type == ROOM_TYPE_DM, ENotAuthorized);
+//     assert!(table::contains(&room.members, sender), ENotAuthorized);
     
-    let room_id = room.id.uid_to_inner();
-    let timestamp = clock.timestamp_ms();
-    let inviter_address = room.owner;
+//     let room_id = room.id.uid_to_inner();
+//     let timestamp = clock.timestamp_ms();
+//     let inviter_address = room.owner;
 
-    let inviter_participant_info = table::borrow_mut<address, ParticipantInfo>(&mut room.participants, inviter_address);
-    inviter_participant_info.timestamp = timestamp;
+//     let inviter_member_info = table::borrow_mut<address, MemberInfo>(&mut room.members, inviter_address);
+//     inviter_member_info.timestamp = timestamp;
 
-    user_profile::add_user_profile_rooms_joined(profile, room_id);
-}
+//     user_profile::add_user_profile_rooms_joined(profile, room_id);
+// }
 
 public fun has_room_permission(
     chat_room: &ChatRoom,
@@ -323,7 +343,7 @@ public fun has_room_permission(
     required_permission_flag: u8 // Ex: chat_room.permission_send_message or chat_room.permission_invite
 ): bool {
 
-    if (required_permission_flag == 0) {
+    if (required_permission_flag == PERMISSION_NOBODY) {
         return false
     };
 
@@ -337,7 +357,7 @@ public fun has_room_permission(
     };
 
     let is_moderator = table::contains(&chat_room.moderators, user_address);
-    let is_participant = table::contains(&chat_room.participants, user_address);
+    let is_member = table::contains(&chat_room.members, user_address);
 
     // Lógica Bitwise Principal:
     // Verifica se o grupo do usuário está incluído na lista de permissões requerida.
@@ -345,7 +365,7 @@ public fun has_room_permission(
         return true
     };
 
-    if (is_participant && (required_permission_flag & PERMISSION_PARTICIPANTS) != 0u8) {
+    if (is_member && (required_permission_flag & PERMISSION_MEMBERS) != 0u8) {
         return true
     };
 
@@ -436,19 +456,24 @@ public fun send_message(
     let timestamp = clock.timestamp_ms();
     let room_id = room.id.uid_to_inner();
 
-    // só para public faz sentido adicionar o usuário automaticamente como participante (pois não precisa de room_key própria)
-    // se DM, o usuário já faz parte de participants
+    // só para public faz sentido adicionar o usuário automaticamente como membro (pois não precisa de room_key própria)
+    // se DM, o usuário já faz parte de members
     // se private, não faz sentido adicionar o usuário automaticamente
-    if (room.room_type == ROOM_TYPE_PUBLIC_GROUP && !table::contains(&room.participants, sender)) { 
-        assert!(room.max_participants == 0 || room.max_participants >= table::length(&room.participants) + 1, EMaxRoomParticipantsLimit);
+    if (room.room_type == ROOM_TYPE_PUBLIC_GROUP && !table::contains(&room.members, sender)) { 
+        assert!(room.max_members == 0 || room.max_members >= table::length(&room.members) + 1, EMaxRoomMembersLimit);
 
-        let participantInfo = ParticipantInfo {
+        let member_info_uid = object::new(ctx);
+        let member_info_id = member_info_uid.uid_to_inner();
+        let member_info = MemberInfo {
+            id: member_info_uid,
             owner: sender,
             added_by: sender,
             timestamp: timestamp,
+            room_id: room_id,
             room_key: option::none()
         };
-        table::add(&mut room.participants, sender, participantInfo);
+        table::add(&mut room.members, sender, member_info_id);
+        transfer::transfer(member_info, sender);
     };
     
     let message_id = add_message(room, content, reply_to, media_url, clock, ctx);
@@ -532,7 +557,7 @@ public fun delete_message(
     });
 }
 
-public fun invite_participant(
+public fun invite_member(
     room: &mut ChatRoom,    
     invitee_address: address,
     room_pub_key: &mut Option<vector<u8>>,
@@ -545,16 +570,20 @@ public fun invite_participant(
     
     assert!(has_room_permission(room, sender, room.permission_invite), ENotAuthorizedToInvite);
 
-    if (!table::contains(&room.participants, invitee_address)) {
-        assert!(room.max_participants == 0 || room.max_participants >= table::length(&room.participants) + 1, EMaxRoomParticipantsLimit);
+    if (!table::contains(&room.members, invitee_address)) {
+        assert!(room.max_members == 0 || room.max_members >= table::length(&room.members) + 1, EMaxRoomMembersLimit);
 
-        let participantInfo: ParticipantInfo;
+        let member_info: MemberInfo;
+        let member_info_uid = object::new(ctx);
+        let member_info_id = member_info_uid.uid_to_inner();
 
         if (room.room_type == ROOM_TYPE_PUBLIC_GROUP) {
-            participantInfo = ParticipantInfo {
+            member_info = MemberInfo {
+                id: member_info_uid,
                 owner: invitee_address,
                 added_by: sender,
                 timestamp: clock.timestamp_ms(),
+                room_id: room.id.uid_to_inner(),
                 room_key: option::none()
             };
         } else {
@@ -562,10 +591,12 @@ public fun invite_participant(
             let iv = option::extract(room_iv);
             let encoded_priv_key = option::extract(room_encoded_priv_key);
 
-            participantInfo = ParticipantInfo {
+            member_info = MemberInfo {
+                id: member_info_uid,
                 owner: invitee_address,
                 added_by: sender,
                 timestamp: clock.timestamp_ms(),
+                room_id: room.id.uid_to_inner(),
                 room_key: option::some(RoomKey {
                     pub_key: pub_key,
                     iv: iv,
@@ -574,7 +605,8 @@ public fun invite_participant(
             };
         };
 
-        table::add(&mut room.participants, invitee_address, participantInfo);
+        table::add(&mut room.members, invitee_address, member_info_id);
+        transfer::transfer(member_info, invitee_address);
     };
 }
 
@@ -585,6 +617,7 @@ public fun add_moderator(
     ctx: &mut TxContext
 ) {
     assert!(room.room_type != ROOM_TYPE_DM, ENotAuthorized);
+    assert!(table::contains(&room.members, moderator), ENotAuthorized);
 
     let sender = tx_context::sender(ctx);
     assert!(room.owner == sender, ENotAuthorized);
@@ -605,6 +638,8 @@ public fun remove_moderator(
     ctx: &mut TxContext
 ) {
     assert!(room.room_type != ROOM_TYPE_DM, ENotAuthorized);
+    assert!(table::contains(&room.members, moderator), ENotAuthorized);
+    assert!(table::contains(&room.moderators, moderator), ENotAuthorized);
 
     let sender = tx_context::sender(ctx);
     assert!(room.owner == sender, ENotAuthorized);
@@ -623,6 +658,7 @@ public fun ban_user(
     assert!(room.room_type != ROOM_TYPE_DM, ENotAuthorized);
     assert!(user != room.owner, ENotAuthorized);
     assert!(!table::contains(&room.moderators, user), ENotAuthorized);
+    assert!(table::contains(&room.members, user), ENotAuthorized);
 
     let sender = tx_context::sender(ctx);
     let is_authorized = room.owner == sender || 
@@ -651,6 +687,7 @@ public fun unban_user(
     ctx: &mut TxContext
 ) {
     assert!(room.room_type != ROOM_TYPE_DM, ENotAuthorized);
+    assert!(table::contains(&room.members, user), ENotAuthorized);
 
     let sender = tx_context::sender(ctx);
     let is_authorized = room.owner == sender || 

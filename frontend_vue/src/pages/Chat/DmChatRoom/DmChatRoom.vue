@@ -124,7 +124,7 @@ const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const {
-  getDmParticipantId, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
+  getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
   breakpoint, screenWidth, desktopMode, drawerWidth
 } = chatService;
 
@@ -132,8 +132,8 @@ const loading = ref(false);
 
 const dmUser = computed(() => {
   if (activeChatRoom.value) {
-    const participantUserId = getDmParticipantId(activeChatRoom.value);
-    return users.value[participantUserId!];
+    const memberUserAddress = getDmMemberUserAddress(activeChatRoom.value);
+    return users.value[memberUserAddress!];
   }
 });
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);

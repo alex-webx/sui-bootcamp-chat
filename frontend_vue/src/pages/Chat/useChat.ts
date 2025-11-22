@@ -48,6 +48,7 @@ export function useChat() {
 
   const sendMessage = async () => {
     const profile = userStore.profile;
+    const memberInfos = userStore.memberInfos;
     const activeChatRoom = chatRoomStore.activeChatRoom;
 
     if (profile && activeChatRoom) {
@@ -62,7 +63,7 @@ export function useChat() {
       switch(activeChatRoom.roomType) {
         case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
-          const dmUser = getDmParticipant(activeChatRoom);
+          const dmUser = getDmMemberUser(activeChatRoom);
           const dmService = new DirectMessageService(privKey!, dmUser?.keyPub!);
 
           if (content?.length) {
@@ -77,7 +78,7 @@ export function useChat() {
         }
           case ERoomType.PrivateGroup: {
             const privKey = await userStore.ensurePrivateKey();
-            const roomKey = chatRoomStore.activeChatRoom.participants[profile.owner]?.roomKey;
+            const roomKey = memberInfos[chatRoomStore.activeChatRoomId!]?.roomKey;
             const privGroupService = new PrivateGroupService({
               encodedAesKey: roomKey?.encodedPrivKey!,
               inviterPublicKey: roomKey?.pubKey!,
@@ -176,15 +177,15 @@ export function useChat() {
     }
   }
 
-  const getDmParticipantId = (room: ChatRoom | null) => {
+  const getDmMemberUserAddress = (room: ChatRoom | null) => {
     if (room?.roomType === ERoomType.DirectMessage) {
-      return Object.keys(room.participants).find(id => id !== userStore.profile?.owner)!;
+      return Object.keys(room.members).find(id => id !== userStore.profile?.owner)!;
     } else {
       return null;
     }
   };
 
-  const getDmParticipant = (room: ChatRoom | null) => usersStore.users[getDmParticipantId(room)!];
+  const getDmMemberUser = (room: ChatRoom | null) => usersStore.users[getDmMemberUserAddress(room)!];
 
   const clearNewMessage = () => { newMessage.value = { id: '', content: '', mediaUrl: [], replyTo: '' }; };
 
@@ -275,7 +276,7 @@ export function useChat() {
     if ((permissionInvite! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) {
       return true;
     }
-    if ((permissionInvite! & EPermission.Participants) === EPermission.Participants && !!room?.participants?.[profileOwner!]) {
+    if ((permissionInvite! & EPermission.Members) === EPermission.Members && !!room?.members?.[profileOwner!]) {
       return true;
     }
     return false;
@@ -299,7 +300,7 @@ export function useChat() {
     if ((permissionSendMessage! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) {
       return true;
     }
-    if ((permissionSendMessage! & EPermission.Participants) === EPermission.Participants && !!room?.participants?.[profileOwner!]) {
+    if ((permissionSendMessage! & EPermission.Members) === EPermission.Members && !!room?.members?.[profileOwner!]) {
       return true;
     }
     return false;
@@ -334,8 +335,8 @@ export function useChat() {
     clearNewMessage,
 
     fetchMessageBlocks,
-    getDmParticipant,
-    getDmParticipantId,
+    getDmMemberUser,
+    getDmMemberUserAddress,
 
     canInvite,
     canSendMessage

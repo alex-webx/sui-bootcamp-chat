@@ -74,7 +74,7 @@ template(v-else)
 
   q-page-sticky.z-top(position="top-right" :offset="[10, 10]" v-if="canInvite")
     q-fab(icon="mdi-plus" direction="left" push glossy color="light-ocean" padding="sm")
-      q-fab-action(icon="mdi-account-plus-outline" label="Adicionar convidado" color="light-ocean" push @click="invite()")
+      q-fab-action(icon="mdi-account-plus-outline" label="Adicionar membro" color="light-ocean" push @click="invite()")
 
   .row.justify-end(
     style="margin-top: auto"
@@ -99,6 +99,7 @@ template(v-else)
         MessageBlock(
           :messageBlock="msgBlock"
           :user="profile"
+          :memberInfo="memberInfo"
           :users="users"
           :room="activeChatRoom"
           @messagesLoaded="(blockNumber) => messagesEvent('loaded', blockNumber)"
@@ -127,10 +128,10 @@ const userStore = useUserStore();
 const usersStore = useUsersStore();
 const feeder = useMessageFeeder();
 const { users } = storeToRefs(usersStore);
-const { profile } = storeToRefs(userStore);
+const { profile, memberInfos } = storeToRefs(userStore);
 const { activeChatRoom, activeChatRoomId } = storeToRefs(chatService.chatRoomStore);
 const {
-  getDmParticipantId, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
+  getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
   breakpoint, screenWidth, desktopMode, drawerWidth, canInvite,
 } = chatService;
 
@@ -138,12 +139,13 @@ const loading = ref(false);
 
 const dmUser = computed(() => {
   if (activeChatRoom.value) {
-    const participantUserId = getDmParticipantId(activeChatRoom.value);
-    return users.value[participantUserId!];
+    const memberUserAddress = getDmMemberUserAddress(activeChatRoom.value);
+    return users.value[memberUserAddress!];
   }
 });
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
 const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
+const memberInfo = computed(() => memberInfos.value[activeChatRoomId.value!]);
 
 const invite = async () => {
 
@@ -157,7 +159,7 @@ const invite = async () => {
     },
     ok: {
       color: 'primary',
-      label: 'Adicionar convidado'
+      label: 'Adicionar membro'
     },
     cancel: {
       label: 'Cancelar',
@@ -166,7 +168,7 @@ const invite = async () => {
     }
   }).onOk(async address => {
 
-    if (activeChatRoom.value?.participants[address]) {
+    if (activeChatRoom.value?.members[address]) {
       Notify.create({ message: 'O usuário já está presente nesta sala', color: 'primary' });
       return;
     }
@@ -182,10 +184,10 @@ const invite = async () => {
 
     try {
       const privKey = userStore.profile?.keyPrivDecoded!;
-      let roomKey: Parameters<typeof chatService.chatRoomStore.inviteParticipant>[0]['roomKey'];
+      let roomKey: Parameters<typeof chatService.chatRoomStore.inviteMember>[0]['roomKey'];
 
       if (activeChatRoom.value?.roomType === ERoomType.PrivateGroup) {
-        const userRoomKey =  activeChatRoom.value?.participants[userStore.profile?.owner!]?.roomKey!;
+        const userRoomKey =  memberInfo.value?.roomKey!;
         const svc = new PrivateGroupService({ encodedAesKey: userRoomKey.encodedPrivKey, iv: userRoomKey.iv, inviterPublicKey: userRoomKey.pubKey }, privKey);
         const aesRoomKey = await svc.exportRoomAesKey();
         const inviteKey = await PrivateGroupService.generateWrappedKeyForRecipient(
@@ -203,14 +205,14 @@ const invite = async () => {
         // no room key needed
       }
 
-      const res = await chatService.chatRoomStore.inviteParticipant({
+      const res = await chatService.chatRoomStore.inviteMember({
         room: activeChatRoom.value!,
         inviteeAddress: address,
         roomKey
       });
 
       notif({
-        message: 'Convidado adicionado com sucesso!',
+        message: 'Membro adicionado com sucesso!',
         caption: '',
         spinner: false,
         timeout: 2500,

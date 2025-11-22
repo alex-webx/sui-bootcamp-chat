@@ -17,7 +17,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const createChatRoom = async(roomMetaData: {
     name: string,
     imageUrl: string,
-    maxParticipants: number,
+    maxMembers: number,
     isRestricted: boolean,
     isAnnouncements: boolean,
     inviteLevel: 'administrator' | 'moderators' | 'all'
@@ -44,10 +44,10 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
 
     const permissionInvite = EPermission.Admin |
       (roomMetaData.inviteLevel === 'moderators' ? EPermission.Moderators : 0) |
-      (roomMetaData.inviteLevel === 'all' ? (EPermission.Moderators | EPermission.Participants | EPermission.Anyone) : 0);
+      (roomMetaData.inviteLevel === 'all' ? (EPermission.Moderators | EPermission.Members | EPermission.Anyone) : 0);
 
     const permissionSendMessage = EPermission.Admin |
-      (roomMetaData.isAnnouncements ? EPermission.Moderators : (EPermission.Moderators | EPermission.Participants | EPermission.Anyone));
+      (roomMetaData.isAnnouncements ? EPermission.Moderators : (EPermission.Moderators | EPermission.Members | EPermission.Anyone));
 
     const roomType = roomMetaData.isRestricted ? ERoomType.PrivateGroup : ERoomType.PublicGroup;
 
@@ -56,7 +56,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
       room: {
         name: roomMetaData.name,
         imageUrl: roomMetaData.imageUrl,
-        maxParticipants: roomMetaData.maxParticipants,
+        maxMembers: roomMetaData.maxMembers,
         permissionInvite,
         permissionSendMessage,
         roomType
@@ -82,20 +82,20 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     }
   };
 
-  const acceptDmRoom = async (
-    data: {
-      room: Pick<ChatRoom, 'id'>,
-      inviterUserProfile: Pick<UserProfile, 'keyPub'>
-    }
-  ) => {
-    if (userStore.profile?.id) {
-      const tx = chatRoomModule.txAcceptDmRoom({
-        profile: userStore.profile,
-        room: data.room
-      });
-      return walletStore.signAndExecuteTransaction(tx);
-    }
-  };
+  // const acceptDmRoom = async (
+  //   data: {
+  //     room: Pick<ChatRoom, 'id'>,
+  //     inviterUserProfile: Pick<UserProfile, 'keyPub'>
+  //   }
+  // ) => {
+  //   if (userStore.profile?.id) {
+  //     const tx = chatRoomModule.txAcceptDmRoom({
+  //       profile: userStore.profile,
+  //       room: data.room
+  //     });
+  //     return walletStore.signAndExecuteTransaction(tx);
+  //   }
+  // };
 
   // const fetchAllChatRooms = async () => {
   //   chatRooms.value = await chatRoomModule.getAllChatRooms();
@@ -103,11 +103,14 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
   // };
 
   const fetchAllUserChatRoom = async () => {
-    const allRooms  = await chatRoomModule.getAllChatRooms();
+    //const allRooms  = await chatRoomModule.getAllChatRooms();
     const roomsJoined = userStore.profile?.roomsJoined || [];
-    chatRooms.value = _(allRooms)
-      .filter(room => roomsJoined.indexOf(room.id) >= 0 || !!room.participants[userStore.profile?.owner!] )
-      .keyBy(room => room.id).value();
+    const memberInfosRoomIds = Object.keys(await userStore.fetchMemberInfos());
+    const roomsIds = _.uniq([ ...roomsJoined, ...memberInfosRoomIds ]);
+
+    const rooms = await chatRoomModule.getChatRooms(roomsIds);
+
+    chatRooms.value = _(rooms).keyBy(room => room.id).value();
     return chatRooms.value;
   };
 
@@ -154,12 +157,12 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     return parser(await walletStore.signAndExecuteTransaction(tx));
   };
 
-  const inviteParticipant = async (args: {
+  const inviteMember = async (args: {
     room: Pick<ChatRoom, 'id'>,
     inviteeAddress: string,
     roomKey?: RoomKey | undefined
   }) => {
-    const tx = chatRoomModule.txInviteParticipant(args.room, args.inviteeAddress, args.roomKey);
+    const tx = chatRoomModule.txInviteMember(args.room, args.inviteeAddress, args.roomKey);
     return await walletStore.signAndExecuteTransaction(tx);
   };
 
@@ -183,7 +186,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     createChatRoom,
 
     createDmRoom,
-    acceptDmRoom,
+    // acceptDmRoom,
 
     fetchAllUserChatRoom,
     refreshUserChatRoom,
@@ -191,7 +194,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     sendMessage,
     editMessage,
     deleteMessage,
-    inviteParticipant,
+    inviteMember,
 
     getChatRoomMessageBlocks,
     getChatRoomMessagesFromBlock,

@@ -16,7 +16,7 @@ q-list
       v-for="(user, userId) in users" :key="userId"
       clickable v-ripple
       @click="selectUser(user)"
-      :class="{ 'active-item': activeChatRoom && user.owner !== profile.owner && profile.roomsJoined.indexOf(activeChatRoom.id) >= 0 && !!activeChatRoom?.participants?.[user.owner] }"
+      :class="{ 'active-item': activeChatRoom && user.owner !== profile.owner && profile.roomsJoined.indexOf(activeChatRoom.id) >= 0 && !!activeChatRoom?.members?.[user.owner] }"
     )
       q-item-section(avatar)
         q-avatar(size="48px")
@@ -89,13 +89,13 @@ const selectUser = async (user: typeof users.value[number]) => {
 
   let dmRoom = Object.values(chatRooms.value)
     .filter(room => room.roomType === ERoomType.DirectMessage)
-    .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
+    .find(room => !!room.members[user.owner] && !!room.members[profile.value?.owner!]);
 
   if (!dmRoom) {
     await chatRoomStore.fetchAllUserChatRoom();
     dmRoom = Object.values(chatRooms.value)
       .filter(room => room.roomType === ERoomType.DirectMessage)
-      .find(room => !!room.participants[user.owner] && !!room.participants[profile.value?.owner!]);
+      .find(room => !!room.members[user.owner] && !!room.members[profile.value?.owner!]);
   }
 
   if (dmRoom) {

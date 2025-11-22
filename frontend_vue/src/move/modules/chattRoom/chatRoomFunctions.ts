@@ -17,7 +17,7 @@ const RoomKeyStruct = bcs.struct(`${config('PackageId')}::chat_room::RoomKey`, {
 export const txCreateRoom = (
   data: {
     userProfile: Pick<Models.UserProfile, 'id'>,
-    room: Required<Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxParticipants' | 'roomType' | 'permissionInvite' | 'permissionSendMessage'>>,
+    room: Required<Pick<Models.ChatRoom, 'name' | 'imageUrl' | 'maxMembers' | 'roomType' | 'permissionInvite' | 'permissionSendMessage'>>,
     roomKey: RoomKey
   }
 ) => {
@@ -30,7 +30,7 @@ export const txCreateRoom = (
       tx.object(config('ChatRoomRegistryId')!),
       tx.pure.string(data.room.name),
       tx.pure.string(data.room.imageUrl),
-      tx.pure.u64(data.room.maxParticipants),
+      tx.pure.u64(data.room.maxMembers),
       tx.pure.u8(data.room.roomType),
       tx.pure.vector('u8', data.roomKey.pubKey),
       tx.pure.vector('u8', data.roomKey.iv),
@@ -66,24 +66,24 @@ export const txCreateDmRoom = (
   return { tx, parser };
 };
 
-export const txAcceptDmRoom = (
-  data: {
-    room: Pick<Models.ChatRoom, 'id'>,
-    profile: Pick<Models.UserProfile, 'id'>
-  }
-) => {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${config('PackageId')}::chat_room::accept_dm_room`,
-    arguments: [
-      tx.object(data.room.id),
-      tx.object(data.profile.id),
-      tx.object(config('SuiClockId')!)
-    ],
-  });
+// export const txAcceptDmRoom = (
+//   data: {
+//     room: Pick<Models.ChatRoom, 'id'>,
+//     profile: Pick<Models.UserProfile, 'id'>
+//   }
+// ) => {
+//   const tx = new Transaction();
+//   tx.moveCall({
+//     target: `${config('PackageId')}::chat_room::accept_dm_room`,
+//     arguments: [
+//       tx.object(data.room.id),
+//       tx.object(data.profile.id),
+//       tx.object(config('SuiClockId')!)
+//     ],
+//   });
 
-  return tx;
-};
+//   return tx;
+// };
 
 export const txSendMessage = (
   userProfileId: string,
@@ -147,7 +147,7 @@ export const txDeleteMessage = (
   return { tx, parser };
 };
 
-export const txInviteParticipant = (
+export const txInviteMember = (
   chatRoom: Pick<Models.ChatRoom, 'id'>,
   inviteeAddress: string,
   roomKey?: Models.RoomKey
@@ -155,7 +155,7 @@ export const txInviteParticipant = (
 
   const tx = new Transaction();
   tx.moveCall({
-    target: `${config('PackageId')}::chat_room::invite_participant`,
+    target: `${config('PackageId')}::chat_room::invite_member`,
     arguments: [
       tx.object(chatRoom.id),
       tx.pure.address(inviteeAddress),

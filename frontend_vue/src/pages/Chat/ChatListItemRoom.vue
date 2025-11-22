@@ -63,14 +63,14 @@ const { latestMessages  } = useMessageFeeder();
 
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(props.room.id) >= 0);
 const isToday = (timestamp: number) => moment(Number(timestamp)).isSame(moment(), 'date');
-const participant = computed(() => props.room.participants[userStore.profile?.owner!]);
+const member = computed(() => userStore.memberInfos[props.room.id]);
 
 const decryptService = computed(() => {
   if (props.room.roomType === ERoomType.PrivateGroup) {
     const svc = new PrivateGroupService({
-      encodedAesKey: participant.value?.roomKey?.encodedPrivKey!,
-      iv: participant.value?.roomKey?.iv!,
-      inviterPublicKey: participant.value?.roomKey?.pubKey!
+      encodedAesKey: member.value?.roomKey?.encodedPrivKey!,
+      iv: member.value?.roomKey?.iv!,
+      inviterPublicKey: member.value?.roomKey?.pubKey!
     }, userStore.profile?.keyPrivDecoded!);
     return (iv: string, ciphertext: string) => svc.decryptMessage(iv, ciphertext);
   } else if (props.room.roomType == ERoomType.PublicGroup) {
@@ -78,7 +78,6 @@ const decryptService = computed(() => {
     return (iv: string, ciphertext: string) => svc.deObfuscateMessage(iv, ciphertext);
   }
 });
-
 
 const lastMessage = ref<Message>();
 

@@ -7,7 +7,7 @@ export enum EPermission {
   Nobody = 0,
   Admin = 1,
   Moderators = 2,
-  Participants = 4,
+  Members = 4,
   Anyone = 8
 }
 
@@ -42,17 +42,19 @@ export type ChatRoom = {
   imageUrl: string;
   bannedUsers: Record<string, BanInfo>;
   moderators: Record<string, ModeratorInfo>;
-  participants: Record<string, ParticipantInfo>;
-  maxParticipants: number;
+  members: Record<string, string>;
+  maxMembers: number;
   roomType: ERoomType;
   permissionInvite: EPermission;
   permissionSendMessage: EPermission;
 };
 
-export type ParticipantInfo = {
+export type MemberInfo = {
+  id: string;
   owner: string;
   addedBy: string;
   timestamp: number;
+  roomId: string;
   roomKey?: RoomKey;
 };
 

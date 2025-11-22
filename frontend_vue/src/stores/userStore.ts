@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { UserProfile, userProfileModule, getSuiBalance } from '../move';
+import _ from 'lodash';
+import { UserProfile, userProfileModule, getSuiBalance, MemberInfo, chatRoomModule } from '../move';
 import { useWalletStore } from './';
 import { UserProfileGenerator, UserProfileService } from '../utils/encrypt';
 import { formatCoinBalance } from '../utils/formatters';
@@ -10,7 +11,8 @@ export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
 
   const profile = ref<UserProfile>();
-  const suiBalance = ref<BigInt>();
+  const suiBalance = ref<bigint | null>(null);
+  const memberInfos = ref<Record<string, MemberInfo>>({});
 
   const fetchCurrentUserProfile = async () => {
     if (!walletStore.address) {
@@ -31,6 +33,7 @@ export const useUserStore = defineStore('userStore', () => {
     }
 
     await getUserSuiBalance();
+    await fetchMemberInfos();
 
     return profile.value;
   };
@@ -58,6 +61,11 @@ export const useUserStore = defineStore('userStore', () => {
     return null;
   };
 
+  const fetchMemberInfos = async () => {
+    const infos = await chatRoomModule.getUserMemberInfos(profile.value?.owner!);
+    memberInfos.value = _.keyBy(infos, info => info.roomId);
+    return memberInfos.value;
+  };
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
     const response = await walletStore.generateMasterSignature();
@@ -105,10 +113,12 @@ export const useUserStore = defineStore('userStore', () => {
 
   return {
     profile,
+    memberInfos,
     suiBalance,
     suiBalanceFormatted: computed(() => formatCoinBalance(suiBalance.value!, 9, 2)),
 
     fetchCurrentUserProfile,
+    fetchMemberInfos,
     ensurePrivateKey,
     createUserProfile,
     deleteUserProfile,
@@ -116,7 +126,8 @@ export const useUserStore = defineStore('userStore', () => {
 
     resetState: async () => {
       profile.value = undefined;
-      suiBalance.value = undefined;
+      suiBalance.value = null;
+      memberInfos.value = {};
     }
   };
 });

@@ -32,10 +32,10 @@
             )
               q-btn(round flat)
                 q-avatar
-                  q-img(:src="activeChatRoom.imageUrl || users[dmParticipantId]?.avatarUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
+                  q-img(:src="activeChatRoom.imageUrl || users[dmMemberUserAddress]?.avatarUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
 
               span.text-subtitle1.q-pl-sm
-                | {{ activeChatRoom.name || users[dmParticipantId]?.username }}
+                | {{ activeChatRoom.name || users[dmMemberUserAddress]?.username }}
 
         q-space
 
@@ -49,7 +49,7 @@
       :breakpoint="breakpoint" dark
       :width="drawerWidth"
     )
-      q-toolbar.bg-deep-sea
+      q-toolbar.bg-deep-sea.q-pr-none
 
         q-avatar.cursor-pointer(@click="editProfile()" size="42px")
           q-img(:src="profile.avatarUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
@@ -146,17 +146,17 @@
 
       .q-ma-none.flex.flex-center.column.q-py-sm.q-gutter-y-sm.card-box
         q-list.full-width
-          q-item Participantes ({{Object.keys(activeChatRoom.participants).length}})
+          q-item Membros ({{Object.keys(activeChatRoom.members).length}})
 
-          q-item(v-for="(participant, participantUserId) in activeChatRoom.participants" :key="participantUserId")
+          q-item(v-for="memberUserId in Object.keys(activeChatRoom.members)" :key="memberUserId")
             q-item-section(avatar)
               q-avatar
-                q-img(:src="users[participantUserId]?.avatarUrl" :ratio="1" fit="cover")
+                q-img(:src="users[memberUserId]?.avatarUrl" :ratio="1" fit="cover")
             q-item-section
-              q-item-label {{ users[participantUserId]?.username }}
-              q-item-label(caption) {{ shortenAddress(participantUserId) }}
+              q-item-label {{ users[memberUserId]?.username }}
+              q-item-label(caption) {{ shortenAddress(memberUserId) }}
             q-item-section(side)
-              q-item-label(v-if="activeChatRoom.owner === participantUserId")
+              q-item-label(v-if="activeChatRoom.owner === memberUserId")
                 q-chip(size="sm" color="positive" outline) Administrador
 
 
@@ -282,7 +282,7 @@ const { latestMessages } = feeder;
 
 const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
-const { createRoom, insertEmoji, insertGif, removeGif, getDmParticipantId, clearNewMessage, canSendMessage } = chatService;
+const { createRoom, insertEmoji, insertGif, removeGif, getDmMemberUserAddress, clearNewMessage, canSendMessage } = chatService;
 const { newMessage } = chatService;
 const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
@@ -294,7 +294,7 @@ const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.valu
 const { shortAddress } = storeToRefs(walletStore);
 const { profile, suiBalanceFormatted } = storeToRefs(userStore);
 const { users } = storeToRefs(usersStore);
-const dmParticipantId = computed(() => getDmParticipantId(activeChatRoom.value!));
+const dmMemberUserAddress = computed(() => getDmMemberUserAddress(activeChatRoom.value!));
 const tab = ref<'mensagens' | 'users'>('mensagens');
 
 const permissionToString = (permission: EPermission) => {
@@ -302,7 +302,7 @@ const permissionToString = (permission: EPermission) => {
   if (permission === EPermission.Nobody) { return ['Ninguém']; }
   else if ((permission & EPermission.Anyone) === EPermission.Anyone) { return ['Qualquer um']; }
 
-  if ((permission & EPermission.Participants) === EPermission.Participants) { perms.push('Membros'); }
+  if ((permission & EPermission.Members) === EPermission.Members) { perms.push('Membros'); }
   if ((permission & EPermission.Admin) === EPermission.Admin) { perms.push('Administrador'); }
   if ((permission & EPermission.Moderators) === EPermission.Moderators) { perms.push('Moderadores'); }
 

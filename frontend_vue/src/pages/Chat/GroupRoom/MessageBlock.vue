@@ -33,7 +33,7 @@ import { storeToRefs } from 'pinia';
 import { useChatRoomStore, useUserStore, useUsersStore } from '../../../stores';
 import { useChat } from '../useChat';
 import { useAsyncLoop } from '../../../utils/delay';
-import { type MessageBlock, type Message, type UserProfile, chatRoomModule, type ChatRoom, ERoomType } from '../../../move';
+import { type MessageBlock, type Message, type UserProfile, chatRoomModule, type ChatRoom, type MemberInfo, ERoomType } from '../../../move';
 import { PrivateGroupService, PublicChannelService } from '../../../utils/encrypt';
 import MessageUser from './MessageUser.vue';
 import MessageOtherUser from './MessageOtherUser.vue';
@@ -46,6 +46,10 @@ const props = defineProps({
   user: {
     type: Object as PropType<UserProfile>,
     required: true
+  },
+  memberInfo: {
+    type: Object as PropType<MemberInfo>,
+    required: true,
   },
   users: {
     type: Object as PropType<Record<string, UserProfile>>,
@@ -72,7 +76,7 @@ const messages = ref<Message[]>([]);
 const decryptService = computed(() => {
   if (props.room.roomType === ERoomType.PrivateGroup) {
     const privKey = props.user?.keyPrivDecoded!;
-    const roomKey =  props.room.participants[props.user.owner]?.roomKey!;
+    const roomKey =  props.memberInfo.roomKey!;
     const svc = new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
     return (iv: string, ciphertext: string) => svc.decryptMessage(iv, ciphertext);
   } else if (props.room.roomType == ERoomType.PublicGroup) {

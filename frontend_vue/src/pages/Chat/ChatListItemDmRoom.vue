@@ -68,10 +68,10 @@ const props = defineProps({
 
 const { users } = storeToRefs(useUsersStore());
 const { userStore } = useProfile();
-const { getDmParticipantId } = useChat();
+const { getDmMemberUserAddress } = useChat();
 const { latestMessages  } = useMessageFeeder();
-const contactedParticipantId = computed(() => getDmParticipantId(props.room));
-const contactedUser = computed(() => props.users[contactedParticipantId.value!]);
+const contactedMemberId = computed(() => getDmMemberUserAddress(props.room));
+const contactedUser = computed(() => props.users[contactedMemberId.value!]);
 
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(props.room.id) >= 0);
 const contactedUserJoined = computed(() => (contactedUser.value?.roomsJoined || []).indexOf(props.room.id) >= 0);
