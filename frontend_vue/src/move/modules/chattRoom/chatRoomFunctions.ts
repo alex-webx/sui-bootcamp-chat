@@ -148,6 +148,7 @@ export const txDeleteMessage = (
 };
 
 export const txInviteMember = (
+  profile: Pick<Models.UserProfile, 'id'>,
   chatRoom: Pick<Models.ChatRoom, 'id'>,
   inviteeAddress: string,
   roomKey?: Models.RoomKey
@@ -158,6 +159,7 @@ export const txInviteMember = (
     target: `${config('PackageId')}::chat_room::invite_member`,
     arguments: [
       tx.object(chatRoom.id),
+      tx.object(profile.id),
       tx.pure.address(inviteeAddress),
       roomKey?.pubKey ? tx.pure.option('vector<u8>', roomKey.pubKey as any) : tx.pure.option('vector<u8>', undefined),
       roomKey?.iv ? tx.pure.option('vector<u8>', roomKey.iv as any) : tx.pure.option('vector<u8>', undefined),

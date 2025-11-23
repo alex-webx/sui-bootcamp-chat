@@ -1,20 +1,22 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
-import _, { Dictionary } from 'lodash';
-import { userProfileModule, chatRoomModule } from '../move';
+import { computed, ref } from 'vue';
+import _ from 'lodash';
+import { userProfileModule, chatRoomModule, EPermission, ERoomType } from '../move';
 import type * as Models from '../move';
-import { useUserStore } from './userStore';
+import { useUserStore, useWalletStore } from './';
+import * as encrypt from '../utils/encrypt';
 
 export const useChatListStore = defineStore('chatListStore', () => {
 
   const userStore = useUserStore();
+  const walletStore = useWalletStore();
 
   const usersCache = ref<Record<string, Models.UserProfile>>({});
   const chats = ref<Record<string, Models.ChatRoom & { membersInfos: Record<string, Models.MemberInfo> }>>({});
   const activeChatId = ref('');
   const activeChat = computed(() => chats.value[activeChatId.value!]);
 
-  const init = async (profileId: string) => {
+  const init = async () => {
     await refreshRooms();
   };
 
@@ -74,6 +76,92 @@ export const useChatListStore = defineStore('chatListStore', () => {
     chats.value[roomId] = room;
   }
 
+  const createChatRoom = async(roomMetaData: {
+    name: string,
+    imageUrl: string,
+    maxMembers: number,
+    isRestricted: boolean,
+    isAnnouncements: boolean,
+    inviteLevel: 'administrator' | 'moderators' | 'all'
+  }) => {
+    if (!userStore.profile?.id) {
+      throw 'no profile';
+    }
+
+    const profile = userStore.profile;
+
+    const roomAesKeyMaterial = await encrypt.PrivateGroupService.generateRoomKeyMaterial();
+    const inviteObj = await encrypt.PrivateGroupService.generateWrappedKeyForRecipient(
+      roomAesKeyMaterial,
+      profile.keyPrivDecoded!,
+      profile.keyPub,
+      profile.keyPub
+    );
+
+    const roomKey: Models.RoomKey = {
+      encodedPrivKey: inviteObj.encodedAesKey,
+      iv: inviteObj.iv,
+      pubKey: inviteObj.inviterPublicKey
+    };
+
+    const permissionInvite = EPermission.Admin |
+      (roomMetaData.inviteLevel === 'moderators' ? EPermission.Moderators : 0) |
+      (roomMetaData.inviteLevel === 'all' ? (EPermission.Moderators | EPermission.Members | EPermission.Anyone) : 0);
+
+    const permissionSendMessage = EPermission.Admin |
+      (roomMetaData.isAnnouncements ? EPermission.Moderators : (EPermission.Moderators | EPermission.Members | EPermission.Anyone));
+
+    const roomType = roomMetaData.isRestricted ? ERoomType.PrivateGroup : ERoomType.PublicGroup;
+
+    const { tx, parser } = chatRoomModule.txCreateRoom({
+      userProfile: profile,
+      room: {
+        name: roomMetaData.name,
+        imageUrl: roomMetaData.imageUrl,
+        maxMembers: roomMetaData.maxMembers,
+        permissionInvite,
+        permissionSendMessage,
+        roomType
+      },
+      roomKey
+    });
+
+    return parser(await walletStore.signAndExecuteTransaction(tx));
+  };
+
+  const createDmRoom = async (
+    data: {
+      inviteeUserProfile: Pick<Models.UserProfile, 'owner' | 'keyPub'>
+    }
+  ) => {
+    if (userStore.profile?.id) {
+      const { tx, parser } = chatRoomModule.txCreateDmRoom({
+        userProfile: userStore.profile,
+        inviteeAddress: data.inviteeUserProfile.owner
+      });
+
+      return parser(await walletStore.signAndExecuteTransaction(tx));
+    }
+  };
+
+  const inviteMember = async (args: {
+    room: Pick<Models.ChatRoom, 'id'>,
+    inviteeAddress: string,
+    roomKey?: Models.RoomKey | undefined
+  }) => {
+    const tx = chatRoomModule.txInviteMember(userStore.profile!, args.room, args.inviteeAddress, args.roomKey);
+    return await walletStore.signAndExecuteTransaction(tx);
+  };
+
+  const getChatRoomMessageBlocks = async (chatRoomId: string) => {
+    return await chatRoomModule.getChatRoomMessageBlocks(chatRoomId);
+  };
+
+  const getChatRoomMessagesFromBlock = async (messageBlock: Pick<Models.MessageBlock, 'messageIds'>) => {
+    return await chatRoomModule.getChatRoomMessagesFromBlock(messageBlock);
+  };
+
+
   return {
     chats,
     usersCache,
@@ -84,6 +172,11 @@ export const useChatListStore = defineStore('chatListStore', () => {
     init,
     refreshRooms,
     refreshRoom,
+    createChatRoom,
+    createDmRoom,
+    inviteMember,
+    getChatRoomMessageBlocks,
+    getChatRoomMessagesFromBlock,
 
     resetState: async () => {
       usersCache.value = {}

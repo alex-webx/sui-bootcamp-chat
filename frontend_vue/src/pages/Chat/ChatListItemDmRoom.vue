@@ -47,7 +47,7 @@ import { useChat } from './useChat';
 import { useProfile } from './useProfile';
 import { DirectMessageService } from '../../utils/encrypt';
 import { formatDate, formatTime } from '../../utils/formatters';
-import { useUsersStore, useChatListStore } from '../../stores';
+import { useChatListStore } from '../../stores';
 import { storeToRefs } from 'pinia';
 import { useMessageFeeder } from './useMessageFeeder';
 

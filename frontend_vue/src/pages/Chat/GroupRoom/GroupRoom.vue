@@ -105,22 +105,20 @@ import { useChat } from '../useChat';
 import { EPermission, ERoomType } from '../../../move';
 import { PrivateGroupService } from '../../../utils/encrypt';
 import { shortenAddress } from '../../../utils/formatters';
-import { useUserStore, useChatListStore } from '../../../stores';
+import { useUserStore, useChatListStore, useUiStore } from '../../../stores';
 import { useMessageFeeder } from '../useMessageFeeder';
 import MessageBlock from './MessageBlock.vue';
 
 const chatService = useChat();
 const userStore = useUserStore();
+const uiStore = useUiStore();
 const feeder = useMessageFeeder();
 const chatListStore = useChatListStore();
 
 const { profile, memberInfos } = storeToRefs(userStore);
 const { activeChat, activeChatId } = storeToRefs(chatListStore);
-const {
-  getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, allMessageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
-  breakpoint, screenWidth, desktopMode, drawerWidth, canInvite,
-} = chatService;
-
+const { getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, canInvite, } = chatService;
+const { bottomChatElement } = storeToRefs(uiStore);
 const dmUser = computed(() => {
   if (activeChat.value) {
     const memberUserAddress = getDmMemberUserAddress(activeChat.value);
@@ -168,7 +166,7 @@ const invite = async () => {
 
     try {
       const privKey = userStore.profile?.keyPrivDecoded!;
-      let roomKey: Parameters<typeof chatService.chatRoomStore.inviteMember>[0]['roomKey'];
+      let roomKey: Parameters<typeof chatListStore.inviteMember>[0]['roomKey'];
 
       if (activeChat.value?.roomType === ERoomType.PrivateGroup) {
         const userRoomKey =  memberInfo.value?.roomKey!;
@@ -189,7 +187,7 @@ const invite = async () => {
         // no room key needed
       }
 
-      const res = await chatService.chatRoomStore.inviteMember({
+      const res = await chatListStore.inviteMember({
         room: activeChat.value!,
         inviteeAddress: address,
         roomKey
@@ -219,7 +217,7 @@ const invite = async () => {
 const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) => {
   if (type === 'loaded' && blockNumber === messageBlocks.value?.slice(-1)[0]?.blockNumber) {
     console.log('messagesEvent scroll to bottom') ;
-    scrollTo('bottom');
+    uiStore.scrollTo('bottom');
   }
 };
 

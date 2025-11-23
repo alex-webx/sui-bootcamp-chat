@@ -1,32 +1,21 @@
 import { ref, computed, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
-import { Dialog, Notify, Screen } from 'quasar';
-import { useChatRoomStore, useUsersStore, useUserStore, useWalletStore, useChatListStore } from '../../stores';
+import { Dialog, Notify } from 'quasar';
+import { useUserStore, useWalletStore, useChatListStore, useUiStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
-import { type ChatRoom, EPermission, ERoomType, Message, MessageBlock, UserProfile, chatRoomModule } from '../../move';
+import { type ChatRoom, chatRoomModule, EPermission, ERoomType, Message, MessageBlock, UserProfile } from '../../move';
 import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
 
-const breakpoint = 800;
-const screenWidth = computed(() => Screen.width);
-const desktopMode = computed(() => Screen.width > breakpoint);
-const drawerWidth = computed(() => desktopMode.value ? 350 : Screen.width);
-const leftDrawerOpen = ref(true);
-const rightDrawerOpen = ref(false);
-
 const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'>>({ id: '', content: '', mediaUrl: [], replyTo: '' });
-
 const messageBlocks = ref<Record<string, Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>>({});
 const messageBlockLoadCount = ref<Record<string, number>>({});
-const bottomChatElement = ref<InstanceType<typeof HTMLDivElement>>();
 
 export function useChat() {
 
   const walletStore = useWalletStore();
   const userStore = useUserStore();
-  const usersStore = useUsersStore();
-  const chatRoomStore = useChatRoomStore();
   const chatListStore = useChatListStore();
+  const uiStore = useUiStore();
 
   const createRoom = async () => {
     Dialog.create({
@@ -68,7 +57,7 @@ export function useChat() {
           const privKey = await userStore.ensurePrivateKey();
           const dmUser = getDmMemberUser(activeChat);
           const svc = new DirectMessageService(privKey!, dmUser?.keyPub!);
-          encryptMessage = svc.encryptMessage;
+          encryptMessage = svc.encryptMessage.bind(svc);
           break;
         }
         case ERoomType.PrivateGroup: {
@@ -79,12 +68,12 @@ export function useChat() {
             inviterPublicKey: roomKey?.pubKey!,
             iv: roomKey?.iv!
           }, privKey!);
-          encryptMessage = svc.encryptMessage;
+          encryptMessage = svc.encryptMessage.bind(svc);
           break;
         }
         case ERoomType.PublicGroup: {
           const svc = new PublicChannelService(activeChat.owner!);
-          encryptMessage = svc.encryptMessage;
+          encryptMessage = svc.encryptMessage.bind(svc);
           break;
         }
       }
@@ -99,22 +88,16 @@ export function useChat() {
       }
 
       if (isEdit) {
-        const messageId = await chatRoomStore.editMessage(
-          { id: newMessage.value.id, roomId: chatListStore.activeChatId! },
-          {
-            content: content,
-            mediaUrl: mediaUrl
-          }
-        );
+        const { tx, parser } = await chatRoomModule.txEditMessage({ id: newMessage.value.id, roomId: chatListStore.activeChatId! }, { content, mediaUrl });
+        const messageId = parser(await walletStore.signAndExecuteTransaction(tx));
       } else {
-        const messageId = await chatRoomStore.sendMessage(
-          chatListStore.activeChat,
-          {
-            content: content,
-            mediaUrl: mediaUrl,
-            replyTo: replyTo!
-          }
-        );
+        const { tx, parser } = chatRoomModule.txSendMessage(profile.id, {
+          roomId: chatListStore.activeChat.id,
+          content: content!,
+          replyTo: replyTo!,
+          mediaUrl: mediaUrl || []
+        });
+        const messageId = parser(await walletStore.signAndExecuteTransaction(tx));
       }
 
       await fetchMessageBlocks();
@@ -124,18 +107,10 @@ export function useChat() {
       }
 
       if (!isEdit) {
-        scrollTo('bottom');
+        uiStore.scrollTo('bottom');
       }
     }
   }
-
-  const scrollTo = (where: 'bottom') => {
-    if (where === 'bottom') {
-      setTimeout(() => {
-        bottomChatElement.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 500);
-    }
-  };
 
   const fetchMessageBlocks = async () => {
     const activeChat = chatListStore.activeChat;
@@ -143,7 +118,7 @@ export function useChat() {
       return;
     };
     await chatListStore.refreshRoom(activeChat.id);
-    messageBlocks.value[activeChat.id] = await chatRoomStore.getChatRoomMessageBlocks(activeChat.id);
+    messageBlocks.value[activeChat.id] = await chatListStore.getChatRoomMessageBlocks(activeChat.id);
     return messageBlocks.value;
   };
 
@@ -183,7 +158,7 @@ export function useChat() {
     messageBlockLoadCount.value = { [chatRoom.id]: 2 };
 
     nextTick(() => {
-      if (desktopMode.value) {
+      if (uiStore.desktopMode) {
         if (chatListStore.activeChatId === chatRoom.id) {
           chatListStore.activeChatId = '';
         } else {
@@ -191,7 +166,7 @@ export function useChat() {
         }
       } else {
         chatListStore.activeChatId = chatRoom.id;
-        leftDrawerOpen.value = false;
+        uiStore.leftDrawerOpen = false;
       }
     });
   };
@@ -231,7 +206,7 @@ export function useChat() {
           color: 'primary'
         }
       }).onOk(async () => {
-        const chatRoomId = await chatRoomStore.createDmRoom({
+        const chatRoomId = await chatListStore.createDmRoom({
           inviteeUserProfile: user
         });
         if (chatRoomId) {
@@ -274,7 +249,9 @@ export function useChat() {
         color: 'medium-sea'
       });
 
-      const success = await chatRoomStore.deleteMessage(message).catch(() => false);
+      const { tx, parser } = await chatRoomModule.txDeleteMessage(message);
+      const success = parser(await walletStore.signAndExecuteTransaction(tx));
+
       await fetchMessageBlocks();
 
       if (success) {
@@ -316,18 +293,6 @@ export function useChat() {
   const canSendMessage = computed(() => checkPermission(chatListStore.activeChat?.permissionSendMessage || EPermission.Nobody));
 
   return {
-    // ui
-    breakpoint,
-    screenWidth,
-    desktopMode,
-    drawerWidth,
-    leftDrawerOpen,
-    rightDrawerOpen,
-    bottomChatElement,
-    scrollTo,
-
-    chatRoomStore,
-
     newMessage,
 
     messageBlocks: computed(() => messageBlocks.value[chatListStore.activeChatId!]),

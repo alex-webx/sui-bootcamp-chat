@@ -32,9 +32,8 @@ export default defineStore((/* { ssrContext } */) => {
 })
 
 export * from './appStore';
-export * from './chatRoomStore';
 export * from '../move/useClient';
-export * from './usersStore';
 export * from './userStore';
 export * from './walletStore';
 export * from './chatListStore';
+export * from './uiStore';

@@ -277,7 +277,7 @@ import { Dialog, Notify, Screen, useQuasar, openURL } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import formatters from '../../utils/formatters';
-import { useWalletStore, useUserStore, useChatListStore } from '../../stores';
+import { useWalletStore, useUserStore, useChatListStore, useUiStore } from '../../stores';
 import { useProfile } from './useProfile';
 import { useChat } from './useChat';
 import { useMessageFeeder } from './useMessageFeeder';
@@ -296,6 +296,7 @@ const $q = useQuasar();
 const walletStore = useWalletStore();
 const userStore = useUserStore();
 const chatListStore = useChatListStore();
+const uiStore = useUiStore();
 
 const chatService = useChat();
 const feeder = useMessageFeeder();
@@ -308,7 +309,7 @@ const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
 const { createRoom, insertEmoji, insertGif, removeGif, getDmMemberUserAddress, clearNewMessage, canSendMessage } = chatService;
 const { newMessage, messageBlocks } = chatService;
-const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
+const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = storeToRefs(uiStore);
 
 const style = computed(() => ({ height: $q.screen.height + 'px' }));
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
@@ -367,7 +368,7 @@ onMounted(async () => {
     const connected = await walletStore.autoConnect();
     if (connected) {
       await userStore.fetchCurrentUserProfile();
-      await chatListStore.init(userStore.profile?.owner!);
+      await chatListStore.init();
     }
   } finally {
     $q.loading.hide();

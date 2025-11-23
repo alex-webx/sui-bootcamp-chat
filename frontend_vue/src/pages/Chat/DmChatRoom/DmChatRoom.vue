@@ -98,17 +98,19 @@ div(ref="bottomChatElement")
 import { computed, watch, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChat } from '../useChat';
-import { useUserStore, useChatListStore } from '../../../stores';
+import { useUserStore, useChatListStore, useUiStore } from '../../../stores';
 import { useMessageFeeder } from '../useMessageFeeder';
 import MessageBlock from './MessageBlock.vue';
 
 const chatService = useChat();
 const userStore = useUserStore();
 const chatListStore = useChatListStore();
+const uiStore = useUiStore();
 const feeder = useMessageFeeder();
 const { profile } = storeToRefs(userStore);
 const { activeChat } = storeToRefs(chatListStore);
-const { getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo } = chatService;
+const { bottomChatElement } = storeToRefs(uiStore);
+const { getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks } = chatService;
 
 const dmUser = computed(() => {
   if (activeChat.value) {
@@ -122,7 +124,7 @@ const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(ac
 const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) => {
   if (type === 'loaded' && blockNumber === messageBlocks.value?.slice(-1)[0]?.blockNumber) {
     console.log('messagesEvent scroll to bottom') ;
-    scrollTo('bottom');
+    uiStore.scrollTo('bottom');
   }
 };
 

@@ -29,7 +29,7 @@ onMounted(async () => {
 });
 
 const load = async () => {
-  await chatListStore.init(address);
+  await chatListStore.init();
   console.log('loadig');
 
 }

@@ -55,21 +55,22 @@
 </template>
 
 <script setup lang="ts" inherit-attrs="true">
-import { ref, computed, onMounted } from 'vue';
-import { useWalletStore, useUserStore, useAppStore, storedSuiState } from '../stores';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { Dialog, Notify } from 'quasar';
+import { Dialog, Notify, openURL } from 'quasar';
+import { useWalletStore, useAppStore, storedSuiState } from '../../stores';
+import { shortenAddress, formatCoinBalance } from '../../utils/formatters';
+import { getSuiBalance, getFaucet, getNetwork } from '../../move';
 
 const walletStore = useWalletStore();
-const userStore = useUserStore();
 const appStore = useAppStore();
 const router = useRouter();
 const modal = ref(false);
 
 const { wallets, address, isConnected, isConnecting } = storeToRefs(walletStore);
 
-const shortAddress = computed(() => `${address.value?.slice(0, 6)}...${address.value?.slice(-4)}`);
+const shortAddress = computed(() => shortenAddress(address.value!));
 let abortController: AbortController | null = null;
 let timeoutLimitSeconds = 60;
 
@@ -118,8 +119,47 @@ const selectWallet = async (walletName: string) => {
 
     await walletStore.connect(walletName, abortController.signal, timeoutLimitSeconds * 1000);
 
-    router.push({ name: 'chat' });
+    if (address.value) {
+      const balance = await getSuiBalance(address.value);
+      if (!balance || balance < BigInt(0.25 * 10**9)) {
+        const isMainnet = getNetwork() === 'mainnet';
+        await new Promise((resolve, reject) => {
+          Dialog.create({
+            persistent: true,
+            title: 'O seu saldo em SUI está baixo.',
+            message: isMainnet ? 'Você precisará de SUI para interagir no aplicativo.' : 'Deseja utilizar o faucet de SUI?',
+            ok: {
+              label: isMainnet ? 'Continuar mesmo assim' : 'Quero SUI!',
+              color: 'primary'
+            },
+            cancel: {
+              label: isMainnet ? 'Voltar' : 'Não',
+              color: 'grey',
+              flat: true
+            }
+          }).onOk(async () => {
 
+            if (!isMainnet) {
+              try {
+                await getFaucet(address.value!);
+              } catch {
+                openURL(`https://faucet.sui.io/?network=${getNetwork()}`);
+              }
+            }
+
+            resolve(true);
+          }).onCancel(() => {
+            if (isMainnet) {
+              reject();
+            } else {
+              resolve(true);
+            }
+          });
+        });
+      }
+
+      router.push({ name: 'chat' });
+    }
   } catch {
     Notify.create({
       color: 'negative',

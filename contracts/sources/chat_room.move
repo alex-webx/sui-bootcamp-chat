@@ -558,7 +558,8 @@ public fun delete_message(
 }
 
 public fun invite_member(
-    room: &mut ChatRoom,    
+    room: &mut ChatRoom,
+    profile: &mut UserProfile,
     invitee_address: address,
     room_pub_key: &mut Option<vector<u8>>,
     room_iv: &mut Option<vector<u8>>,
@@ -603,6 +604,10 @@ public fun invite_member(
                     encoded_priv_key: encoded_priv_key
                 })
             };
+        };
+
+        if (sender == invitee_address) {
+            user_profile::add_user_profile_rooms_joined(profile, room.id.uid_to_inner());
         };
 
         table::add(&mut room.members, invitee_address, member_info_id);

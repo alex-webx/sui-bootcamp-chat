@@ -38,6 +38,7 @@ q-layout.bg-sea
 import { ref, onMounted, computed } from 'vue';
 import { useRouter  } from 'vue-router';
 import { Dialog, Screen } from 'quasar';
+import ConnectButton from './ConnectButton.vue';
 
 const router = useRouter();
 const screenHeight = computed(() => Screen.height);

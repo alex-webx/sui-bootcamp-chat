@@ -1,8 +1,7 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useAsyncLoop, type AsyncLoopControls } from '../../utils/delay';
-import { type ChatRoom, ERoomType, Message, MessageBlock, chatRoomModule } from '../../move';
+import { Message, MessageBlock, chatRoomModule } from '../../move';
 import { useUserStore } from '../../stores';
-import { useChat } from './useChat';
 
 let lastMessagesLooper: AsyncLoopControls | null = null;
 
@@ -12,8 +11,6 @@ const latestMessages = ref<Record<string, Message>>({});
 export const useMessageFeeder = () => {
 
   const userStore = useUserStore();
-  const chatService = useChat();
-  const { chatRoomStore } = chatService;
 
   const fetchLastMessages = async () => {
     if (userStore.profile?.id) {

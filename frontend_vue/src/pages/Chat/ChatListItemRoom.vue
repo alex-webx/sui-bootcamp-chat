@@ -2,6 +2,7 @@
 q-item-section(avatar)
   q-avatar(size="48px")
     q-img(:src="room.imageUrl || '/user-circles-set.png'" :ratio="1" fit="cover")
+    q-badge(floating color="teal") new
 
 q-item-section
   q-item-label(lines="1")

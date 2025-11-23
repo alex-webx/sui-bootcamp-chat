@@ -1,23 +1,38 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { useChatRoomStore, useUserStore, useUsersStore, useWalletStore, useChatListStore } from './';
+import { useUiStore, useUserStore, useWalletStore, useChatListStore } from './';
+import { userProfileModule, chatRoomModule } from '../move';
 
 export const useAppStore = defineStore('appStore', () => {
-  const chatRoomStore = useChatRoomStore();
-  const userStore = useUserStore();
-  const usersStore = useUsersStore();
-  const walletStore = useWalletStore();
   const chatListStore = useChatListStore();
+  const uiStore = useUiStore();
+  const userStore = useUserStore();
+  const walletStore = useWalletStore();
 
   const resetState = async () => {
-    await chatRoomStore.resetState();
     await chatListStore.resetState();
+    await uiStore.resetState();
     await userStore.resetState();
-    await usersStore.resetState();
     await walletStore.resetState();
   };
 
+  const checkUserProfilesRegistry = async() => {
+    try {
+      return !!(await userProfileModule.getUserProfileRegistry());
+    } catch {
+      return false;
+    }
+  };
+
+  const checkChatRoomRegistry = async() => {
+    try {
+      return !!(await chatRoomModule.getChatRoomRegistry());
+    } catch {
+      return false;
+    }
+  };
+
   const checkDeploy = async () => {
-    return await chatRoomStore.checkChatRoomRegistry() && await usersStore.checkUserProfilesRegistry();
+    return await checkChatRoomRegistry() && await checkUserProfilesRegistry();
   };
 
   return {

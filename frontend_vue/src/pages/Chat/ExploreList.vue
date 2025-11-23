@@ -83,7 +83,7 @@ q-list
 import { ref, onMounted, computed, toRefs } from 'vue';
 import { Dialog, Notify } from 'quasar';
 import { storeToRefs } from 'pinia';
-import { useChatListStore, useUsersStore, useUserStore } from '../../stores';
+import { useChatListStore, useUserStore } from '../../stores';
 import { formatDate, formatTime, shortenAddress } from '../../utils/formatters';
 import { containsText } from '../../utils/textsearch';
 import { useChat } from './useChat';
@@ -159,7 +159,7 @@ const selectRoom = async (room: ChatRoom) => {
     });
 
     try {
-      await chatService.chatRoomStore.inviteMember({
+      await chatListStore.inviteMember({
         room: room,
         inviteeAddress: profile.value?.owner!
       });
