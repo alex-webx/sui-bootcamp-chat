@@ -21,7 +21,7 @@
           v-if="!desktopMode"
         )
 
-        div(v-if="activeChatRoom")
+        div(v-if="activeChat")
           transition(
             appear
             enter-active-class="animated backInDown slower"
@@ -32,11 +32,10 @@
             )
               q-btn(round flat)
                 q-avatar
-                  q-img(:src="activeChatRoom.imageUrl || users[dmMemberUserAddress]?.avatarUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
+                  q-img(:src="activeChat.imageUrl || usersCache[dmMemberUserAddress]?.avatarUrl || '/logo_sui_chat.png'" :ratio="1" fit="cover")
 
               span.text-subtitle1.q-pl-sm
-                | {{ activeChatRoom.name || users[dmMemberUserAddress]?.username }}
-
+                | {{ activeChat.name || usersCache[dmMemberUserAddress]?.username }}
         q-space
 
 
@@ -99,21 +98,21 @@
 
       q-scroll-area.bg-grey-2(style="height: calc(100% - 50px)")
         q-tabs(v-model="tab" content-class="bg-medium-sea text-white" no-caps)
-          q-tab(name="mensagens" label="Mensagens")
-          q-tab(name="users" label="Usuários")
+          q-tab(name="messages" label="Mensagens")
+          q-tab(name="explore" label="Explorar")
 
         q-tab-panels(v-model="tab" animated)
-          q-tab-panel.q-pa-none(name="mensagens")
+          q-tab-panel.q-pa-none(name="messages")
             ChatList
-          q-tab-panel.q-pa-none(name="users")
-            UsersList
+          q-tab-panel.q-pa-none(name="explore")
+            ExploreList
 
 
     //----- RIGHT DRAWER -----------------------------------------------------------------------------------------------------------------
 
     q-drawer.bg-grey-3.text-dark(
-      v-if="activeChatRoom"
-      :modelValue="activeChatRoom && rightDrawerOpen"
+      v-if="activeChat"
+      :modelValue="activeChat && rightDrawerOpen"
       side="right" style="border-left: 2px solid rgba(0, 0, 0, 0.05) !important"
       :breakpoint="breakpoint" dark
       :width="drawerWidth"
@@ -124,39 +123,39 @@
           @click="toggleRighttDrawer()"
         )
 
-      .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box.bg-light-ocean.text-white(v-if="activeChatRoom.roomType === 1 || activeChatRoom.roomType === 2")
-        div(v-if="activeChatRoom.imageUrl")
+      .q-ma-none.flex.flex-center.column.q-py-md.q-gutter-y-sm.card-box.bg-light-ocean.text-white(v-if="activeChat.roomType === 1 || activeChat.roomType === 2")
+        div(v-if="activeChat.imageUrl")
           q-avatar(size="100px")
-            q-img(:src="activeChatRoom.imageUrl" error-src="/user-circles-set-sm.png" :ratio="1" fit="cover")
+            q-img(:src="activeChat.imageUrl" error-src="/user-circles-set-sm.png" :ratio="1" fit="cover")
 
         .text-center
-          .text-subtitle1 {{ activeChatRoom.name }}
-          .text-caption {{ activeChatRoom.messageCount }} {{activeChatRoom.messageCount > 1 ? 'mensagens' : 'mensagem' }}
+          .text-subtitle1 {{ activeChat.name }}
+          .text-caption {{ activeChat.messageCount }} {{activeChat.messageCount > 1 ? 'mensagens' : 'mensagem' }}
 
-      .q-pt-xl.q-pb-sm(v-else="activeChatRoom.roomType === 3")
+      .q-pt-xl.q-pb-sm(v-else="activeChat.roomType === 3")
 
 
       .q-ma-none.flex.column.q-px-md.q-py-md.q-gutter-y-sm.card-box.text-caption(style="line-height: 11px")
-        div Criado em: {{ formatFullDate(activeChatRoom.createdAt) }}
-        div(@click="openURL(`https://suiscan.xyz/devnet/object/${activeChatRoom.id}/fields`)") ID do chat: {{ shortenAddress(activeChatRoom.id) }}
-        div Tipo: {{ roomTypeToString(activeChatRoom.roomType) }}
-        div Bloco de mensagens atual: {{ activeChatRoom.currentBlockNumber }}
-        div Convites: {{ permissionToString(activeChatRoom.permissionInvite).join(', ') }}
-        div Enviar mensagem: {{ permissionToString(activeChatRoom.permissionSendMessage).join(', ') }}
+        div Criado em: {{ formatFullDate(activeChat.createdAt) }}
+        div(@click="openURL(`https://suiscan.xyz/devnet/object/${activeChat.id}/fields`)") ID do chat: {{ shortenAddress(activeChat.id) }}
+        div Tipo: {{ roomTypeToString(activeChat.roomType) }}
+        div Bloco de mensagens atual: {{ activeChat.currentBlockNumber }}
+        div Convites: {{ permissionToString(activeChat.permissionInvite).join(', ') }}
+        div Enviar mensagem: {{ permissionToString(activeChat.permissionSendMessage).join(', ') }}
 
       .q-ma-none.flex.flex-center.column.q-py-sm.q-gutter-y-sm.card-box
         q-list.full-width
-          q-item Membros ({{Object.keys(activeChatRoom.members).length}})
+          q-item Membros ({{Object.keys(activeChat.members).length}})
 
-          q-item(v-for="memberUserId in Object.keys(activeChatRoom.members)" :key="memberUserId")
+          q-item(v-for="memberAddress in Object.keys(activeChat.members)" :key="memberAddress")
             q-item-section(avatar)
               q-avatar
-                q-img(:src="users[memberUserId]?.avatarUrl" :ratio="1" fit="cover")
+                q-img(:src="usersCache[memberAddress]?.avatarUrl" :ratio="1" fit="cover")
             q-item-section
-              q-item-label {{ users[memberUserId]?.username }}
-              q-item-label(caption) {{ shortenAddress(memberUserId) }}
+              q-item-label {{ usersCache[memberAddress]?.username }}
+              q-item-label(caption) {{ shortenAddress(memberAddress) }}
             q-item-section(side)
-              q-item-label(v-if="activeChatRoom.owner === memberUserId")
+              q-item-label(v-if="activeChat.owner === memberAddress")
                 q-chip(size="sm" color="positive" outline) Administrador
 
 
@@ -164,16 +163,17 @@
 
     q-page-container(
       style="display: flex; flex-direction: column; min-height: calc(100vh - 40px)"
-      :key="activeChatRoom?.id || 0"
+      :key="activeChat?.id || 0"
     )
-      template(v-if="activeChatRoom")
+
+      template(v-if="activeChat")
 
         GroupRoom(
-          v-if="activeChatRoom.roomType === 1 || activeChatRoom.roomType === 2"
+          v-if="activeChat.roomType === 1 || activeChat.roomType === 2"
         )
 
         DmChatRoom(
-          v-else-if="activeChatRoom.roomType === 3"
+          v-else-if="activeChat.roomType === 3"
         )
 
       .q-pa-md.row.justify-center.full-width(
@@ -189,7 +189,7 @@
 
     //----- FOOTER -----------------------------------------------------------------------------------------------------------------
 
-    template(v-if="activeChatRoom")
+    template(v-if="activeChat")
       transition(
         appear
         enter-active-class="animated fadeInUp slower"
@@ -226,12 +226,23 @@
                   EmojiPicker(:native="true" @select="insertEmoji" theme="light")
 
               q-input.q-ml-sm(
+                v-if="!newMessage.id"
                 rounded outlined dense class="WAL__field col-grow q-mr-sm"
                 v-model="newMessage.content" placeholder="Digite uma mensagem..." type="textarea" rows="1"
                 borderless clearable autofocus autogrow @clear="newMessage.content = ''"
                 @keydown.enter.exact.prevent="$refs.form.submit($event)"
                 :readonly="sendingBusy" :bg-color="sendingBusy ? 'aqua' : 'white'"
               )
+              //--- duplicado apenas para facilitar o autofocus =P
+              q-input.q-ml-sm(
+                v-else
+                rounded outlined dense class="WAL__field col-grow q-mr-sm"
+                v-model="newMessage.content" placeholder="Digite uma nova mensagem..." type="textarea" rows="1"
+                borderless clearable autofocus autogrow @clear="newMessage.content = ''"
+                @keydown.enter.exact.prevent="$refs.form.submit($event)"
+                :readonly="sendingBusy" :bg-color="sendingBusy ? 'aqua' : 'white'"
+              )
+
               transition(
                 appear
                 enter-active-class="animated jello slower"
@@ -254,12 +265,13 @@ import { Dialog, Notify, Screen, useQuasar, openURL } from 'quasar';
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import formatters from '../../utils/formatters';
-import { useWalletStore, useUsersStore, useUserStore } from '../../stores';
+import { useWalletStore, useUserStore, useChatListStore } from '../../stores';
 import { useProfile } from './useProfile';
 import { useChat } from './useChat';
 import { useMessageFeeder } from './useMessageFeeder';
 import { EPermission, ERoomType, getFaucet, getNetwork } from '../../move';
-import UsersList from './UsersList.vue';
+
+import ExploreList from './ExploreList.vue';
 import ChatList from './ChatList.vue';
 import DmChatRoom from './DmChatRoom/DmChatRoom.vue';
 import GroupRoom from './GroupRoom/GroupRoom.vue';
@@ -271,7 +283,7 @@ const $q = useQuasar();
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
-const usersStore = useUsersStore();
+const chatListStore = useChatListStore();
 
 const chatService = useChat();
 const feeder = useMessageFeeder();
@@ -284,7 +296,6 @@ const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
 const { createRoom, insertEmoji, insertGif, removeGif, getDmMemberUserAddress, clearNewMessage, canSendMessage } = chatService;
 const { newMessage } = chatService;
-const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
 const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
 
 const style = computed(() => ({ height: $q.screen.height + 'px' }));
@@ -293,9 +304,9 @@ const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.valu
 
 const { shortAddress } = storeToRefs(walletStore);
 const { profile, suiBalanceFormatted } = storeToRefs(userStore);
-const { users } = storeToRefs(usersStore);
-const dmMemberUserAddress = computed(() => getDmMemberUserAddress(activeChatRoom.value!));
-const tab = ref<'mensagens' | 'users'>('mensagens');
+const { usersCache, activeChat } = storeToRefs(chatListStore);
+const dmMemberUserAddress = computed(() => getDmMemberUserAddress(activeChat.value!));
+const tab = ref<'messages' | 'explore'>('messages');
 
 const permissionToString = (permission: EPermission) => {
   const perms: string[] = [];
@@ -344,8 +355,7 @@ onMounted(async () => {
     const connected = await walletStore.autoConnect();
     if (connected) {
       await userStore.fetchCurrentUserProfile();
-      await usersStore.fetchAllUsersProfiles();
-      await chatService.chatRoomStore.fetchAllUserChatRoom();
+      await chatListStore.init(userStore.profile?.owner!);
     }
   } finally {
     $q.loading.hide();
@@ -424,7 +434,7 @@ $chat-message-border-radius: 12px;
 }
 
 .footer-edit-mode {
-  box-shadow: 0px 0px 10px 10px $ocean;
+  box-shadow: 0px 0px 6px 4px $ocean;
   background: $light-ocean;
 }
 </style>

@@ -54,7 +54,7 @@ template(v-else)
 
 
   //- .q-pa-md.row.justify-center.full-width(
-  //-   v-else-if="activeChatRoom.messageCount === 0"
+  //-   v-else-if="activeChat.messageCount === 0"
   //-   style="margin-top: auto; margin-bottom: auto"
   //- )
   //-   transition(
@@ -100,8 +100,7 @@ template(v-else)
           :messageBlock="msgBlock"
           :user="profile"
           :memberInfo="memberInfo"
-          :users="users"
-          :room="activeChatRoom"
+          :room="activeChat"
           @messagesLoaded="(blockNumber) => messagesEvent('loaded', blockNumber)"
           @messagesChanged="(blockNumber) => messagesEvent('changed', blockNumber)"
           :enabledLoading="msgBlockIndex >= (messageBlocks.length - messageBlockLoadCount)"
@@ -119,43 +118,43 @@ import { useChat } from '../useChat';
 import { EPermission, ERoomType } from '../../../move';
 import { PrivateGroupService } from '../../../utils/encrypt';
 import { shortenAddress } from '../../../utils/formatters';
-import { useUserStore, useUsersStore } from '../../../stores';
+import { useUserStore, useChatListStore } from '../../../stores';
 import { useMessageFeeder } from '../useMessageFeeder';
 import MessageBlock from './MessageBlock.vue';
 
 const chatService = useChat();
 const userStore = useUserStore();
-const usersStore = useUsersStore();
 const feeder = useMessageFeeder();
-const { users } = storeToRefs(usersStore);
+const chatListStore = useChatListStore();
+
 const { profile, memberInfos } = storeToRefs(userStore);
-const { activeChatRoom, activeChatRoomId } = storeToRefs(chatService.chatRoomStore);
+const { activeChat, activeChatId } = storeToRefs(chatListStore);
 const {
-  getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
+  getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, allMessageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
   breakpoint, screenWidth, desktopMode, drawerWidth, canInvite,
 } = chatService;
 
 const loading = ref(false);
 
 const dmUser = computed(() => {
-  if (activeChatRoom.value) {
-    const memberUserAddress = getDmMemberUserAddress(activeChatRoom.value);
-    return users.value[memberUserAddress!];
+  if (activeChat.value) {
+    const memberUserAddress = getDmMemberUserAddress(activeChat.value);
+    return chatListStore.usersCache[memberUserAddress!];
   }
 });
-const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
-const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
-const memberInfo = computed(() => memberInfos.value[activeChatRoomId.value!]);
+const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
+const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
+const memberInfo = computed(() => memberInfos.value[activeChatId.value!]);
 
 const invite = async () => {
 
-  const addresses = Object.keys(users.value);
+  const addresses = Object.keys(chatListStore.usersCache);
 
   Dialog.create({
     title: 'Adicionar quem?',
     options: {
       model: '',
-      items: addresses.map(addr => ({ label: `${users.value[addr]?.username} (${shortenAddress(addr)})`  , value: addr }))
+      items: addresses.map(addr => ({ label: `${chatListStore.usersCache[addr]?.username} (${shortenAddress(addr)})`  , value: addr }))
     },
     ok: {
       color: 'primary',
@@ -168,7 +167,7 @@ const invite = async () => {
     }
   }).onOk(async address => {
 
-    if (activeChatRoom.value?.members[address]) {
+    if (activeChat.value?.members[address]) {
       Notify.create({ message: 'O usuário já está presente nesta sala', color: 'primary' });
       return;
     }
@@ -186,7 +185,7 @@ const invite = async () => {
       const privKey = userStore.profile?.keyPrivDecoded!;
       let roomKey: Parameters<typeof chatService.chatRoomStore.inviteMember>[0]['roomKey'];
 
-      if (activeChatRoom.value?.roomType === ERoomType.PrivateGroup) {
+      if (activeChat.value?.roomType === ERoomType.PrivateGroup) {
         const userRoomKey =  memberInfo.value?.roomKey!;
         const svc = new PrivateGroupService({ encodedAesKey: userRoomKey.encodedPrivKey, iv: userRoomKey.iv, inviterPublicKey: userRoomKey.pubKey }, privKey);
         const aesRoomKey = await svc.exportRoomAesKey();
@@ -194,19 +193,19 @@ const invite = async () => {
           aesRoomKey!,
           privKey,
           userStore.profile?.keyPub!,
-          users.value[address]?.keyPub!
+          chatListStore.usersCache[address]?.keyPub!
         );
         roomKey = {
           encodedPrivKey: inviteKey.encodedAesKey,
           iv: inviteKey.iv,
           pubKey: inviteKey.inviterPublicKey
         };
-      } else if (activeChatRoom.value?.roomType === ERoomType.PublicGroup) {
+      } else if (activeChat.value?.roomType === ERoomType.PublicGroup) {
         // no room key needed
       }
 
       const res = await chatService.chatRoomStore.inviteMember({
-        room: activeChatRoom.value!,
+        room: activeChat.value!,
         inviteeAddress: address,
         roomKey
       });
@@ -245,9 +244,9 @@ const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) =>
   }
 };
 
-watch(() => feeder.latestMessageBlocks.value[activeChatRoom.value?.id!], async () => {
+watch(() => feeder.latestMessageBlocks.value[activeChat.value?.id!], async () => {
   const msgBlocks = await fetchMessageBlocks();
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 </script>
 <style lang="scss" scoped>

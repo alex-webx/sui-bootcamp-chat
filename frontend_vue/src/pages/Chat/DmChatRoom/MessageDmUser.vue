@@ -47,9 +47,9 @@ q-chat-message(
 
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, toRefs, onBeforeUnmount, type PropType, watch } from 'vue';
+import { toRefs, type PropType } from 'vue';
 import _ from 'lodash';
-import { Dialog, openURL, Screen } from 'quasar';
+import { Dialog, openURL } from 'quasar';
 import { shortenAddress, formatFullDate } from '../../../utils/formatters';
 import { type Message, type UserProfile, getNetwork } from '../../../move';
 import moment from 'moment';

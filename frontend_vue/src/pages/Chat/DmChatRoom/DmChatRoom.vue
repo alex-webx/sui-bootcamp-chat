@@ -55,7 +55,7 @@ template(v-else)
 
 
   .q-pa-md.row.justify-center.full-width(
-    v-else-if="activeChatRoom.messageCount === 0"
+    v-else-if="activeChat.messageCount === 0"
     style="margin-top: auto; margin-bottom: auto"
   )
     transition(
@@ -109,41 +109,31 @@ template(v-else)
 </template>
 
 <script lang="ts" setup>
-import { computed, watch, ref, onMounted } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChat } from '../useChat';
-import { useUserStore, useUsersStore } from '../../../stores';
+import { useUserStore, useChatListStore } from '../../../stores';
 import { useMessageFeeder } from '../useMessageFeeder';
 import MessageBlock from './MessageBlock.vue';
 
 const chatService = useChat();
 const userStore = useUserStore();
-const usersStore = useUsersStore();
+const chatListStore = useChatListStore();
 const feeder = useMessageFeeder();
-const { users } = storeToRefs(usersStore);
 const { profile } = storeToRefs(userStore);
-const { activeChatRoom } = storeToRefs(chatService.chatRoomStore);
-const {
-  getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo,
-  breakpoint, screenWidth, desktopMode, drawerWidth
-} = chatService;
+const { activeChat } = storeToRefs(chatListStore);
+const { getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, bottomChatElement, scrollTo } = chatService;
 
 const loading = ref(false);
 
 const dmUser = computed(() => {
-  if (activeChatRoom.value) {
-    const memberUserAddress = getDmMemberUserAddress(activeChatRoom.value);
-    return users.value[memberUserAddress!];
+  if (activeChat.value) {
+    const memberUserAddress = getDmMemberUserAddress(activeChat.value);
+    return chatListStore.usersCache[memberUserAddress!];
   }
 });
-const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
-const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChatRoom.value?.id || '') >= 0);
-
-onMounted(async () => {
-  loading.value = true;
-  await userStore.ensurePrivateKey();
-  loading.value = false;
-});
+const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
+const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
 
 const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) => {
   if (type === 'loaded' && blockNumber === messageBlocks.value?.slice(-1)[0]?.blockNumber) {
@@ -152,7 +142,7 @@ const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) =>
   }
 };
 
-watch(() => feeder.latestMessageBlocks.value[activeChatRoom.value?.id!], async () => {
+watch(() => feeder.latestMessageBlocks.value[activeChat.value?.id!], async () => {
   const msgBlocks = await fetchMessageBlocks();
 }, { immediate: true });
 

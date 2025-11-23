@@ -11,24 +11,6 @@ q-list.text-dark
           q-skeleton
 
   template(v-else)
-    mixin chat-room-item-content()
-
-      //- Public/Private Room
-      ChatListItemRoom(
-        v-if="room.roomType === 1 || room.roomType === 2"
-        :room="room"
-        :userAddress="profile.owner"
-        :users="users"
-      )
-
-      //- DM ROOM
-      ChatListItemDmRoom(
-        v-else-if="room.roomType === 3"
-        :room="room"
-        :userAddress="profile.owner"
-        :users="users"
-      )
-
     .flex.text-center.text-dark.q-px-md.q-py-xs.text-caption.bg-grey-3
       template(v-if="chatRoomsCount === 0") Você não participa de nenhuma sala
       template(v-else-if="chatRoomsCount === 1") Você participa de 1 sala
@@ -38,42 +20,55 @@ q-list.text-dark
         q-tooltip Recarregar lista de salas
 
     q-item(
-      v-for="(room, roomId) in chatRooms" :key="roomId"
+      v-for="(room, roomId) in chats" :key="roomId"
       clickable v-ripple
       @click="selectChatRoom(room)"
-      :class="{ 'active-item': roomId === activeChatRoomId }"
+      :class="{ 'active-item': roomId === activeChatId }"
     )
-      +chat-room-item-content
+      //- Public/Private Room
+      ChatListItemRoom(
+        v-if="room.roomType === 1 || room.roomType === 2"
+        :room="room"
+        :userAddress="profile.owner"
+      )
+
+      //- DM ROOM
+      ChatListItemDmRoom(
+        v-else-if="room.roomType === 3"
+        :room="room"
+        :userAddress="profile.owner"
+      )
 
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, toRefs, onBeforeUnmount } from 'vue';
+import { ref, computed } from 'vue';
 import _ from 'lodash';
 import { storeToRefs } from 'pinia';
-import { useChatRoomStore, useUserStore, useUsersStore } from '../../stores';
+import { useUserStore, useChatListStore } from '../../stores';
 import { useChat } from './useChat';
-import { useAsyncLoop } from '../../utils/delay';
 import ChatListItemDmRoom from './ChatListItemDmRoom.vue';
 import ChatListItemRoom from './ChatListItemRoom.vue';
+import type { ChatRoom } from '../../move';
 
 const userStore = useUserStore();
-const usersStore = useUsersStore();
 const chatService = useChat();
-const chatRoomStore = chatService.chatRoomStore;
+const chatListStore = useChatListStore();
 
-const { selectChatRoom } = chatService;
-const { fetchAllUserChatRoom } = chatRoomStore;
-const { chatRooms, activeChatRoomId } = storeToRefs(chatRoomStore);
-const { users } = storeToRefs(usersStore);
+const { chats, activeChatId } = storeToRefs(chatListStore);
+
 const { profile } = storeToRefs(userStore);
-const { fetchCurrentUserProfile } = userStore;
 
-const chatRoomsCount = computed(() => Object.keys(chatRooms.value).length);
+const chatRoomsCount = computed(() => Object.keys(chats.value).length);
 
 const loading = ref(false);
 
+const selectChatRoom = async (chatRoom: ChatRoom) => {
+  await chatService.selectChatRoom(chatRoom);
+};
+
 const refreshChatList = async () => {
-  await fetchAllUserChatRoom();
+  await userStore.fetchCurrentUserProfile();
+  await chatListStore.refreshRooms();
 }
 
 </script>

@@ -8,19 +8,6 @@ import { acceptHMRUpdate } from 'pinia';
 export const useUsersStore = defineStore('usersStore', () => {
   const walletStore = useWalletStore();
 
-  const users = ref<Dictionary<UserProfile>>({});
-  const profileToAddress = computed(() => {
-    return _(users.value).keyBy(profile => profile.id).mapValues(profile => profile.owner).value();
-  });
-
-  const fetchAllUsersProfiles = async (profilesIds: string[] = []) => {
-    const usersProfiles = await userProfileModule.getAllUsersProfiles(profilesIds);
-    users.value = {
-      ...users.value,
-      ..._(usersProfiles).keyBy(user => user.owner).value()
-    };
-  };
-
   const checkUserProfilesRegistry = async() => {
     try {
       return !!(await userProfileModule.getUserProfileRegistry());
@@ -30,14 +17,9 @@ export const useUsersStore = defineStore('usersStore', () => {
   };
 
   return {
-    users,
-    profileToAddress,
-
-    fetchAllUsersProfiles,
     checkUserProfilesRegistry,
 
     resetState: async () => {
-      users.value = {};
     }
   };
 });

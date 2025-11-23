@@ -62,9 +62,13 @@ export const useUserStore = defineStore('userStore', () => {
   };
 
   const fetchMemberInfos = async () => {
-    const infos = await chatRoomModule.getUserMemberInfos(profile.value?.owner!);
-    memberInfos.value = _.keyBy(infos, info => info.roomId);
-    return memberInfos.value;
+    if (profile.value?.owner) {
+      const infos = await chatRoomModule.getUserMemberInfos(profile.value?.owner!);
+      memberInfos.value = _.keyBy(infos, info => info.roomId);
+      return memberInfos.value;
+    } else {
+      return {};
+    }
   };
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {

@@ -29,10 +29,7 @@ div(ref="bottomMessageBlockElement")
 <script setup lang="ts">
 import { nextTick, ref, computed,type PropType, watch } from 'vue';
 import _ from 'lodash';
-import { storeToRefs } from 'pinia';
-import { useChatRoomStore, useUserStore, useUsersStore } from '../../../stores';
-import { useChat } from '../useChat';
-import { useAsyncLoop } from '../../../utils/delay';
+import { useChatListStore } from '../../../stores';
 import { type MessageBlock, type Message, type UserProfile, chatRoomModule, type ChatRoom, type MemberInfo, ERoomType } from '../../../move';
 import { PrivateGroupService, PublicChannelService } from '../../../utils/encrypt';
 import MessageUser from './MessageUser.vue';
@@ -51,10 +48,6 @@ const props = defineProps({
     type: Object as PropType<MemberInfo>,
     required: true,
   },
-  users: {
-    type: Object as PropType<Record<string, UserProfile>>,
-    required: true
-  },
   room: {
     type: Object as PropType<ChatRoom>,
     required: true
@@ -68,6 +61,8 @@ const emits = defineEmits<{
   (e: 'messagesLoaded', blockNumber: number): void,
   (e: 'messagesChanged', blockNumber: number): void
 }>();
+
+const chatListStore = useChatListStore();
 
 const bottomMessageBlockElement = ref();
 const firstExecution = ref(true);
@@ -85,7 +80,7 @@ const decryptService = computed(() => {
   }
 });
 
-const getOtherUser = (userId: string) => props.users[userId];
+const getOtherUser = (userId: string) => chatListStore.usersCache[userId];
 
 const loadMessages = async() => {
   if (props.enabledLoading) {

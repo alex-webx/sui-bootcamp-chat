@@ -4,7 +4,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" persistent)
     q-card-section.q-dialog__title
       | Criar nova sala
 
-    q-card-section(v-if="step > 1")
+    q-card-section(v-if="step > 1 && step < 5")
       .flex.flex-center.column.full-width
         q-avatar(v-if="newChatRoom.imageUrl" size="50px")
           q-img(:src="newChatRoom.imageUrl" :ratio="1" fit="cover" error-src="/logo.png")
@@ -186,10 +186,10 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" persistent)
 
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { Loading, Notify, QForm, useDialogPluginComponent } from 'quasar';
-import { useChatRoomStore } from '../../stores/chatRoomStore';
-import { useUserStore } from '../../stores/userStore';
+import { useUserStore, useChatRoomStore, useChatListStore } from '../../stores';
+import { useChat } from './useChat';
 
 const step = ref(1);
 
@@ -198,7 +198,9 @@ const emits = defineEmits({
 });
 
 const chatRoomStore = useChatRoomStore();
+const chatListStore = useChatListStore();
 const userStore = useUserStore();
+const chatService = useChat();
 const formStep1 = ref<InstanceType<typeof QForm>>();
 
 const newChatRoom = ref<Parameters<typeof chatRoomStore.createChatRoom>[0]>({
@@ -246,6 +248,10 @@ const createChatRoom = async () => {
       const chatRoomId = await chatRoomStore.createChatRoom(newChatRoom.value);
 
       if (chatRoomId) {
+        await userStore.fetchCurrentUserProfile();
+        await chatListStore.refreshRooms();
+        await chatService.selectChatRoom({ id: chatRoomId })
+
         notif({
           message: 'Sala de chat criada com sucesso',
           caption: '',
@@ -254,10 +260,6 @@ const createChatRoom = async () => {
           icon: 'done',
           color: 'positive'
         });
-        await chatRoomStore.fetchAllUserChatRoom();
-        await userStore.fetchCurrentUserProfile();
-
-        chatRoomStore.activeChatRoomId = chatRoomId;
 
         onDialogOK(true);
       } else {

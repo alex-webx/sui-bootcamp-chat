@@ -1,9 +1,9 @@
 <template lang="pug">
 q-item-section(avatar)
   q-avatar(size="48px")
-    q-img(:src="contactedUser?.avatarUrl || '/user-circles-set.png'" :ratio="1" fit="cover")
+    q-img(:src="dmUser?.avatarUrl || '/user-circles-set.png'" :ratio="1" fit="cover")
 
-template(v-if="!contactedUser")
+template(v-if="!dmUser")
   q-item-section
     q-item-label(lines="1")
       span.text-italic.text-caption perfil excluído
@@ -12,18 +12,18 @@ template(v-else)
   q-item-section
     q-item-label(lines="1")
       .flex.items-center
-        div {{ contactedUser?.username }}
+        div {{ dmUser?.username }}
 
-        div(caption lines="1" v-if="!youJoined || !contactedUserJoined")
+        div(caption lines="1" v-if="!youJoined || !dmUserJoined")
           q-icon.q-mb-xs.q-ml-xs(name="mdi-alert-circle" color="sea" size="16px" v-if="!youJoined")
             q-tooltip Você ainda não aceitou o convite
-          q-icon.q-mb-xs.q-ml-xs(name="mdi-alert-circle" color="sea" size="16px" v-if="!contactedUserJoined" )
+          q-icon.q-mb-xs.q-ml-xs(name="mdi-alert-circle" color="sea" size="16px" v-if="!dmUserJoined" )
             q-tooltip O usuário ainda não aceitou o seu convite
 
     q-item-label.text-italic(
       v-if="lastMessage" caption lines="2"
     )
-      | {{ users[lastMessage.sender]?.username }}:
+      | {{ usersCache[lastMessage.sender]?.username }}:
       | {{ lastMessage.deletedAt ? 'mensagem removida' : lastMessage.content }}
       template(v-if="lastMessage.mediaUrl?.length")
         span.q-mr-xs imagem
@@ -45,19 +45,15 @@ import moment from 'moment';
 import { type UserProfile, type ChatRoom, type Message } from '../../move';
 import { useChat } from './useChat';
 import { useProfile } from './useProfile';
-import { DirectMessageService } from 'src/utils/encrypt';
-import { useUsersStore } from '../../stores';
-import { storeToRefs } from 'pinia';
+import { DirectMessageService } from '../../utils/encrypt';
 import { formatDate, formatTime } from '../../utils/formatters';
+import { useUsersStore, useChatListStore } from '../../stores';
+import { storeToRefs } from 'pinia';
 import { useMessageFeeder } from './useMessageFeeder';
 
 const props = defineProps({
   userAddress: {
     type: String,
-    required: true
-  },
-  users: {
-    type: Object as PropType<Record<string, UserProfile>>,
     required: true
   },
   room: {
@@ -66,17 +62,17 @@ const props = defineProps({
   }
 })
 
-const { users } = storeToRefs(useUsersStore());
+const { usersCache } = storeToRefs(useChatListStore());
 const { userStore } = useProfile();
 const { getDmMemberUserAddress } = useChat();
 const { latestMessages  } = useMessageFeeder();
-const contactedMemberId = computed(() => getDmMemberUserAddress(props.room));
-const contactedUser = computed(() => props.users[contactedMemberId.value!]);
+const dmAddress = computed(() => getDmMemberUserAddress(props.room));
+const dmUser = computed(() => usersCache.value[dmAddress.value!]);
 
 const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(props.room.id) >= 0);
-const contactedUserJoined = computed(() => (contactedUser.value?.roomsJoined || []).indexOf(props.room.id) >= 0);
+const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(props.room.id) >= 0);
 const isToday = (timestamp: number) => moment(Number(timestamp)).isSame(moment(), 'date');
-const dmService = computed(() => new DirectMessageService(userStore.profile?.keyPrivDecoded!, contactedUser.value?.keyPub!));
+const dmService = computed(() => new DirectMessageService(userStore.profile?.keyPrivDecoded!, dmUser.value?.keyPub!));
 const lastMessage = ref<Message>();
 
 watch(() => latestMessages.value[props.room.id], async (message) => {

@@ -28,10 +28,6 @@ div(ref="bottomMessageBlockElement")
 <script setup lang="ts">
 import { nextTick, ref, computed,type PropType, watch } from 'vue';
 import _ from 'lodash';
-import { storeToRefs } from 'pinia';
-import { useChatRoomStore, useUserStore, useUsersStore } from '../../../stores';
-import { useChat } from '../useChat';
-import { useAsyncLoop } from '../../../utils/delay';
 import { type MessageBlock, type Message, type UserProfile, chatRoomModule } from '../../../move';
 import { DirectMessageService } from '../../../utils/encrypt';
 import MessageUser from './MessageUser.vue';

@@ -3,17 +3,19 @@ import { computed, ref, watch } from 'vue';
 import _, { Dictionary } from 'lodash';
 import { userProfileModule, chatRoomModule } from '../move';
 import type * as Models from '../move';
+import { useUserStore } from './userStore';
 
 export const useChatListStore = defineStore('chatListStore', () => {
 
-  const profile = ref<Models.UserProfile>();
+  const userStore = useUserStore();
 
   const usersCache = ref<Record<string, Models.UserProfile>>({});
   const chats = ref<Record<string, Models.ChatRoom & { membersInfos: Record<string, Models.MemberInfo> }>>({});
+  const activeChatId = ref('');
+  const activeChat = computed(() => chats.value[activeChatId.value!]);
 
   const init = async (profileId: string) => {
-    profile.value = await userProfileModule.getUserProfile(profileId);
-    await fetchChatRooms();
+    await refreshRooms();
   };
 
    const getUserProfile = async (address: string, refresh = false) => {
@@ -47,10 +49,10 @@ export const useChatListStore = defineStore('chatListStore', () => {
     }
   };
 
-  const fetchChatRooms = async () => {
+  const refreshRooms = async () => {
     const roomIds = _.uniq([
-      ...profile.value?.roomsJoined || [],
-      ...await chatRoomModule.getUserMemberInfos(profile.value?.owner!).then(res => res.map(memberInfo => memberInfo.roomId))
+      ...userStore.profile?.roomsJoined || [],
+      ...await chatRoomModule.getUserMemberInfos(userStore.profile?.owner!).then(res => res.map(memberInfo => memberInfo.roomId))
     ]);
 
     const chatRooms = _(await chatRoomModule.getChatRooms(roomIds)).keyBy(room => room.id).value() as typeof chats.value;
@@ -61,6 +63,7 @@ export const useChatListStore = defineStore('chatListStore', () => {
       room.membersInfos = membersInfos;
     }
     chats.value = chatRooms;
+    return chatRooms;
   };
 
   const refreshRoom = async (roomId: string) => {
@@ -72,12 +75,21 @@ export const useChatListStore = defineStore('chatListStore', () => {
   }
 
   return {
-    profile,
     chats,
     usersCache,
 
+    activeChat,
+    activeChatId,
+
     init,
-    refreshRoom
+    refreshRooms,
+    refreshRoom,
+
+    resetState: async () => {
+      usersCache.value = {}
+      chats.value = {};
+      activeChatId.value = '';
+    }
   };
 });
 

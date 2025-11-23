@@ -1,18 +1,13 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { computed, ref } from 'vue';
 import _ from 'lodash';
 import { EPermission, ERoomType, chatRoomModule } from '../move';
 import type { ChatRoom, RoomKey, Message, MessageBlock, UserProfile } from '../move';
-import { PrivateGroupService, PublicChannelService } from '../utils/encrypt';
-import { useUsersStore, useUserStore, useWalletStore } from './';
+import { PrivateGroupService } from '../utils/encrypt';
+import { useUserStore, useWalletStore } from './';
 
 export const useChatRoomStore = defineStore('chatRoomStore', () => {
   const userStore = useUserStore();
-  const usersStore = useUsersStore();
   const walletStore = useWalletStore();
-
-  const chatRooms = ref<Record<string, ChatRoom>>({});
-  const activeChatRoomId = ref<string>();
 
   const createChatRoom = async(roomMetaData: {
     name: string,
@@ -80,44 +75,6 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
 
       return parser(await walletStore.signAndExecuteTransaction(tx));
     }
-  };
-
-  // const acceptDmRoom = async (
-  //   data: {
-  //     room: Pick<ChatRoom, 'id'>,
-  //     inviterUserProfile: Pick<UserProfile, 'keyPub'>
-  //   }
-  // ) => {
-  //   if (userStore.profile?.id) {
-  //     const tx = chatRoomModule.txAcceptDmRoom({
-  //       profile: userStore.profile,
-  //       room: data.room
-  //     });
-  //     return walletStore.signAndExecuteTransaction(tx);
-  //   }
-  // };
-
-  // const fetchAllChatRooms = async () => {
-  //   chatRooms.value = await chatRoomModule.getAllChatRooms();
-  //   return chatRooms.value;
-  // };
-
-  const fetchAllUserChatRoom = async () => {
-    //const allRooms  = await chatRoomModule.getAllChatRooms();
-    const roomsJoined = userStore.profile?.roomsJoined || [];
-    const memberInfosRoomIds = Object.keys(await userStore.fetchMemberInfos());
-    const roomsIds = _.uniq([ ...roomsJoined, ...memberInfosRoomIds ]);
-
-    const rooms = await chatRoomModule.getChatRooms(roomsIds);
-
-    chatRooms.value = _(rooms).keyBy(room => room.id).value();
-    return chatRooms.value;
-  };
-
-  const refreshUserChatRoom = async (chatRoom: ChatRoom) => {
-    const room  = await chatRoomModule.getChatRooms([chatRoom.id]);
-    chatRooms.value[chatRoom.id] = room[0]!;
-    return chatRooms.value;
   };
 
   const sendMessage = async (
@@ -188,9 +145,6 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     createDmRoom,
     // acceptDmRoom,
 
-    fetchAllUserChatRoom,
-    refreshUserChatRoom,
-
     sendMessage,
     editMessage,
     deleteMessage,
@@ -200,13 +154,7 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     getChatRoomMessagesFromBlock,
     checkChatRoomRegistry,
 
-    chatRooms,
-    activeChatRoomId,
-    activeChatRoom: computed(() => chatRooms.value[activeChatRoomId.value!]),
-
     resetState: async () => {
-      chatRooms.value = {};
-      activeChatRoomId.value = undefined;
     }
   };
 });

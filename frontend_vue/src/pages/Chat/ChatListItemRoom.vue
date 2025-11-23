@@ -15,7 +15,7 @@ q-item-section
   q-item-label.text-italic(
     v-if="lastMessage" caption lines="2"
   )
-    | {{ users[lastMessage.sender]?.username }}:
+    | {{ usersCache[lastMessage.sender]?.username }}:
     | {{ lastMessage.deletedAt ? 'mensagem removida' : lastMessage.content }}
     template(v-if="lastMessage.mediaUrl?.length")
       span.q-mx-xs imagem
@@ -34,10 +34,10 @@ q-item-section(side)
 import { watch, onMounted, ref, computed, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
 import moment from 'moment';
-import { type UserProfile, type ChatRoom, type Message, ERoomType } from '../../move';
+import { type ChatRoom, type Message, ERoomType } from '../../move';
 import { useProfile } from './useProfile';
 import { PrivateGroupService, PublicChannelService } from 'src/utils/encrypt';
-import { useUsersStore } from '../../stores';
+import { useChatListStore  } from '../../stores';
 import { storeToRefs } from 'pinia';
 import { formatDate, formatTime } from '../../utils/formatters';
 import { useMessageFeeder } from './useMessageFeeder';
@@ -47,17 +47,13 @@ const props = defineProps({
     type: String,
     required: true
   },
-  users: {
-    type: Object as PropType<Record<string, UserProfile>>,
-    required: true
-  },
   room: {
     type: Object as PropType<ChatRoom>,
     required: true
   }
 })
 
-const { users } = storeToRefs(useUsersStore());
+const { usersCache } = storeToRefs(useChatListStore());
 const { userStore } = useProfile();
 const { latestMessages  } = useMessageFeeder();
 

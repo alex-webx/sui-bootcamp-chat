@@ -3,28 +3,39 @@ q-layout.bg-ocean
   q-page-container.text-white
     q-page.column.items-center.justify-start
 
-      .flex
-        q-btn(icon="mdi-file-gif-box" flat round)
-          q-menu
-            q-card.bg-white(style="width: 300px; max-height: 400px")
-              TenorComponent(@select="selectGif")
+      q-card.q-mb-md.q-pa-md(v-for="(chat, chatId) in chats" :key="chatId" dark)
+        .text-subtitle1 {{ chat.name }} #[.text-caption ({{chatId}})]
+        q-btn(label="refresh" @click="loadSingle(chatId)" outline)
 
-        q-btn(icon="mdi-sticker-emoji" flat round)
-          q-menu
-            EmojiPicker(:native="true" @select="selectEmoji" theme="light")
+        div(v-for="(member, addr) in chat.members" :key="addr")
+          | User address: {{addr}} - {{ usersCache[addr]?.username }} - {{chat.membersInfos[addr]}}
 
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import TenorComponent, { type TenorResult }  from './components/TenorComponent.vue';
+import { useChatListStore } from './stores/chatList';
+import { useUserStore } from './stores/userStore';
+import { storeToRefs } from 'pinia';
 
-const selectGif = async (gif: TenorResult) => {
-  console.log({gif});
-};
+const chatListStore = useChatListStore();
 
-const selectEmoji = (emoji: any) => {
-  console.log({emoji});
+const { profile, chats, usersCache } = storeToRefs(chatListStore);
+
+const address = useUserStore().profile?.owner!;
+
+onMounted(async () => {
+  load();
+});
+
+const load = async () => {
+  await chatListStore.init(address);
+  console.log('loadig');
+
+}
+
+const loadSingle = async (roomId: string) => {
+  await chatListStore.refreshRoom(roomId);
 }
 
 </script>
