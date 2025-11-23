@@ -61,54 +61,41 @@ export function useChat() {
         return;
       }
 
+      let encryptMessage: (plaintext: string) => Promise<{ iv: string, ciphertext: string }>;
+
       switch(activeChat.roomType) {
         case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
           const dmUser = getDmMemberUser(activeChat);
-          const dmService = new DirectMessageService(privKey!, dmUser?.keyPub!);
-
-          if (content?.length) {
-            const encContent = await dmService.encryptMessage(content);
-            content = JSON.stringify([encContent.iv, encContent.ciphertext]);
-          }
-          if (mediaUrl.length) {
-            const encMedia = await Promise.all(mediaUrl.map(mediaUrl => dmService.encryptMessage(mediaUrl)));
-            mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
-          }
+          const svc = new DirectMessageService(privKey!, dmUser?.keyPub!);
+          encryptMessage = svc.encryptMessage;
           break;
         }
-          case ERoomType.PrivateGroup: {
-            const privKey = await userStore.ensurePrivateKey();
-            const roomKey = memberInfos[chatListStore.activeChatId!]?.roomKey;
-            const privGroupService = new PrivateGroupService({
-              encodedAesKey: roomKey?.encodedPrivKey!,
-              inviterPublicKey: roomKey?.pubKey!,
-              iv: roomKey?.iv!
-            }, privKey!);
-
-            if (content?.length) {
-              const encContent = await privGroupService.encryptMessage(content);
-              content = JSON.stringify([encContent.iv, encContent.ciphertext]);
-            }
-            if (mediaUrl.length) {
-              const encMedia = await Promise.all(mediaUrl.map(mediaUrl => privGroupService.encryptMessage(mediaUrl)));
-              mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
-            }
+        case ERoomType.PrivateGroup: {
+          const privKey = await userStore.ensurePrivateKey();
+          const roomKey = memberInfos[chatListStore.activeChatId!]?.roomKey;
+          const svc = new PrivateGroupService({
+            encodedAesKey: roomKey?.encodedPrivKey!,
+            inviterPublicKey: roomKey?.pubKey!,
+            iv: roomKey?.iv!
+          }, privKey!);
+          encryptMessage = svc.encryptMessage;
           break;
         }
         case ERoomType.PublicGroup: {
-          const pubService = new PublicChannelService(activeChat.owner!);
-
-          if (content?.length) {
-            const encContent = await pubService.obfuscateMessage(content);
-            content = JSON.stringify([encContent.iv, encContent.ciphertext]);
-          }
-          if (mediaUrl.length) {
-            const encMedia = await Promise.all(mediaUrl.map(mediaUrl => pubService.obfuscateMessage(mediaUrl)));
-            mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
-          }
+          const svc = new PublicChannelService(activeChat.owner!);
+          encryptMessage = svc.encryptMessage;
           break;
         }
+      }
+
+      if (content?.length) {
+        const encContent = await encryptMessage(content);
+        content = JSON.stringify([encContent.iv, encContent.ciphertext]);
+      }
+      if (mediaUrl.length) {
+        const encMedia = await Promise.all(mediaUrl.map(mediaUrl => encryptMessage(mediaUrl)));
+        mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
       }
 
       if (isEdit) {
@@ -263,7 +250,6 @@ export function useChat() {
     }
   };
 
-
   const deleteMessage = async (
     message: Pick<Message, 'id' | 'roomId'>
   ) => {
@@ -313,53 +299,21 @@ export function useChat() {
     });
   };
 
-  const canInvite = computed(() => {
+
+  const checkPermission = (permissionValue: EPermission) => {
     const profileOwner = userStore.profile?.owner;
     const room = chatListStore.activeChat;
-    const permissionInvite = room?.permissionInvite;
-    const roomOwner = room?.owner;
 
-    if (permissionInvite! === EPermission.Nobody) {
-      return false;
-    }
-    if ((permissionInvite! & EPermission.Anyone) === EPermission.Anyone) {
-      return true;
-    }
-    if ((permissionInvite! & EPermission.Admin) === EPermission.Admin && profileOwner === room?.owner) {
-      return true;
-    }
-    if ((permissionInvite! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) {
-      return true;
-    }
-    if ((permissionInvite! & EPermission.Members) === EPermission.Members && !!room?.members?.[profileOwner!]) {
-      return true;
-    }
+    if (permissionValue! === EPermission.Nobody) { return false; }
+    if ((permissionValue! & EPermission.Anyone) === EPermission.Anyone) { return true; }
+    if ((permissionValue! & EPermission.Admin) === EPermission.Admin && profileOwner === room?.owner) { return true; }
+    if ((permissionValue! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) { return true; }
+    if ((permissionValue! & EPermission.Members) === EPermission.Members && !!room?.members?.[profileOwner!]) { return true; }
     return false;
-  });
+  };
 
-  const canSendMessage = computed(() => {
-    const profileOwner = userStore.profile?.owner;
-    const room = chatListStore.activeChat;
-    const permissionSendMessage = room?.permissionSendMessage;
-    const roomOwner = room?.owner;
-
-    if (permissionSendMessage! === EPermission.Nobody) {
-      return false;
-    }
-    if ((permissionSendMessage! & EPermission.Anyone) === EPermission.Anyone) {
-      return true;
-    }
-    if ((permissionSendMessage! & EPermission.Admin) === EPermission.Admin && profileOwner === room?.owner) {
-      return true;
-    }
-    if ((permissionSendMessage! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) {
-      return true;
-    }
-    if ((permissionSendMessage! & EPermission.Members) === EPermission.Members && !!room?.members?.[profileOwner!]) {
-      return true;
-    }
-    return false;
-  });
+  const canInvite = computed(() => checkPermission(chatListStore.activeChat?.permissionInvite || EPermission.Nobody));
+  const canSendMessage = computed(() => checkPermission(chatListStore.activeChat?.permissionSendMessage || EPermission.Nobody));
 
   return {
     // ui

@@ -36,7 +36,7 @@ import _ from 'lodash';
 import moment from 'moment';
 import { type ChatRoom, type Message, ERoomType } from '../../move';
 import { useProfile } from './useProfile';
-import { PrivateGroupService, PublicChannelService } from 'src/utils/encrypt';
+import { PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
 import { useChatListStore  } from '../../stores';
 import { storeToRefs } from 'pinia';
 import { formatDate, formatTime } from '../../utils/formatters';
@@ -68,10 +68,10 @@ const decryptService = computed(() => {
       iv: member.value?.roomKey?.iv!,
       inviterPublicKey: member.value?.roomKey?.pubKey!
     }, userStore.profile?.keyPrivDecoded!);
-    return (iv: string, ciphertext: string) => svc.decryptMessage(iv, ciphertext);
+    return svc;
   } else if (props.room.roomType == ERoomType.PublicGroup) {
     const svc = new PublicChannelService(props.room.owner);
-    return (iv: string, ciphertext: string) => svc.deObfuscateMessage(iv, ciphertext);
+    return svc;
   }
 });
 
@@ -82,7 +82,7 @@ watch(() => latestMessages.value[props.room.id], async (message) => {
     if (!message.deletedAt) {
       try {
         const jsonMessage = JSON.parse(message?.content!) as string[];
-        message!.content = await decryptService.value?.(jsonMessage[0]!, jsonMessage[1]!)!;
+        message!.content = await decryptService.value?.decryptMessage({ iv: jsonMessage[0]!, ciphertext: jsonMessage[1]! })!;
       } catch { }
     }
   }

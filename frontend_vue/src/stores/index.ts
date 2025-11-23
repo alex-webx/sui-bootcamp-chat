@@ -37,4 +37,4 @@ export * from '../move/useClient';
 export * from './usersStore';
 export * from './userStore';
 export * from './walletStore';
-export * from './chatList';
+export * from './chatListStore';

@@ -143,7 +143,6 @@ export const useChatRoomStore = defineStore('chatRoomStore', () => {
     createChatRoom,
 
     createDmRoom,
-    // acceptDmRoom,
 
     sendMessage,
     editMessage,

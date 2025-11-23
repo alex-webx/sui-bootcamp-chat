@@ -73,10 +73,10 @@ const decryptService = computed(() => {
     const privKey = props.user?.keyPrivDecoded!;
     const roomKey =  props.memberInfo.roomKey!;
     const svc = new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
-    return (iv: string, ciphertext: string) => svc.decryptMessage(iv, ciphertext);
+    return svc;
   } else if (props.room.roomType == ERoomType.PublicGroup) {
     const svc = new PublicChannelService(props.room.owner);
-    return (iv: string, ciphertext: string) => svc.deObfuscateMessage(iv, ciphertext);
+    return svc;
   }
 });
 
@@ -92,7 +92,7 @@ const loadMessages = async() => {
       if (msg.content) {
         try {
           const content = JSON.parse(msg.content) as [string, string];
-          msg.content = await decryptService.value!(content[0]!, content[1]!);
+          msg.content = await decryptService.value!.decryptMessage({ iv: content[0]!, ciphertext: content[1]! });
         } catch(err) {
           console.error('error')
           console.error(err);
@@ -102,7 +102,7 @@ const loadMessages = async() => {
       msg.mediaUrl = await Promise.all((msg.mediaUrl || []).map(async url => {
         try {
           const content = JSON.parse(url) as [string, string];
-          return await decryptService.value!(content[0]!, content[1]!);
+          return await decryptService.value!.decryptMessage({ iv: content[0]!, ciphertext: content[1]! });
         } catch {
           return url;
         }

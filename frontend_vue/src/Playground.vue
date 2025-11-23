@@ -14,13 +14,13 @@ q-layout.bg-ocean
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { useChatListStore } from './stores/chatList';
+import { useChatListStore } from './stores/chatListStore';
 import { useUserStore } from './stores/userStore';
 import { storeToRefs } from 'pinia';
 
 const chatListStore = useChatListStore();
 
-const { profile, chats, usersCache } = storeToRefs(chatListStore);
+const { chats, usersCache } = storeToRefs(chatListStore);
 
 const address = useUserStore().profile?.owner!;
 
