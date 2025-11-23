@@ -168,6 +168,18 @@
 
       template(v-if="activeChat")
 
+        .q-pa-md.row.justify-center.full-width(
+          v-if="!messageBlocks?.length"
+          style="margin-top: auto; margin-bottom: auto"
+        )
+          transition(
+            appear
+            enter-active-class="animated tada slower"
+            leave-active-class="animated tada slower"
+          )
+            .flex.flex-center.column
+              img(src="/logo.png" style="width: 200px; opacity: 1;")
+
         GroupRoom(
           v-if="activeChat.roomType === 1 || activeChat.roomType === 2"
         )
@@ -295,7 +307,7 @@ const { latestMessages } = feeder;
 const { shortenAddress, formatFullDate } = formatters;
 const { disconnect, deleteProfile, editProfile } = useProfile();
 const { createRoom, insertEmoji, insertGif, removeGif, getDmMemberUserAddress, clearNewMessage, canSendMessage } = chatService;
-const { newMessage } = chatService;
+const { newMessage, messageBlocks } = chatService;
 const { breakpoint, screenWidth, desktopMode, drawerWidth, leftDrawerOpen, rightDrawerOpen } = chatService;
 
 const style = computed(() => ({ height: $q.screen.height + 'px' }));
