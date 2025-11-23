@@ -168,14 +168,14 @@
 
       template(v-if="activeChat")
 
-        .q-pa-md.row.justify-center.full-width(
-          v-if="!messageBlocks?.length"
-          style="margin-top: auto; margin-bottom: auto"
+        transition(
+          appear
+          enter-active-class="animated tada slower"
+          leave-active-class="animated bounceOutUp"
         )
-          transition(
-            appear
-            enter-active-class="animated tada slower"
-            leave-active-class="animated tada slower"
+          .q-pa-md.row.justify-center.full-width(
+            v-if="!messageBlocks?.length"
+            style="margin-top: auto; margin-bottom: auto"
           )
             .flex.flex-center.column
               img(src="/logo.png" style="width: 200px; opacity: 1;")

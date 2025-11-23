@@ -48,12 +48,12 @@ q-chat-message(
       div(v-for="(line, iLine) in message.content.split('\\n')" :key="'line_' + iLine")
         | {{ line }}
 
-      template(v-if="isSelected")
-        transition-group(
-          appear
-          enter-active-class="animated flipInX slower"
-          leave-active-class="animated flipInX slower"
-        )
+      transition-group(
+        appear
+        enter-active-class="animated flipInX"
+        leave-active-class="animated flipOutX"
+      )
+        div(v-if="isSelected")
           q-separator(dark spaced key="separator")
           .flex.flex-center(key="buttons")
             q-btn-group.bg-white(outline)

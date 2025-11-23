@@ -1,12 +1,4 @@
 <template lang="pug">
-//- transition(
-//-   enter-active-class="animated backInUp slower delay-3s"
-//-   leave-active-class="animated fadeOut"
-//- )
-//- transition(
-//-   name="filtro-transicao" mode="out-in"
-//- )
-//-   router-view(:key="route.name")
 router-view( v-slot="{ Component }")
   transition(name="filtro-transicao" mode="out-in")
     component(:is="Component")
