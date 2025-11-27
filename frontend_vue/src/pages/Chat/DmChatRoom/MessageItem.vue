@@ -19,7 +19,7 @@ q-chat-message(
       q-icon(name="mdi-lock")
         q-tooltip Mensagem criptografada E2EE utilizando uma chave AES derivada de ECDH das duas partes
       span
-        q-badge(:color="bgColor" :text-color="textColor") {{ fromNow(message.createdAt) }}
+        q-badge(:color="bgColor" :text-color="textColor") {{ stamp(message.createdAt) }}
           q-tooltip {{ formatFullDate(message.createdAt) }}
       q-space
       q-badge(v-if="message.editedAt" label="editada" dense flat no-caps :color="bgColor" :text-color="textColor")
@@ -67,13 +67,12 @@ q-chat-message(
 
 </template>
 <script setup lang="ts">
-import { computed, watchEffect, onMounted, ref, toRefs, type PropType } from 'vue';
+import { computed, watchEffect, ref, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
-import { Dialog, openURL } from 'quasar';
+import {  openURL } from 'quasar';
 import { useChat } from '../useChat';
-import { shortenAddress, formatFullDate } from '../../../utils/formatters';
+import { formatFullDate, stamp } from '../../../utils/formatters';
 import { type Message, type UserProfile, getNetwork } from '../../../move';
-import moment from 'moment';
 import { db, useLiveQuery } from '../../../utils/dexie';
 
 const props = defineProps({
@@ -117,8 +116,6 @@ watchEffect(async () => {
   content.value = decrypted.content;
   mediaUrl.value = decrypted.mediaUrl;
 });
-
-const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
 
 const exploreObject = () => {
   openURL(`https://suiscan.xyz/${getNetwork()}/object/${message.value.id}/fields`);

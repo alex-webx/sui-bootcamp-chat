@@ -16,12 +16,6 @@ export function useChat() {
   const chatListStore = useChatListStore();
   const uiStore = useUiStore();
 
-  const createRoom = async () => {
-    Dialog.create({
-      component: CreateRoomDialog
-    });
-  };
-
   const insertGif = async (gif: TenorResult) => {
     newMessage.value.mediaUrl = [];
     newMessage.value.mediaUrl.push(gif.media_formats.mp4.url);
@@ -61,11 +55,11 @@ export function useChat() {
         }
         case ERoomType.PrivateGroup: {
           const privKey = await userStore.ensurePrivateKey();
-          const roomKey = (activeChat.members[profile.owner] as MemberInfo)?.roomKey;
+          const memberInfo = await db.memberInfo.get(activeChat.id);
           const svc = new PrivateGroupService({
-            encodedAesKey: roomKey?.encodedPrivKey!,
-            inviterPublicKey: roomKey?.pubKey!,
-            iv: roomKey?.iv!
+            encodedAesKey: memberInfo?.roomKey?.encodedPrivKey!,
+            inviterPublicKey: memberInfo?.roomKey?.pubKey!,
+            iv: memberInfo?.roomKey?.iv!
           }, privKey!);
           encryptMessage = svc.encryptMessage.bind(svc);
           break;
@@ -175,13 +169,69 @@ export function useChat() {
             color: 'positive'
           })
           await userStore.fetchCurrentUserProfile();
-          // const room = rooms[chatRoomId];
-          // if (room) {
-          //   await selectChatRoom(room);
-          // }
+          await db.refreshUserRooms([chatRoomId]);
+          await selectChatRoom({ id: chatRoomId });
         }
       });
     }
+  };
+
+  const createChatRoom = async (newChatRoom: Parameters<typeof chatListStore.createChatRoom>[0]) => {
+    const notif = Notify.create({
+      message: 'Criando sala de chat...',
+      caption: 'Por favor, assine a transação em sua carteira.',
+      color: 'primary',
+      spinner: true,
+      group: false,
+      timeout: 0
+    });
+
+      try {
+
+        if (!newChatRoom.isRestricted) {
+          newChatRoom.inviteLevel = 'all';
+        }
+
+        const chatRoomId = await chatListStore.createChatRoom(newChatRoom);
+
+        if (chatRoomId) {
+          await userStore.fetchCurrentUserProfile();
+          await db.refreshUserRooms([chatRoomId]);
+          await selectChatRoom({ id: chatRoomId })
+
+          notif({
+            message: 'Sala de chat criada com sucesso',
+            caption: '',
+            timeout: 2500,
+            spinner: false,
+            icon: 'done',
+            color: 'positive'
+          });
+
+          return true;
+        } else {
+          notif({
+            message: 'Não foi possível criar a sala de chat',
+            caption: '',
+            timeout: 2500,
+            spinner: false,
+            icon: 'done',
+            color: 'negative'
+          });
+          return false;
+        }
+      } catch (exc) {
+        console.log({exc});
+        notif({
+          message: 'Não foi possível criar a sala de chat',
+          caption: 'Ocorreu um erro: ' + exc,
+          timeout: 2500,
+          spinner: false,
+          icon: 'done',
+          color: 'negative'
+        });
+        return false;
+      }
   };
 
   const deleteMessage = async (
@@ -252,7 +302,7 @@ export function useChat() {
   return {
     newMessage,
 
-    createRoom,
+    createChatRoom,
     selectChatRoom,
     selectUser,
 

@@ -45,13 +45,14 @@ export type ChatRoom = {
   name: string;
   owner: string;
   createdAt: number;
+  updatedAt: number;
   messageCount: number;
   eventCount: number;
   messages: string;
   imageUrl: string;
   bannedUsers: Record<string, BanInfo>;
   moderators: Record<string, ModeratorInfo>;
-  members: Record<string, string | MemberInfo>;
+  members: Record<string, string>;
   maxMembers: number;
   roomType: ERoomType;
   permissionInvite: EPermission;

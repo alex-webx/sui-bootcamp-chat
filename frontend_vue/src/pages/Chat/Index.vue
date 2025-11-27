@@ -6,64 +6,69 @@
   .absolute-bottom-right
     DeployLabel
 
-  q-layout.WAL__layout.shadow-3(
-    view="lHh LpR lFr" container
+  transition(
+    appear
+    enter-active-class="animated bounceIn slower"
   )
-
-    HeaderToolbar
-
-    LeftDrawer
-
-    RightDrawer
-
-    //----- CONTENT -----------------------------------------------------------------------------------------------------------------
-
-    q-page-container(
-      style="display: flex; flex-direction: column; min-height: calc(100vh - 40px)"
-      :key="activeChat?.id || 0"
+    q-layout.WAL__layout.shadow-3(
+      view="lHh LpR lFr" container
+      v-if="!loading"
     )
-      template(v-if="activeChat")
 
-        //- transition(
-        //-   appear
-        //-   enter-active-class="animated tada slower"
-        //-   leave-active-class="animated bounceOutUp"
-        //- )
-        //-   .q-pa-md.row.justify-center.full-width(
-        //-     v-if="!messageBlocks?.length"
-        //-     style="margin-top: auto; margin-bottom: auto"
-        //-   )
-        //-     .flex.flex-center.column
-        //-       img(src="/logo.png" style="width: 200px; opacity: 1;")
+      HeaderToolbar
 
-        GroupRoom(
-          v-if="activeChat.roomType === 1 || activeChat.roomType === 2"
-        )
+      LeftDrawer
 
-        DmChatRoom(
-          v-else-if="activeChat.roomType === 3"
-        )
+      RightDrawer
 
-      .q-pa-md.row.justify-center.full-width(
-        v-else style="margin-top: auto; margin-bottom: auto"
+      //----- CONTENT -----------------------------------------------------------------------------------------------------------------
+
+      q-page-container(
+        style="display: flex; flex-direction: column; min-height: calc(100vh - 40px)"
+        :key="activeChat?.id || 0"
       )
-        transition(
-          appear
-          enter-active-class="animated jello slower"
-          leave-active-class="animated fadeOut"
+        template(v-if="activeChat")
+
+          //- transition(
+          //-   appear
+          //-   enter-active-class="animated tada slower"
+          //-   leave-active-class="animated bounceOutUp"
+          //- )
+          //-   .q-pa-md.row.justify-center.full-width(
+          //-     v-if="!messageBlocks?.length"
+          //-     style="margin-top: auto; margin-bottom: auto"
+          //-   )
+          //-     .flex.flex-center.column
+          //-       img(src="/logo.png" style="width: 200px; opacity: 1;")
+
+          GroupRoom(
+            v-if="activeChat.roomType === 1 || activeChat.roomType === 2"
+          )
+
+          DmChatRoom(
+            v-else-if="activeChat.roomType === 3"
+          )
+
+        .q-pa-md.row.justify-center.full-width(
+          v-else style="margin-top: auto; margin-bottom: auto"
         )
-          img(src="/logo.png" style="width: 200px; opacity: 0.2")
+          transition(
+            appear
+            enter-active-class="animated jello slower"
+            leave-active-class="animated fadeOut"
+          )
+            img(src="/logo.png" style="width: 200px; opacity: 0.2")
 
 
-    //----- FOOTER -----------------------------------------------------------------------------------------------------------------
+      //----- FOOTER -----------------------------------------------------------------------------------------------------------------
 
-    template(v-if="activeChat")
-      FooterToolbar
+      template(v-if="activeChat")
+        FooterToolbar
 
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from 'quasar';
+import { Loading, useQuasar, Screen } from 'quasar';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useWalletStore, useUserStore, useChatListStore, useUiStore } from '../../stores';
@@ -76,20 +81,20 @@ import FooterToolbar from './FooterToolbar/FooterToolbar.vue';
 import DmChatRoom from './DmChatRoom/DmChatRoom.vue';
 import GroupRoom from './GroupRoom/GroupRoom.vue';
 
-const $q = useQuasar();
-
 const walletStore = useWalletStore();
 const userStore = useUserStore();
 const chatListStore = useChatListStore();
 
-const style = computed(() => ({ height: $q.screen.height + 'px' }));
+const style = computed(() => ({ height: Screen.height + 'px' }));
+const loading = ref(true);
 
 const { profile } = storeToRefs(userStore);
 const { activeChat } = storeToRefs(chatListStore);
 const dbControls = ref<Awaited<ReturnType<typeof db.initDatabase>>>();
 
 onMounted(async () => {
-  $q.loading.show();
+  Loading.show();
+  loading.value = true;
   try {
     const connected = await walletStore.autoConnect();
     if (connected) {
@@ -97,7 +102,8 @@ onMounted(async () => {
       dbControls.value = await db.initDatabase(walletStore.address!);
     }
   } finally {
-    $q.loading.hide();
+    loading.value = false;
+    Loading.hide();
   }
 });
 

@@ -112,7 +112,7 @@ const address = computed(() => profile.value?.owner!);
 
 // const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
 // const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
-// const memberInfo = computed(() => memberInfos.value[activeChatId.value!]);
+const memberInfo = useLiveQuery(() => db.memberInfo.get(room.value?.id!));
 
 const messages = useLiveQuery(() => db.message.where('roomId').equals(room.value!.id).filter(m => m.eventType === EMessageType.New).sortBy('messageNumber'));
 const users = useLiveQuery(async () => {
@@ -129,7 +129,7 @@ watch(messages, async (msgs) => {
 const decryptService = computed(() => {
   if (room.value?.roomType === ERoomType.PrivateGroup) {
     const privKey = profile.value?.keyPrivDecoded!;
-    const roomKey = (room.value?.members[address.value] as MemberInfo).roomKey!;
+    const roomKey = memberInfo.value?.roomKey!;
     return new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
   } else if (room.value?.roomType == ERoomType.PublicGroup) {
     return new PublicChannelService(room.value.owner);
@@ -189,8 +189,7 @@ const invite = async () => {
       let roomKey: Parameters<typeof chatListStore.inviteMember>[0]['roomKey'];
 
       if (room.value?.roomType === ERoomType.PrivateGroup) {
-        const memberInfo = room.value.members[address.value] as MemberInfo;
-        const userRoomKey = memberInfo.roomKey!;
+        const userRoomKey = memberInfo.value?.roomKey!;
         const svc = new PrivateGroupService({ encodedAesKey: userRoomKey.encodedPrivKey, iv: userRoomKey.iv, inviterPublicKey: userRoomKey.pubKey }, privKey);
         const inviteKey = await PrivateGroupService.generateInvitationKey(
           (await svc.exportRoomAesKey())!,

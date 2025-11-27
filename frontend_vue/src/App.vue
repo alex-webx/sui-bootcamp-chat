@@ -7,7 +7,6 @@ router-view( v-slot="{ Component }")
 
 <script setup lang="ts">
 import { inject, onMounted } from 'vue';
-
 </script>
 <style lang="scss">
 /* Define a duração e a função de temporização da transição para a propriedade filter */
