@@ -52,10 +52,10 @@ export const getUserProfile = async (address: string) => {
 
 export const getUsersProfilesFromAddresses = async (addresses: string[] = []) => {
   const registry = (await getUserProfileRegistry())?.users!;
-  const profilesIds = addresses.map(address => registry[address]!);
+  const profilesIds = addresses.length ? addresses.map(address => registry[address]!) : Object.values(registry);
 
   const profilesRes = await getMultiObjects({
-    ids: profilesIds
+    ids: profilesIds.filter(p => !!p)
   });
   const profiles = profilesRes.map(profile => parseUserProfile(profile));
   return profiles;

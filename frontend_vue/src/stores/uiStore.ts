@@ -17,10 +17,10 @@ export const useUiStore = defineStore('uiStore', () => {
   const rightDrawerOpen = ref(false);
   const bottomChatElement = ref<InstanceType<typeof HTMLDivElement>>();
 
-  const scrollTo = (where: 'bottom') => {
+  const scrollTo = (where: 'bottom', behavior: 'smooth' | 'auto' | 'instant' = 'smooth') => {
     if (where === 'bottom') {
       setTimeout(() => {
-        bottomChatElement.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        bottomChatElement.value?.scrollIntoView({ behavior, block: 'start' });
       }, 500);
     }
   };

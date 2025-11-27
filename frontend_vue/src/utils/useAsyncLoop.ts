@@ -10,11 +10,47 @@ export interface AsyncLoopControls {
   stopLoop: () => void;
 }
 
-export function useAsyncLoop(
+export interface AsyncLoopControlsWithLifecycle {
+  executeImmediately?: boolean;
+}
+
+/**
+ * Hook auxiliar que gerencia o ciclo de vida do useAsyncLoop automaticamente
+ * dentro de um contexto de componente Vue.
+ */
+export function useAsyncLoopWithLifecycle(
   asyncFunction: (isFirstExecution: boolean) => Promise<void>,
   intervalMs: number,
-  // Novo parâmetro para controlar se deve executar imediatamente na inicialização
-  executeImmediately: boolean = true
+  options: AsyncLoopControlsWithLifecycle = { executeImmediately: true }
+): AsyncLoopControls {
+  const controls = useAsyncLoop(asyncFunction, intervalMs);
+  const { startLoop, stopLoop } = controls;
+  const { executeImmediately } = options;
+
+  // Estes hooks funcionarão APENAS se chamados dentro de setup()
+  // Se chamados fora, eles falham silenciosamente, o que é o comportamento desejado.
+  try {
+    onMounted(() => {
+      if (executeImmediately) {
+        startLoop();
+      }
+    });
+
+    onUnmounted(() => {
+      stopLoop();
+    });
+  } catch (e) {
+    // Captura erros se onMounted/onUnmounted forem chamados fora de um contexto Vue válido
+    console.warn("useAsyncLoopWithLifecycle: Não foi possível anexar hooks de ciclo de vida. Certifique-se de chamar startLoop/stopLoop manualmente.");
+  }
+
+  return controls;
+}
+
+
+export function useAsyncLoop(
+  asyncFunction: (isFirstExecution: boolean) => Promise<void>,
+  intervalMs: number
 ): AsyncLoopControls {
   const timeoutId: Ref<any | null> = ref(null);
   const isRunning = ref(false);
@@ -50,17 +86,6 @@ export function useAsyncLoop(
       timeoutId.value = null;
     }
   };
-
-  // Gerenciamento do Ciclo de Vida Interno
-  onMounted(() => {
-    if (executeImmediately) {
-      startLoop();
-    }
-  });
-
-  onUnmounted(() => {
-    stopLoop();
-  });
 
   return {
     isRunning,

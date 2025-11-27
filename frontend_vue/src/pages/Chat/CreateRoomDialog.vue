@@ -190,6 +190,7 @@ import { ref, nextTick } from 'vue';
 import { Loading, Notify, QForm, useDialogPluginComponent } from 'quasar';
 import { useUserStore, useChatListStore } from '../../stores';
 import { useChat } from './useChat';
+import { db } from '../../utils/dexie';
 
 const step = ref(1);
 
@@ -248,7 +249,7 @@ const createChatRoom = async () => {
 
       if (chatRoomId) {
         await userStore.fetchCurrentUserProfile();
-        await chatListStore.refreshRooms();
+        await db.refreshUserRooms([chatRoomId]);
         await chatService.selectChatRoom({ id: chatRoomId })
 
         notif({

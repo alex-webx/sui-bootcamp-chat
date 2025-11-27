@@ -7,7 +7,6 @@ router-view( v-slot="{ Component }")
 
 <script setup lang="ts">
 import { inject, onMounted } from 'vue';
-import * as encrypt from './utils/encrypt';
 
 </script>
 <style lang="scss">

@@ -1,4 +1,4 @@
-const { execSync } = require('child_process');
+import { execSync } from 'child_process';
 
 const activeEnv = execSync('sui client active-env').toString().trim();
 const addresses = JSON.parse(execSync('sui client addresses --json').toString().trim()).addresses;

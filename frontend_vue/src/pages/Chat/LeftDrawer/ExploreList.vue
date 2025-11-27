@@ -37,6 +37,8 @@ q-list
       q-item-section(avatar)
         q-avatar(size="48px")
           q-img(:src="user.avatarUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
+          q-badge(floating color="positive" rounded dense v-if="!!userDmRooms[user.owner]")
+            q-icon(name="mdi-check-bold" color="white")
 
       q-item-section
         q-item-label(lines="1")
@@ -63,6 +65,8 @@ q-list
       q-item-section(avatar)
         q-avatar(size="48px")
           q-img(:src="room.imageUrl" :ratio="1" fit="cover" error-src="/user-circles-set-sm.png")
+          q-badge(floating color="positive" rounded dense v-if="!!userPublicRooms[room.id]")
+            q-icon(name="mdi-check-bold" color="white")
 
       q-item-section
         q-item-label(lines="1")
@@ -80,14 +84,16 @@ q-list
 
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed, toRefs } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import _ from 'lodash';
 import { Dialog, Notify } from 'quasar';
 import { storeToRefs } from 'pinia';
-import { useChatListStore, useUserStore } from '../../stores';
-import { formatDate, formatTime, shortenAddress } from '../../utils/formatters';
-import { containsText } from '../../utils/textsearch';
-import { useChat } from './useChat';
-import { type ChatRoom, ERoomType, type UserProfile, userProfileModule, chatRoomModule } from '../../move';
+import { useChatListStore, useUserStore } from '../../../stores';
+import { formatDate, formatTime, shortenAddress } from '../../../utils/formatters';
+import { containsText } from '../../../utils/textsearch';
+import { useChat } from '../useChat';
+import { type ChatRoom, ERoomType, type UserProfile, userProfileModule, chatRoomModule } from '../../../move';
+import { db, useLiveQuery } from '../../../utils/dexie';
 
 const userStore = useUserStore();
 const chatService = useChat();
@@ -103,6 +109,12 @@ const selectedUserId = ref<string>();
 
 const allUsers = ref<UserProfile[]>([]);
 const allPublicRooms = ref<ChatRoom[]>([]);
+
+const userPublicRooms = useLiveQuery(() => db.room.where('roomType').equals(ERoomType.PublicGroup).toArray().then(rooms => _.keyBy(rooms, r => r.id)));
+const userDmRooms = useLiveQuery(async () => {
+  const rooms = await db.room.where('roomType').equals(ERoomType.DirectMessage).toArray();
+  return _.keyBy(rooms, (room: ChatRoom) => _.findKey(room.members, (v, k) => k !== profile.value?.owner!)) as Record<string, ChatRoom>;
+});
 
 const filteredUsers = computed(() => {
   if (!searchText.value) { return []; }
@@ -129,10 +141,10 @@ const selectUser = async (user: UserProfile) => {
 }
 
 const selectRoom = async (room: ChatRoom) => {
-  const matchedRoom = chatListStore.chats[room.id]?.id;
+  const matchedRoom = userPublicRooms.value?.[room.id] || userDmRooms.value?.[room.id];
 
   if (matchedRoom) {
-    await chatService.selectChatRoom(room);
+    await chatService.selectChatRoom(matchedRoom);
     return;
   }
 
@@ -164,7 +176,7 @@ const selectRoom = async (room: ChatRoom) => {
         inviteeAddress: profile.value?.owner!
       });
       await userStore.fetchCurrentUserProfile();
-      await chatListStore.refreshRoom(room.id);
+//      await chatListStore.refreshRoom(room.id);
       await chatService.selectChatRoom(room);
 
       notif({

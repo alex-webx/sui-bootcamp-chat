@@ -158,7 +158,7 @@ const testPrivateGroupService = async () => {
 
 
   // B. Alice gera o objeto de convite para BOB, que será salvo na Blockchain
-  const bobInviteObject: WrappedRoomKeyData = await PrivateGroupService.generateWrappedKeyForRecipient(
+  const bobInviteObject: WrappedRoomKeyData = await PrivateGroupService.generateInvitationKey(
     roomAesKeyMaterial,                 // A chave bruta da sala
     alicePrivateKey,                    // A chave privada da Alice (convidante)
     aliceProfileData.publicKeySpki,     // A chave pública da Alice (para referência no desembrulho)
@@ -168,7 +168,7 @@ const testPrivateGroupService = async () => {
 
 
   // C. Alice gera o objeto de convite para ELA MESMA, que será salvo na Blockchain
-  const aliceInviteObject: WrappedRoomKeyData = await PrivateGroupService.generateWrappedKeyForRecipient(
+  const aliceInviteObject: WrappedRoomKeyData = await PrivateGroupService.generateInvitationKey(
     roomAesKeyMaterial,                 // A chave bruta da sala
     alicePrivateKey,                    // A chave privada da Alice (convidante)
     aliceProfileData.publicKeySpki,     // A chave pública da Alice (para referência no desembrulho)

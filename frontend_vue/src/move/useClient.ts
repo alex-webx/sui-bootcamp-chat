@@ -43,10 +43,11 @@ export const parsers = {
 };
 
 
-export const getFullTable = async (field: { fields: { id: { id: string }, size: string }, type: `0x2::table::Table<${string}` }) => {
-
-  if (!field.type.startsWith('0x2::table::Table<')) {
-    throw 'Not a table ' + field.type;
+export const getFullTable = async (field: { fields: { id: { id: string }, size: string }, type: `0x2::table::Table<${string}` } | string) => {
+  if (typeof field !== 'string') {
+    if (!field.type.startsWith('0x2::table::Table<')) {
+      throw 'Not a table ' + field.type;
+    }
   }
 
   let hasNextPage = true;
@@ -55,7 +56,7 @@ export const getFullTable = async (field: { fields: { id: { id: string }, size: 
   let items: { key: string, value: string, content?: any }[] = [];
 
   while(hasNextPage) {
-    const res = await client.getDynamicFields({ parentId: field.fields.id.id, cursor });
+    const res = await client.getDynamicFields({ parentId: typeof field === 'string' ? field : field.fields.id.id, cursor });
     hasNextPage = res.hasNextPage;
     cursor = res.nextCursor;
 

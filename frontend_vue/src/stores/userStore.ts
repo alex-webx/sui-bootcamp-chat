@@ -6,13 +6,13 @@ import { useWalletStore } from './';
 import { UserProfileGenerator, UserProfileService } from '../utils/encrypt';
 import { formatCoinBalance } from '../utils/formatters';
 import { acceptHMRUpdate } from 'pinia';
+import { db } from '../utils/dexie';
 
 export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
 
   const profile = ref<UserProfile>();
   const suiBalance = ref<bigint | null>(null);
-  const memberInfos = ref<Record<string, MemberInfo>>({});
 
   const fetchCurrentUserProfile = async () => {
     if (!walletStore.address) {
@@ -26,14 +26,14 @@ export const useUserStore = defineStore('userStore', () => {
       preservedKeyPriv = profile.value?.keyPrivDecoded;
     }
 
-    profile.value = await userProfileModule.getUserProfile(walletStore.address!);
+
+    profile.value = (await db.refreshProfiles([walletStore.address]))?.[0];
 
     if (walletStore.address === profile.value?.owner && preservedKeyPriv) {
       profile.value!.keyPrivDecoded = preservedKeyPriv;
     }
 
     await getUserSuiBalance();
-    await fetchMemberInfos();
 
     return profile.value;
   };
@@ -59,16 +59,6 @@ export const useUserStore = defineStore('userStore', () => {
     }
 
     return null;
-  };
-
-  const fetchMemberInfos = async () => {
-    if (profile.value?.owner) {
-      const infos = await chatRoomModule.getUserMemberInfos(profile.value?.owner!);
-      memberInfos.value = _.keyBy(infos, info => info.roomId);
-      return memberInfos.value;
-    } else {
-      return {};
-    }
   };
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
@@ -117,12 +107,10 @@ export const useUserStore = defineStore('userStore', () => {
 
   return {
     profile,
-    memberInfos,
     suiBalance,
     suiBalanceFormatted: computed(() => formatCoinBalance(suiBalance.value!, 9, 2)),
 
     fetchCurrentUserProfile,
-    fetchMemberInfos,
     ensurePrivateKey,
     createUserProfile,
     deleteUserProfile,
@@ -131,7 +119,6 @@ export const useUserStore = defineStore('userStore', () => {
     resetState: async () => {
       profile.value = undefined;
       suiBalance.value = null;
-      memberInfos.value = {};
     }
   };
 });

@@ -1,18 +1,11 @@
 import _ from 'lodash';
-import { bcs, PureTypeName } from '@mysten/sui/bcs';
-import { Transaction, Inputs } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import { useConfig } from '../../../../configs';
 import { parsers } from '../../useClient';
 import type * as Models from '../..';
 import { EPermission, ERoomType, RoomKey } from './chatRoomModels';
 
 const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
-
-const RoomKeyStruct = bcs.struct(`${config('PackageId')}::chat_room::RoomKey`, {
-  pub_key: bcs.vector(bcs.u8()),
-  iv: bcs.vector(bcs.u8()),
-  encoded_priv_key: bcs.vector(bcs.u8())
-});
 
 export const txCreateRoom = (
   data: {
@@ -121,6 +114,7 @@ export const txEditMessage = (
       tx.object(message.id),
       tx.pure.string(newMessage.content),
       tx.pure.vector('string', newMessage.mediaUrl),
+      tx.pure.bool(false),
       tx.object(config('SuiClockId')!)
     ],
   });
@@ -139,6 +133,7 @@ export const txDeleteMessage = (
     arguments: [
       tx.object(message.roomId),
       tx.object(message.id),
+      tx.pure.bool(false),
       tx.object(config('SuiClockId')!)
     ],
   });

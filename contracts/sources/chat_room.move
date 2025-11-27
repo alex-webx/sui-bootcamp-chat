@@ -4,8 +4,9 @@ use std::string::{Self, String};
 use sui::event;
 use sui::clock::Clock;
 use sui::table::{Self, Table};
+use sui::hash;
+use sui::bcs;
 use chat::user_profile::{Self, UserProfile};
-use sui::dynamic_field as df;
 
 const EUserBanned                 : u64 = 001;
 const ENotAuthorized              : u64 = 002;
@@ -15,11 +16,13 @@ const EMaxRoomMembersLimit        : u64 = 005;
 const ENotAuthorizedToSendMessage : u64 = 006;
 const ENotAuthorizedToInvite      : u64 = 007;
 
-const MESSAGES_PER_MESSAGE_BLOCK: u64 = 100;
-
 const ROOM_TYPE_PRIVATE_GROUP : u8 = 1;
 const ROOM_TYPE_PUBLIC_GROUP  : u8 = 2;
 const ROOM_TYPE_DM            : u8 = 3;
+
+const MESSAGE_TYPE_NEW       : u8 = 1;
+const MESSAGE_TYPE_EDITED    : u8 = 2;
+const MESSAGE_TYPE_DELETED   : u8 = 3;
 
 const PERMISSION_NOBODY           : u8 = 0;
 const PERMISSION_ADMIN            : u8 = 1;
@@ -29,7 +32,8 @@ const PERMISSION_ANYONE           : u8 = 8;
 
 public struct ChatRoomRegistry has key {
     id: UID,
-    rooms: vector<ID>
+    rooms: vector<ID>,
+    dm_rooms: Table<vector<u8>, ID>
 }
 
 public struct ModeratorInfo has store, drop, copy {    
@@ -42,13 +46,21 @@ public struct BanInfo has store, drop, copy {
     timestamp: u64,
 }
 
+#[allow(unused_field)]
+public struct RoomKey has store, drop, copy {
+    pub_key: vector<u8>,
+    iv: vector<u8>,
+    encoded_priv_key: vector<u8>
+}
+
 public struct ChatRoom has key, store {
     id: UID,
     name: String,
     owner: address,
     created_at: u64,
     message_count: u64,
-    current_block_number: u64,
+    event_count: u64,
+    messages: Table<u64, ID>,
     image_url: String,    
     banned_users: Table<address, BanInfo>,
     moderators: Table<address, ModeratorInfo>, 
@@ -56,14 +68,7 @@ public struct ChatRoom has key, store {
     max_members: u64,
     room_type: u8,    
     permission_invite: u8,
-    permission_send_message: u8
-}
-
-#[allow(unused_field)]
-public struct RoomKey has store, drop, copy {
-    pub_key: vector<u8>,
-    iv: vector<u8>,
-    encoded_priv_key: vector<u8>
+    permission_send_message: u8    
 }
 
 public struct MemberInfo has key, store {
@@ -75,51 +80,20 @@ public struct MemberInfo has key, store {
     room_key: Option<RoomKey> // <- usado apenas em salas privadas
 }
 
-public struct MessageBlock has key, store {
-    id: UID,
-    room_id: ID,
-    block_number: u64,
-    message_ids: vector<ID>,
-    created_at: u64,
-    updated_at: u64
-}
-
-public struct MessageBlockEvent has copy, drop {
-    event_type: String,
-    room_id: ID,
-    block_number: u64
-}
-
 public struct Message has key, store {
     id: UID,
-    room_id: ID,
-    block_number: u64,
+    room_id: ID,    
     message_number: u64,
+    event_number: u64,
     sender: address,    
     content: String,
     media_url: vector<String>,
     created_at: u64,
     reply_to: Option<ID>,
-    edited_at: u64,
-    deleted_at: u64
-}
- 
-public struct MessageCreatedEvent has copy, drop {
-    message_id: ID,
-    room_id: ID,
-    sender: address,
-}
-
-public struct MessageUpdatedEvent has copy, drop {
-    message_id: ID,
-    room_id: ID,
-    sender: address,
-}
-
-public struct MessageDeletedEvent has copy, drop {
-    message_id: ID,
-    room_id: ID,
-    sender: address,
+    previous_version_id: Option<ID>,
+    edited_at: Option<u64>,
+    deleted_at: Option<u64>,
+    event_type: u8
 }
 
 public struct ChatRoomCreatedEvent has copy, drop {    
@@ -140,7 +114,8 @@ public struct UserUnbannedEvent has copy, drop {
 fun init(ctx: &mut TxContext) {
     let registry = ChatRoomRegistry {
         id: object::new(ctx),
-        rooms: vector::empty()
+        rooms: vector::empty(),
+        dm_rooms: table::new(ctx)
     };
 
     transfer::share_object(registry);
@@ -177,7 +152,8 @@ public fun create_room(
         owner: sender,
         created_at: timestamp,
         message_count: 0,
-        current_block_number: 0,
+        event_count: 0,
+        messages: table::new(ctx),
         banned_users: table::new(ctx),
         moderators: table::new(ctx),
         members: table::new(ctx),
@@ -211,18 +187,7 @@ public fun create_room(
     user_profile::add_user_profile_rooms_joined(profile, room_id);
     table::add(&mut room.members, sender, member_info_id);
 
-    let first_block = MessageBlock {
-        id: object::new(ctx),
-        room_id,
-        block_number: 0,
-        message_ids: vector::empty(),
-        created_at: timestamp,
-        updated_at: timestamp
-    };
-
     vector::push_back(&mut registry.rooms, room_id);
-
-    df::add(&mut room.id, 0u64, first_block);
 
     transfer::share_object(room);
     
@@ -230,6 +195,17 @@ public fun create_room(
         room_id,        
         owner: tx_context::sender(ctx)        
     });
+}
+
+
+public fun get_dm_room_hashes(addr1: address, addr2: address): (vector<u8>, vector<u8>) {
+    let mut combination_1 = bcs::to_bytes(&addr1);
+    vector::append(&mut combination_1, bcs::to_bytes(&addr2));
+
+    let mut combination_2 = bcs::to_bytes(&addr2);
+    vector::append(&mut combination_2, bcs::to_bytes(&addr1));
+
+    (hash::blake2b256(&combination_1), hash::blake2b256(&combination_2))
 }
 
 #[allow(lint(self_transfer))]
@@ -244,6 +220,10 @@ public fun create_dm_room(
     let room_uid = object::new(ctx);
     let room_id = room_uid.uid_to_inner();
     let timestamp = clock.timestamp_ms();
+    let (dm_room_hash_1, dm_room_hash_2) = get_dm_room_hashes(sender, invitee_address);
+
+    assert!(!table::contains(&registry.dm_rooms, dm_room_hash_1), ENotAuthorized);
+    assert!(!table::contains(&registry.dm_rooms, dm_room_hash_2), ENotAuthorized);
 
     let permission_invite: u8 = 0;
     let permission_send_message: u8 = PERMISSION_ADMIN + PERMISSION_MODERATORS + PERMISSION_MEMBERS + PERMISSION_ANYONE;
@@ -255,7 +235,8 @@ public fun create_dm_room(
         owner: sender,
         created_at: timestamp,
         message_count: 0,
-        current_block_number: 0,
+        event_count: 0,
+        messages: table::new(ctx),
         banned_users: table::new(ctx),
         moderators: table::new(ctx),
         members: table::new(ctx),
@@ -294,20 +275,9 @@ public fun create_dm_room(
     transfer::transfer(inviter_member_info, sender); // <- already a owner object
 
     user_profile::add_user_profile_rooms_joined(profile, room_id);
-
-    let first_block = MessageBlock {
-        id: object::new(ctx),
-        room_id,
-        block_number: 0,
-        message_ids: vector::empty(),
-        created_at: timestamp,
-        updated_at: timestamp
-    };
-
-    vector::push_back(&mut registry.rooms, room_id);
-
-    df::add(&mut room.id, 0u64, first_block);
     
+    table::add(&mut registry.dm_rooms, dm_room_hash_1, room_id);
+
     transfer::share_object(room);
     
     event::emit(ChatRoomCreatedEvent {        
@@ -376,8 +346,10 @@ public fun has_room_permission(
 fun add_message(
     room: &mut ChatRoom,
     content: String,
-    reply_to: Option<ID>,
     media_url: vector<String>,
+    reply_to: Option<ID>,
+    previous_version_id: Option<ID>,    
+    event_type: u8,
     clock: &Clock,
     ctx: &mut TxContext
 ) : ID {
@@ -385,54 +357,33 @@ fun add_message(
     let timestamp = clock.timestamp_ms();
     let room_id = room.id.uid_to_inner();
 
-    let current_block_num = room.current_block_number;
-    let current_block_length = df::borrow_mut<u64, MessageBlock>(&mut room.id, current_block_num).message_ids.length();
-
-    if (current_block_length  >= MESSAGES_PER_MESSAGE_BLOCK) {
-        let new_block_num = current_block_num + 1;
-        let new_block = MessageBlock {
-            id: object::new(ctx),
-            room_id,
-            block_number: new_block_num,
-            message_ids: vector::empty(),
-            created_at: timestamp,
-            updated_at: timestamp
-        };
-
-        df::add(&mut room.id, new_block_num, new_block);
-        room.current_block_number = new_block_num;
-
-        event::emit(MessageBlockEvent {
-            event_type: "created",
-            room_id,
-            block_number: new_block_num
-        });        
-    };
-
-    let current_block = df::borrow_mut<u64, MessageBlock>(&mut room.id, room.current_block_number);
-    current_block.updated_at = timestamp;
-
     let message_uid = object::new(ctx);
     let message_id = message_uid.uid_to_inner();
 
      let message = Message {
         id: message_uid,
         room_id,
-        block_number: current_block.block_number,
         message_number: room.message_count,
+        event_number: room.event_count,
         sender,        
         content,
         created_at: timestamp,
         reply_to,
-        edited_at: 0,
+        previous_version_id,
+        edited_at: option::none(),
         media_url,
-        deleted_at: 0
+        deleted_at: option::none(),
+        event_type
     };
 
     transfer::share_object(message);
 
-    vector::push_back(&mut current_block.message_ids, message_id);
-    room.message_count = room.message_count + 1;
+    table::add(&mut room.messages, room.event_count, message_id);
+    room.event_count = room.event_count + 1;
+
+    if (event_type == MESSAGE_TYPE_NEW) {
+        room.message_count = room.message_count + 1;
+    };
 
     message_id
 }
@@ -476,15 +427,9 @@ public fun send_message(
         transfer::transfer(member_info, sender);
     };
     
-    let message_id = add_message(room, content, reply_to, media_url, clock, ctx);
+    let message_id = add_message(room, content, media_url, reply_to, option::none(), MESSAGE_TYPE_NEW, clock, ctx);
     
     user_profile::add_user_profile_rooms_joined(profile, room_id);    
-
-    event::emit(MessageCreatedEvent {        
-        message_id,
-        room_id,
-        sender,
-    });
 
     message_id
 }
@@ -494,9 +439,10 @@ public fun edit_message(
     message: &mut Message,
     new_content: String,
     new_media_url: vector<String>,
+    mutate_original: bool,
     clock: &Clock,
     ctx: &mut TxContext
-) {
+): ID {
     let sender = tx_context::sender(ctx);
 
     assert!(message.sender == sender, ENotAuthorized);
@@ -504,29 +450,27 @@ public fun edit_message(
 
     let timestamp = clock.timestamp_ms();
 
-    message.content = new_content;
-    message.edited_at = timestamp;
-    message.media_url = new_media_url;
+    if (mutate_original) {
+        message.content = new_content;    
+        message.media_url = new_media_url;
+    };
+    message.edited_at = option::some<u64>(timestamp);
 
-    let message_block = df::borrow_mut<u64, MessageBlock>(&mut room.id, message.block_number);
-    message_block.updated_at = timestamp;
+    let message_id = add_message(room, new_content, new_media_url, option::none(), option::some(message.id.uid_to_inner()), MESSAGE_TYPE_EDITED, clock, ctx);
 
-    event::emit(MessageUpdatedEvent {        
-        message_id: message.id.to_inner(),
-        room_id: message.room_id,
-        sender: tx_context::sender(ctx)
-    });
+    message_id
 }
 
 public fun delete_message(
     room: &mut ChatRoom,
     message: &mut Message,
+    mutate_original: bool,
     clock: &Clock,
     ctx: &mut TxContext
-) {
+): ID {
     let sender = tx_context::sender(ctx);
 
-    assert!(message.deleted_at == 0, ENotAuthorized);
+    assert!(!message.deleted_at.is_some(), ENotAuthorized);
 
     if (room.room_type == ROOM_TYPE_DM) {
         assert!(message.sender == sender, ENotAuthorized);
@@ -537,24 +481,17 @@ public fun delete_message(
         assert!(is_authorized, ENotAuthorized);
     };
 
-    let message_id = message.id.uid_to_inner();    
-    let room_id = message.room_id;
     let timestamp = clock.timestamp_ms();
 
-    let message_block = df::borrow_mut<u64, MessageBlock>(&mut room.id, message.block_number);
-    message_block.updated_at = timestamp;
+    if (mutate_original) {
+        message.content = "";
+        message.media_url = vector::empty();    
+    };
+    message.deleted_at = option::some(timestamp);
 
-    //let Message { id, .. } = message;
-    // object::delete(id);
-    message.content = "";
-    message.media_url = vector::empty();
-    message.deleted_at = timestamp;
+    let message_id = add_message(room, "", vector::empty(), option::none(), option::some(message.id.uid_to_inner()), MESSAGE_TYPE_DELETED, clock, ctx);
 
-    event::emit(MessageDeletedEvent {
-        message_id,
-        room_id,
-        sender
-    });
+    message_id
 }
 
 public fun invite_member(

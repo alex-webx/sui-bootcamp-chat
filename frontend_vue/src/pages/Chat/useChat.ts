@@ -3,12 +3,11 @@ import { Dialog, Notify } from 'quasar';
 import { useUserStore, useWalletStore, useChatListStore, useUiStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
-import { type ChatRoom, chatRoomModule, EPermission, ERoomType, Message, MessageBlock, UserProfile } from '../../move';
+import { type ChatRoom, chatRoomModule, EPermission, ERoomType, type MemberInfo, type Message, type UserProfile } from '../../move';
 import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
+import { db } from '../../utils/dexie';
 
-const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'>>({ id: '', content: '', mediaUrl: [], replyTo: '' });
-const messageBlocks = ref<Record<string, Pick<MessageBlock, 'blockNumber' | 'messageIds'>[]>>({});
-const messageBlockLoadCount = ref<Record<string, number>>({});
+const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { username: string } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
 
 export function useChat() {
 
@@ -38,7 +37,6 @@ export function useChat() {
 
   const sendMessage = async () => {
     const profile = userStore.profile;
-    const memberInfos = userStore.memberInfos;
     const activeChat = chatListStore.activeChat;
 
     if (profile && activeChat) {
@@ -55,14 +53,15 @@ export function useChat() {
       switch(activeChat.roomType) {
         case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
-          const dmUser = getDmMemberUser(activeChat);
+          const dmUserAddress = getDmMemberUserAddress(activeChat);
+          const dmUser = await db.profile.get(dmUserAddress!);
           const svc = new DirectMessageService(privKey!, dmUser?.keyPub!);
           encryptMessage = svc.encryptMessage.bind(svc);
           break;
         }
         case ERoomType.PrivateGroup: {
           const privKey = await userStore.ensurePrivateKey();
-          const roomKey = memberInfos[chatListStore.activeChatId!]?.roomKey;
+          const roomKey = (activeChat.members[profile.owner] as MemberInfo)?.roomKey;
           const svc = new PrivateGroupService({
             encodedAesKey: roomKey?.encodedPrivKey!,
             inviterPublicKey: roomKey?.pubKey!,
@@ -92,7 +91,7 @@ export function useChat() {
         const messageId = parser(await walletStore.signAndExecuteTransaction(tx));
       } else {
         const { tx, parser } = chatRoomModule.txSendMessage(profile.id, {
-          roomId: chatListStore.activeChat.id,
+          roomId: chatListStore.activeChat!.id,
           content: content!,
           replyTo: replyTo!,
           mediaUrl: mediaUrl || []
@@ -100,11 +99,13 @@ export function useChat() {
         const messageId = parser(await walletStore.signAndExecuteTransaction(tx));
       }
 
-      await fetchMessageBlocks();
       clearNewMessage();
       if ((profile.roomsJoined || []).indexOf(chatListStore.activeChatId) < 0) {
         await userStore.fetchCurrentUserProfile();
       }
+
+      await db.refreshUserChatRoomMessages(chatListStore.activeChat!);
+      await db.refreshUserRooms([chatListStore.activeChatId]);
 
       if (!isEdit) {
         uiStore.scrollTo('bottom');
@@ -112,33 +113,6 @@ export function useChat() {
     }
   }
 
-  const fetchMessageBlocks = async () => {
-    const activeChat = chatListStore.activeChat;
-    if (!activeChat?.id) {
-      return;
-    };
-    await chatListStore.refreshRoom(activeChat.id);
-    messageBlocks.value[activeChat.id] = await chatListStore.getChatRoomMessageBlocks(activeChat.id);
-    return messageBlocks.value;
-  };
-
-  const decryptDmMessage = async (dmService: DirectMessageService, jsonMessage: string) => {
-    const decryptedMessage = JSON.parse(jsonMessage) as [iv: string, ciphertext: string ];
-    await userStore.ensurePrivateKey();
-    if (decryptedMessage[0] && decryptedMessage[1]) {
-      try {
-        const decrypted = await dmService.decryptMessage({
-          iv: decryptedMessage[0],
-          ciphertext: decryptedMessage[1]
-        });
-        return decrypted;
-      } catch (e) {
-        return '[conteúdo protegido]';
-      }
-    } else {
-      return jsonMessage;
-    }
-  }
 
   const getDmMemberUserAddress = (room: ChatRoom | null) => {
     if (room?.roomType === ERoomType.DirectMessage) {
@@ -148,14 +122,10 @@ export function useChat() {
     }
   };
 
-  const getDmMemberUser = (room: ChatRoom | null) => chatListStore.usersCache[getDmMemberUserAddress(room)!];
-
   const clearNewMessage = () => { newMessage.value = { id: '', content: '', mediaUrl: [], replyTo: '' }; };
 
   const selectChatRoom = (chatRoom: Pick<ChatRoom, 'id'>) => {
     clearNewMessage();
-    messageBlocks.value = { [chatRoom.id]: [] };
-    messageBlockLoadCount.value = { [chatRoom.id]: 2 };
 
     nextTick(() => {
       if (uiStore.desktopMode) {
@@ -177,17 +147,7 @@ export function useChat() {
       return undefined;
     }
 
-    let dmRoom = Object.values(chatListStore.chats)
-      .filter(room => room.roomType === ERoomType.DirectMessage)
-      .find(room => !!room.members[user.owner] && !!room.members[profileOwner!]);
-
-    if (!dmRoom) {
-      await userStore.fetchCurrentUserProfile();
-      await chatListStore.refreshRooms();
-      dmRoom = Object.values(chatListStore.chats)
-        .filter(room => room.roomType === ERoomType.DirectMessage)
-        .find(room => !!room.members[user.owner] && !!room.members[profileOwner!]);
-    }
+    let dmRoom = await db.room.where('roomType').equals(ERoomType.DirectMessage).filter(room => !!room.members[profileOwner!] && !!room.members[user.owner]).first();
 
     if (dmRoom) {
       await selectChatRoom(dmRoom);
@@ -215,11 +175,10 @@ export function useChat() {
             color: 'positive'
           })
           await userStore.fetchCurrentUserProfile();
-          const rooms = await chatListStore.refreshRooms();
-          const room = rooms[chatRoomId];
-          if (room) {
-            await selectChatRoom(room);
-          }
+          // const room = rooms[chatRoomId];
+          // if (room) {
+          //   await selectChatRoom(room);
+          // }
         }
       });
     }
@@ -251,8 +210,6 @@ export function useChat() {
 
       const { tx, parser } = await chatRoomModule.txDeleteMessage(message);
       const success = parser(await walletStore.signAndExecuteTransaction(tx));
-
-      await fetchMessageBlocks();
 
       if (success) {
         notif({
@@ -295,10 +252,6 @@ export function useChat() {
   return {
     newMessage,
 
-    messageBlocks: computed(() => messageBlocks.value[chatListStore.activeChatId!]),
-    messageBlockLoadCount: computed(() => messageBlockLoadCount.value[chatListStore.activeChatId!]),
-    allMessageBlockLoadCount: messageBlockLoadCount,
-
     createRoom,
     selectChatRoom,
     selectUser,
@@ -310,8 +263,6 @@ export function useChat() {
     deleteMessage,
     clearNewMessage,
 
-    fetchMessageBlocks,
-    getDmMemberUser,
     getDmMemberUserAddress,
 
     canInvite,

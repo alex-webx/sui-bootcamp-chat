@@ -61,37 +61,24 @@
 
 q-page-sticky.z-top(position="top-right" :offset="[10, 10]" v-if="canInvite")
   q-fab(icon="mdi-plus" direction="left" push glossy color="light-ocean" padding="sm")
-    q-fab-action(icon="mdi-account-plus-outline" label="Adicionar membro" color="light-ocean" push @click="invite()")
+    q-fab-action(icon="mdi-account-plus-outline" label="Convidar usuário" color="light-ocean" push @click="invite()")
 
 .row.justify-end(
   style="margin-top: auto"
 )
-  .q-px-md.full-width(v-for="(msgBlock, msgBlockIndex) in messageBlocks" :key="msgBlock.id")
+  .text-center.full-width.q-py-md
+    q-chip(color="deep-sea" dark) início do grupo de mensagens
 
-    .flex.full-width.flex-center.q-mb-md.block-separator(
-      v-if="msgBlockIndex === (messageBlocks.length - messageBlockLoadCount - 1)"
+    MessageItem.full-width(
+      v-for="(message, msgIndex) in messages" :key="message.id"
+      :message="message"
+      :sent="message.sender === address"
+      :user="users[message.sender]"
+      :isFirst="message.sender !== messages[msgIndex - 1]?.sender"
+      :isLast="message.sender !== messages[msgIndex + 1]?.sender"
+      :decryptMessage="decryptMessage"
+      :roomType="room.roomType"
     )
-      q-btn.full-width(
-        @click="messageBlockLoadCount++" flat stack icon="mdi-chevron-up"
-        label="carregar mais mensagens" color="grey-7"
-      )
-
-    template(v-if="msgBlockIndex >= (messageBlocks.length - messageBlockLoadCount)")
-
-      .text-center.full-width.q-py-md(
-        v-if="msgBlockIndex === 0"
-      )
-        q-chip(color="deep-sea" dark) início do grupo de mensagens
-
-      MessageBlock(
-        :messageBlock="msgBlock"
-        :user="profile"
-        :memberInfo="memberInfo"
-        :room="activeChat"
-        @messagesLoaded="(blockNumber) => messagesEvent('loaded', blockNumber)"
-        @messagesChanged="(blockNumber) => messagesEvent('changed', blockNumber)"
-        :enabledLoading="msgBlockIndex >= (messageBlocks.length - messageBlockLoadCount)"
-      )
 
 div(ref="bottomChatElement")
 
@@ -100,101 +87,135 @@ div(ref="bottomChatElement")
 <script lang="ts" setup>
 import { computed, watch, ref, onMounted } from 'vue';
 import { Notify, Dialog } from 'quasar';
+import _ from 'lodash';
 import { storeToRefs } from 'pinia';
 import { useChat } from '../useChat';
 import { EPermission, ERoomType } from '../../../move';
-import { PrivateGroupService } from '../../../utils/encrypt';
+import { PrivateGroupService, PublicChannelService } from '../../../utils/encrypt';
 import { shortenAddress } from '../../../utils/formatters';
 import { useUserStore, useChatListStore, useUiStore } from '../../../stores';
-import { useMessageFeeder } from '../useMessageFeeder';
-import MessageBlock from './MessageBlock.vue';
+import { db, useLiveQuery } from '../../../utils/dexie';
+import { type Message, type UserProfile, type MemberInfo, EMessageType } from '../../../move';
+import MessageItem from './MessageItem.vue';
 
 const chatService = useChat();
 const userStore = useUserStore();
 const uiStore = useUiStore();
-const feeder = useMessageFeeder();
 const chatListStore = useChatListStore();
 
-const { profile, memberInfos } = storeToRefs(userStore);
-const { activeChat, activeChatId } = storeToRefs(chatListStore);
-const { getDmMemberUserAddress, messageBlocks, messageBlockLoadCount, fetchMessageBlocks, canInvite, } = chatService;
+const { activeChat: room } = storeToRefs(chatListStore);
+const { getDmMemberUserAddress, canInvite } = chatService;
 const { bottomChatElement } = storeToRefs(uiStore);
-const dmUser = computed(() => {
-  if (activeChat.value) {
-    const memberUserAddress = getDmMemberUserAddress(activeChat.value);
-    return chatListStore.usersCache[memberUserAddress!];
+
+const profile = computed(() => userStore.profile);
+const address = computed(() => profile.value?.owner!);
+
+// const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
+// const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
+// const memberInfo = computed(() => memberInfos.value[activeChatId.value!]);
+
+const messages = useLiveQuery(() => db.message.where('roomId').equals(room.value!.id).filter(m => m.eventType === EMessageType.New).sortBy('messageNumber'));
+const users = useLiveQuery(async () => {
+  const users = await db.profile.bulkGet(Object.keys(room.value?.members || {}));
+  return _.keyBy(users, (user: UserProfile) => user.owner);
+}, [ room ]);
+
+watch(messages, async (msgs) => {
+  if (msgs?.length) {
+    await uiStore.scrollTo('bottom', 'instant');
+  }
+}, { once: true });
+
+const decryptService = computed(() => {
+  if (room.value?.roomType === ERoomType.PrivateGroup) {
+    const privKey = profile.value?.keyPrivDecoded!;
+    const roomKey = (room.value?.members[address.value] as MemberInfo).roomKey!;
+    return new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
+  } else if (room.value?.roomType == ERoomType.PublicGroup) {
+    return new PublicChannelService(room.value.owner);
   }
 });
-const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
-const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
-const memberInfo = computed(() => memberInfos.value[activeChatId.value!]);
+
+const decryptMessage = async (message: Message) => {
+  let content = message.content;
+  let mediaUrl = message.mediaUrl;
+
+  try {
+    const obj = JSON.parse(content) as [ iv: string, ciphertext: string ];
+    content = await decryptService.value!.decryptMessage({ iv: obj[0], ciphertext: obj[1] });
+  } catch {}
+  mediaUrl = await Promise.all((mediaUrl || []).map(async url => {
+    try {
+      const content = JSON.parse(url) as [iv: string, ciphertext: string];
+      return await decryptService.value!.decryptMessage({ iv: content[0], ciphertext: content[1] });
+    } catch {
+      return url;
+    }
+  }));
+  return { content, mediaUrl };
+};
 
 const invite = async () => {
-
-  const addresses = Object.keys(chatListStore.usersCache);
+  const users = await db.profile.where('owner').noneOf(Object.keys(room.value?.members || {})).toArray();
 
   Dialog.create({
     title: 'Adicionar quem?',
     options: {
       model: '',
-      items: addresses.map(addr => ({ label: `${chatListStore.usersCache[addr]?.username} (${shortenAddress(addr)})`  , value: addr }))
+      items: users.map(user => ({ label: `${user.username} (${shortenAddress(user.owner)})`, value: user }))
     },
     ok: {
       color: 'primary',
-      label: 'Adicionar membro'
+      label: 'Convidar usuário'
     },
     cancel: {
       label: 'Cancelar',
       flat: true,
       color: 'grey'
     }
-  }).onOk(async address => {
-
-    if (activeChat.value?.members[address]) {
-      Notify.create({ message: 'O usuário já está presente nesta sala', color: 'primary' });
-      return;
-    }
+  }).onOk(async (user: UserProfile) => {
 
     const notif = Notify.create({
       group: false,
       timeout: 0,
       spinner: true,
-      message: 'Criando convite',
+      message: `Criando convite para ${user.username}`,
       caption: 'Aguardando aprovação da transação...',
       color: 'primary'
-    })
+    });
 
     try {
       const privKey = userStore.profile?.keyPrivDecoded!;
       let roomKey: Parameters<typeof chatListStore.inviteMember>[0]['roomKey'];
 
-      if (activeChat.value?.roomType === ERoomType.PrivateGroup) {
-        const userRoomKey =  memberInfo.value?.roomKey!;
+      if (room.value?.roomType === ERoomType.PrivateGroup) {
+        const memberInfo = room.value.members[address.value] as MemberInfo;
+        const userRoomKey = memberInfo.roomKey!;
         const svc = new PrivateGroupService({ encodedAesKey: userRoomKey.encodedPrivKey, iv: userRoomKey.iv, inviterPublicKey: userRoomKey.pubKey }, privKey);
-        const aesRoomKey = await svc.exportRoomAesKey();
-        const inviteKey = await PrivateGroupService.generateWrappedKeyForRecipient(
-          aesRoomKey!,
+        const inviteKey = await PrivateGroupService.generateInvitationKey(
+          (await svc.exportRoomAesKey())!,
           privKey,
           userStore.profile?.keyPub!,
-          chatListStore.usersCache[address]?.keyPub!
+          user?.keyPub!
         );
         roomKey = {
           encodedPrivKey: inviteKey.encodedAesKey,
           iv: inviteKey.iv,
           pubKey: inviteKey.inviterPublicKey
         };
-      } else if (activeChat.value?.roomType === ERoomType.PublicGroup) {
+      } else if (room.value?.roomType === ERoomType.PublicGroup) {
         // no room key needed
       }
 
       const res = await chatListStore.inviteMember({
-        room: activeChat.value!,
-        inviteeAddress: address,
+        room: room.value!,
+        inviteeAddress: user.owner,
         roomKey
       });
+      await db.refreshUserRooms([ room.value?.id! ]);
 
       notif({
-        message: 'Membro adicionado com sucesso!',
+        message: `${user.username} convidado/a com sucesso!`,
         caption: '',
         spinner: false,
         timeout: 2500,
@@ -214,20 +235,6 @@ const invite = async () => {
   });
 };
 
-const messagesEvent = async (type: 'loaded' | 'changed', blockNumber: number) => {
-  if (type === 'loaded' && blockNumber === messageBlocks.value?.slice(-1)[0]?.blockNumber) {
-    console.log('messagesEvent scroll to bottom') ;
-    uiStore.scrollTo('bottom');
-  }
-};
-
-watch(() => feeder.latestMessageBlocks.value[activeChat.value?.id!], async () => {
-  const msgBlocks = await fetchMessageBlocks();
-}, { immediate: true, deep: true });
-
 </script>
 <style lang="scss" scoped>
-.block-separator {
-  background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgba($ocean, 0.06) 40%, rgba($ocean, 0.06) 60%,  rgba(0, 0, 0, 0) 100%);
-}
 </style>

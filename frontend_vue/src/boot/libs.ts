@@ -15,4 +15,5 @@ export default defineBoot(async ({ app, router, urlPath, store, redirect }) => {
 });
 
 
-
+import { db } from '../utils/dexie';
+(window as any).db = db;

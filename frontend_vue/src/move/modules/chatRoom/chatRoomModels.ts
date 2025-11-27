@@ -3,6 +3,13 @@ export enum ERoomType {
   PublicGroup = 2,
   DirectMessage = 3
 };
+
+export enum EMessageType {
+  New = 1,
+  Edited = 2,
+  Deleted = 3
+};
+
 export enum EPermission {
   Nobody = 0,
   Admin = 1,
@@ -11,9 +18,10 @@ export enum EPermission {
   Anyone = 8
 }
 
-export type ChatRoomRegistry= {
+export type ChatRoomRegistry = {
   id: string;
   rooms: string[];
+  dmRooms: string[];
 };
 
 export type ModeratorInfo = {
@@ -38,11 +46,12 @@ export type ChatRoom = {
   owner: string;
   createdAt: number;
   messageCount: number;
-  currentBlockNumber: number;
+  eventCount: number;
+  messages: string;
   imageUrl: string;
   bannedUsers: Record<string, BanInfo>;
   moderators: Record<string, ModeratorInfo>;
-  members: Record<string, string>;
+  members: Record<string, string | MemberInfo>;
   maxMembers: number;
   roomType: ERoomType;
   permissionInvite: EPermission;
@@ -58,25 +67,18 @@ export type MemberInfo = {
   roomKey?: RoomKey;
 };
 
-export type MessageBlock = {
-  id: string;
-  roomId: string;
-  blockNumber: number;
-  messageIds: string[];
-  createdAt: number;
-  updatedAt: number;
-};
-
 export type Message = {
   id: string;
   roomId: string;
-  blockNumber: number;
   messageNumber: number;
+  eventNumber: number;
   sender: string;
   content: string;
   mediaUrl: string[];
   createdAt: number;
-  replyTo?: string;
-  editedAt: number;
-  deletedAt: number;
+  replyTo?: string | undefined;
+  previousVersionId?: string;
+  editedAt?: number | undefined;
+  deletedAt?: number | undefined;
+  eventType: EMessageType
 };

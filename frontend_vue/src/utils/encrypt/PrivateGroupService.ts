@@ -29,7 +29,7 @@ export class PrivateGroupService {
    * @param recipientPublicKeySpkiBuffer A chave pública SPKI do destinatário (ArrayBuffer ou Uint8Array.buffer).
    * @returns O objeto WrappedRoomKeyData pronto para ser armazenado na Blockchain.
    */
-  public static async generateWrappedKeyForRecipient(
+  public static async generateInvitationKey(
     roomAesKeyMaterial: Uint8Array,
     inviterPrivateKey: CryptoKey,
     inviterPublicKeySpki: Uint8Array,

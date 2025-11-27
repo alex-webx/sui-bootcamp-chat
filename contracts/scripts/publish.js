@@ -1,14 +1,15 @@
-const path = require('path');
-const fs = require('fs');
+import path  from 'path';
+import fs  from 'fs';
+import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
-const { execSync } = require('child_process');
-
-const moveLockFile = './Move.lock';
+const dirname = import.meta.dirname;
 const activeEnv = execSync('sui client active-env').toString().trim();
-const configFilePath = `./.move.${activeEnv}.json`;
-const pubEnvHistoryDir = `./_pubhistory/${activeEnv}`;
-
 const timestamp = new Date().getTime();
+
+const moveLockFile = path.resolve(dirname, '../Move.lock');
+const configFilePath = path.resolve(dirname, `../.move.${activeEnv}.json`);
+const pubEnvHistoryDir = path.resolve(dirname, `../_pubhistory/${activeEnv}`);
 
 if (!fs.existsSync(pubEnvHistoryDir)) {
   fs.mkdirSync(pubEnvHistoryDir, true);
