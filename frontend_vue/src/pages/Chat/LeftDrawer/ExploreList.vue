@@ -122,7 +122,7 @@ const filteredUsers = computed(() => {
 });
 
 const filteredPublicRooms = computed(() => {
-  if (!searchText.value) { return []; }
+  if (!searchText.value) { return allPublicRooms.value; }
   return allPublicRooms.value.filter(room => containsText(room.name, searchText.value) || searchText.value === room.id);
 });
 

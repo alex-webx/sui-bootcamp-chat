@@ -1,5 +1,6 @@
 import { ref, computed, nextTick } from 'vue';
 import { Dialog, Notify } from 'quasar';
+import _ from 'lodash';
 import { useUserStore, useWalletStore, useChatListStore, useUiStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
@@ -47,7 +48,7 @@ export function useChat() {
       switch(activeChat.roomType) {
         case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
-          const dmUserAddress = getDmMemberUserAddress(activeChat);
+          const dmUserAddress = _.findKey(activeChat?.members, (v, k) => k !== profile.owner);
           const dmUser = await db.profile.get(dmUserAddress!);
           const svc = new DirectMessageService(privKey!, dmUser?.keyPub!);
           encryptMessage = svc.encryptMessage.bind(svc);
@@ -106,15 +107,6 @@ export function useChat() {
       }
     }
   }
-
-
-  const getDmMemberUserAddress = (room: ChatRoom | null) => {
-    if (room?.roomType === ERoomType.DirectMessage) {
-      return Object.keys(room.members).find(id => id !== userStore.profile?.owner)!;
-    } else {
-      return null;
-    }
-  };
 
   const clearNewMessage = () => { newMessage.value = { id: '', content: '', mediaUrl: [], replyTo: '' }; };
 
@@ -296,6 +288,11 @@ export function useChat() {
     return false;
   };
 
+  const joinRoom = async(room: Pick<ChatRoom, 'id'>) => {
+    await chatListStore.joinRoom({ room: room! });
+    await userStore.fetchCurrentUserProfile();
+  };
+
   const canInvite = computed(() => checkPermission(chatListStore.activeChat?.permissionInvite || EPermission.Nobody));
   const canSendMessage = computed(() => checkPermission(chatListStore.activeChat?.permissionSendMessage || EPermission.Nobody));
 
@@ -312,8 +309,7 @@ export function useChat() {
     sendMessage,
     deleteMessage,
     clearNewMessage,
-
-    getDmMemberUserAddress,
+    joinRoom,
 
     canInvite,
     canSendMessage

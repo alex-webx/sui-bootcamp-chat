@@ -59,25 +59,6 @@ export const txCreateDmRoom = (
   return { tx, parser };
 };
 
-// export const txAcceptDmRoom = (
-//   data: {
-//     room: Pick<Models.ChatRoom, 'id'>,
-//     profile: Pick<Models.UserProfile, 'id'>
-//   }
-// ) => {
-//   const tx = new Transaction();
-//   tx.moveCall({
-//     target: `${config('PackageId')}::chat_room::accept_dm_room`,
-//     arguments: [
-//       tx.object(data.room.id),
-//       tx.object(data.profile.id),
-//       tx.object(config('SuiClockId')!)
-//     ],
-//   });
-
-//   return tx;
-// };
-
 export const txSendMessage = (
   userProfileId: string,
   message: Pick<Models.Message, 'content' | 'roomId' | 'mediaUrl' | 'replyTo'>
@@ -159,6 +140,25 @@ export const txInviteMember = (
       tx.pure.option('vector<u8>', roomKey?.pubKey as any),
       tx.pure.option('vector<u8>', roomKey?.iv as any),
       tx.pure.option('vector<u8>', roomKey?.encodedPrivKey as any),
+      tx.object(config('SuiClockId')!)
+    ],
+  });
+
+  return tx;
+};
+
+export const txJoinRoom = (
+  data: {
+    room: Pick<Models.ChatRoom, 'id'>,
+    profile: Pick<Models.UserProfile, 'id'>
+  }
+) => {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${config('PackageId')}::chat_room::join_room`,
+    arguments: [
+      tx.object(data.room.id),
+      tx.object(data.profile.id),
       tx.object(config('SuiClockId')!)
     ],
   });

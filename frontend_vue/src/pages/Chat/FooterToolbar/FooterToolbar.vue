@@ -5,8 +5,9 @@ transition(
   leave-active-class="animated fadeOut slower"
 )
 
-  q-footer.bg-transparent(v-if="!canSendMessage")
-    q-toolbar
+  q-footer(v-if="!canSendMessage" style="background: rgba(0, 0, 0, 0.1)")
+    q-toolbar.flex-center.text-grey-7.text-caption.text-italic
+      div Somente leitura: você não possui permissões para enviar mensagens
 
   q-footer(v-else :class="newMessage.id || newMessage.replyTo ? 'footer-edit-mode' : 'bg-deep-sea'")
     q-form(@submit="sendMessage()" ref="form")
@@ -106,7 +107,7 @@ import { storeToRefs } from 'pinia';
 const chatService = useChat();
 const { desktopMode } = storeToRefs(useUiStore());
 
-const { insertEmoji, insertGif, removeGif, getDmMemberUserAddress, clearNewMessage, canSendMessage } = chatService;
+const { insertEmoji, insertGif, removeGif, clearNewMessage, canSendMessage } = chatService;
 const { newMessage } = chatService;
 
 const sendingBusy = ref(false);

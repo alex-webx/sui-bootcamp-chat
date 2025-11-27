@@ -266,7 +266,7 @@ public fun create_dm_room(
         id: inviter_member_info_uid,
         owner: sender,
         added_by: sender,
-        timestamp: 0,
+        timestamp,
         room_id,
         room_key: option::none()
     };
@@ -288,27 +288,6 @@ public fun create_dm_room(
         owner: sender
     });
 }
-
-// public fun accept_dm_room(
-//     room: &mut ChatRoom,
-//     profile: &mut UserProfile,
-//     clock: &Clock,
-//     ctx: &mut TxContext
-// ) {
-//     let sender = tx_context::sender(ctx);
-
-//     assert!(room.room_type == ROOM_TYPE_DM, ENotAuthorized);
-//     assert!(table::contains(&room.members, sender), ENotAuthorized);
-    
-//     let room_id = room.id.uid_to_inner();
-//     let timestamp = clock.timestamp_ms();
-//     let inviter_address = room.owner;
-
-//     let inviter_member_info = table::borrow_mut<address, MemberInfo>(&mut room.members, inviter_address);
-//     inviter_member_info.timestamp = timestamp;
-
-//     user_profile::add_user_profile_rooms_joined(profile, room_id);
-// }
 
 public fun has_room_permission(
     chat_room: &ChatRoom,
@@ -557,6 +536,22 @@ public fun invite_member(
         
         room.updated_at = timestamp;
     };
+}
+
+
+public fun join_room(
+    room: &mut ChatRoom,
+    profile: &mut UserProfile,
+    clock: &Clock,
+    ctx: &mut TxContext
+) {
+    let sender = tx_context::sender(ctx);
+
+    assert!(table::contains(&room.members, sender), ENotAuthorized);
+    
+    let room_id = room.id.uid_to_inner();
+
+    user_profile::add_user_profile_rooms_joined(profile, room_id);
 }
 
 public fun add_moderator(

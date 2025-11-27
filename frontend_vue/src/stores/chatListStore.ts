@@ -91,6 +91,12 @@ export const useChatListStore = defineStore('chatListStore', () => {
     return await walletStore.signAndExecuteTransaction(tx);
   };
 
+  const joinRoom = async (args: {
+    room: Pick<Models.ChatRoom, 'id'>
+  }) => {
+    const tx = await chatRoomModule.txJoinRoom({ room: args.room, profile: userStore.profile! });
+    return await walletStore.signAndExecuteTransaction(tx);
+  };
 
   return {
     activeChat,
@@ -99,6 +105,7 @@ export const useChatListStore = defineStore('chatListStore', () => {
     createChatRoom,
     createDmRoom,
     inviteMember,
+    joinRoom,
 
     resetState: async () => {
       activeChatId.value = '';

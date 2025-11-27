@@ -182,7 +182,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" persistent)
 
                 q-btn(v-if="step < 4" @click="nextStep()" color="primary" label="Continuar")
                 q-btn(v-else-if="step === 4" @click="nextStep()" color="primary" label="Revisar dados")
-                q-btn(v-else-if="step === 5" @click="createChatRoom()" color="primary" label="Criar sala")
+                q-async-btn(v-else-if="step === 5" :handler="createChatRoom" color="primary" label="Criar sala")
 
 </template>
 <script setup lang="ts">
