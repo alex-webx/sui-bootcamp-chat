@@ -63,7 +63,7 @@ q-layout.bg-sea(view="lHh Lpr fff")
                   .col-xs-12.col-sm.text-center
                     q-btn(
                       label="Desconectar" flat rounded
-                      color="medium-sea" @click="disconnect()"
+                      color="medium-sea" @click.prevent.stop="disconnect()"
                     )
                   .col-xs-12.col-sm.text-center
                     q-btn(

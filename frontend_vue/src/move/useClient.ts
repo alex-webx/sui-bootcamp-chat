@@ -43,10 +43,11 @@ export const parsers = {
 };
 
 
-export const getFullTable = async (field: { fields: { id: { id: string }, size: string }, type: `0x2::table::Table<${string}` }) => {
-
-  if (!field.type.startsWith('0x2::table::Table<')) {
-    throw 'Not a table ' + field.type;
+export const getFullTable = async (field: { fields: { id: { id: string }, size: string }, type: `0x2::table::Table<${string}` } | string) => {
+  if (typeof field !== 'string') {
+    if (!field.type.startsWith('0x2::table::Table<')) {
+      throw 'Not a table ' + field.type;
+    }
   }
 
   let hasNextPage = true;
@@ -55,7 +56,7 @@ export const getFullTable = async (field: { fields: { id: { id: string }, size: 
   let items: { key: string, value: string, content?: any }[] = [];
 
   while(hasNextPage) {
-    const res = await client.getDynamicFields({ parentId: field.fields.id.id, cursor });
+    const res = await client.getDynamicFields({ parentId: typeof field === 'string' ? field : field.fields.id.id, cursor });
     hasNextPage = res.hasNextPage;
     cursor = res.nextCursor;
 
@@ -115,3 +116,24 @@ export const getDynamicFields = async (args: { parentId: string, pageSize?: numb
   }
   return fields;
 };
+
+export const getAllOwnedObjects = async (args: Pick<Parameters<typeof client.getOwnedObjects>[0], 'cursor' | 'filter' | 'owner' | 'limit'> ) => {
+  let hasNextPage = true;
+  let cursor: string | null = null;
+  let objectsRes: SuiObjectResponse[] = [];
+
+  while (hasNextPage) {
+    const response = await client.getOwnedObjects({
+      owner: args.owner,
+      options: { showContent: true },
+      filter: args.filter || null,
+      cursor: cursor,
+      limit: args.limit|| 50
+    });
+
+    cursor = response.nextCursor!;
+    hasNextPage = response.hasNextPage;
+    objectsRes.push(...response.data);
+  }
+  return objectsRes;
+}

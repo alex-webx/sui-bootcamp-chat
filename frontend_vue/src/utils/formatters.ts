@@ -1,11 +1,11 @@
 import moment from 'moment';
 import Decimal from 'decimal.js';
 
-export const shortenAddress = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
+export const shortenAddress = (addr: string | undefined | null) => addr ? `${addr?.slice(0, 6)}...${addr?.slice(-4)}` : '';
 
 export const formatDate = (date: string | number) => moment(typeof date === 'string' ? Number(date) : date).format('DD/MM/YYYY');
 export const formatTime = (date: string | number) => moment(typeof date === 'string' ? Number(date) : date).format('HH[h]mm');
-export const formatFullDate = (date: string) => `${formatDate(date)} [às] ${formatTime(date)}`;
+export const formatFullDate = (date: string) => `${formatDate(date)} ${formatTime(date)}`;
 
 export const randomColor = (address: string) => {
   let min = 30;

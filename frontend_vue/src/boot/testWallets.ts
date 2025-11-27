@@ -14,7 +14,7 @@ export default defineBoot(async ({ app }) => {
       console.log(suiAddress);
       testWallets[suiAddress] = pk;
     }
-    console.log('===== LOCAL ENV: test wallets carregdas =====')
+    console.log('===== LOCAL ENV: test wallets carregadas =====')
   }
   app.provide(TEST_WALLETS_PROVIDE_KEY, testWallets);
 });

@@ -38,10 +38,11 @@ export default defineRouter(async ({ store }) => {
   Router.beforeEach(async (to, from, next) => {
     console.log(`[router.beforeEach:${String(from.name || '-')}:${String(to.name)}]`);
 
+    const appStore = useAppStore(store);
+    const walletStore = useWalletStore(store);
+    const userStore = useUserStore(store);
+
     try {
-      const appStore = useAppStore(store);
-      const walletStore = useWalletStore(store);
-      const userStore = useUserStore(store);
 
       const isConfigRoute = to.name === 'config';
       if (!isConfigRoute) {
@@ -97,6 +98,7 @@ export default defineRouter(async ({ store }) => {
       return;
     } catch (ex) {
       console.log(`[router] catch`, ex);
+      appStore.resetState();
       next({ name: 'config' });
       return;
     }

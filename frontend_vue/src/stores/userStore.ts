@@ -1,15 +1,18 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { UserProfile, userProfileModule, getSuiBalance } from '../move';
+import _ from 'lodash';
+import { UserProfile, userProfileModule, getSuiBalance, MemberInfo, chatRoomModule } from '../move';
 import { useWalletStore } from './';
 import { UserProfileGenerator, UserProfileService } from '../utils/encrypt';
 import { formatCoinBalance } from '../utils/formatters';
+import { acceptHMRUpdate } from 'pinia';
+import { db } from '../utils/dexie';
 
 export const useUserStore = defineStore('userStore', () => {
   const walletStore = useWalletStore();
 
   const profile = ref<UserProfile>();
-  const suiBalance = ref<BigInt>();
+  const suiBalance = ref<bigint | null>(null);
 
   const fetchCurrentUserProfile = async () => {
     if (!walletStore.address) {
@@ -23,7 +26,8 @@ export const useUserStore = defineStore('userStore', () => {
       preservedKeyPriv = profile.value?.keyPrivDecoded;
     }
 
-    profile.value = await userProfileModule.getUserProfile(walletStore.address!);
+
+    profile.value = (await db.refreshProfiles([walletStore.address]))?.[0];
 
     if (walletStore.address === profile.value?.owner && preservedKeyPriv) {
       profile.value!.keyPrivDecoded = preservedKeyPriv;
@@ -56,7 +60,6 @@ export const useUserStore = defineStore('userStore', () => {
 
     return null;
   };
-
 
   const createUserProfile = async (userProfile: Pick<UserProfile, 'username' | 'avatarUrl'>) => {
     const response = await walletStore.generateMasterSignature();
@@ -115,7 +118,11 @@ export const useUserStore = defineStore('userStore', () => {
 
     resetState: async () => {
       profile.value = undefined;
-      suiBalance.value = undefined;
+      suiBalance.value = null;
     }
   };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot));
+}

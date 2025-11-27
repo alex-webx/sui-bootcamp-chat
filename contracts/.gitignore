@@ -2,4 +2,4 @@ build/*
 .trace
 .coverage*
 _pubhistory/*
-data/**/*.json
+scripts/**/*.json

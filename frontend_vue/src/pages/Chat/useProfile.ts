@@ -63,7 +63,6 @@ export function useProfile() {
     });
   };
 
-
   const editProfile = async () => {
     Dialog.create({
       component: EditProfileDialog
