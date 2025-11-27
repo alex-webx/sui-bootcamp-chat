@@ -20,7 +20,7 @@ export const useUiStore = defineStore('uiStore', () => {
   const scrollTo = (where: 'bottom', behavior: 'smooth' | 'auto' | 'instant' = 'smooth') => {
     if (where === 'bottom') {
       setTimeout(() => {
-        bottomChatElement.value?.scrollIntoView({ behavior, block: 'start' });
+        bottomChatElement.value?.scrollIntoView({ behavior, block: 'center' });
       }, 500);
     }
   };

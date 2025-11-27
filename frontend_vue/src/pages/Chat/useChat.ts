@@ -7,7 +7,7 @@ import { type ChatRoom, chatRoomModule, EPermission, ERoomType, type MemberInfo,
 import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
 import { db } from '../../utils/dexie';
 
-const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { username: string } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
+const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { profile: UserProfile } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
 
 export function useChat() {
 

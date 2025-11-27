@@ -114,7 +114,7 @@ export const txEditMessage = (
       tx.object(message.id),
       tx.pure.string(newMessage.content),
       tx.pure.vector('string', newMessage.mediaUrl),
-      tx.pure.bool(false),
+      tx.pure.bool(true),
       tx.object(config('SuiClockId')!)
     ],
   });
@@ -133,7 +133,7 @@ export const txDeleteMessage = (
     arguments: [
       tx.object(message.roomId),
       tx.object(message.id),
-      tx.pure.bool(false),
+      tx.pure.bool(true),
       tx.object(config('SuiClockId')!)
     ],
   });

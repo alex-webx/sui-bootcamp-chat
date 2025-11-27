@@ -81,38 +81,46 @@ class SuiChatDB extends Dexie implements Disposable {
       await this.refreshUserChatRoomMessages(room);
     }
 
-    return this.runLoop();
+    return this.runLoop(1000);
   };
 
-  private runLoop = async () => {
+  private runLoop = async (initialIntervalMS: number) => {
+    let intervalMS = initialIntervalMS;
+
     const controls = useAsyncLoop(async () => {
 
-      const memberInfo = await this.refreshMemberInfo();
-      const simpleRooms = await move.chatRoomModule.getChatRooms(memberInfo.map(m => m.roomId), false);
+      try {
+        const memberInfo = await this.refreshMemberInfo();
+        const simpleRooms = await move.chatRoomModule.getChatRooms(memberInfo.map(m => m.roomId), false);
 
-      for (let room of simpleRooms) {
+        for (let room of simpleRooms) {
 
-        // check room updates
-        const lastUpdate = await this.roomLastUpdate.get(room.id) || 0;
-        if (room.updatedAt > lastUpdate) {
-          this.roomLastUpdate.put(room.updatedAt, room.id);
-          this.refreshUserRooms([ room.id ]);
-          await this.refreshUserChatRoomMessages(room);
+          // check room updates
+          const lastUpdate = await this.roomLastUpdate.get(room.id) || 0;
+          if (room.updatedAt > lastUpdate) {
+            this.roomLastUpdate.put(room.updatedAt, room.id);
+            this.refreshUserRooms([ room.id ]);
+            await this.refreshUserChatRoomMessages(room);
+          }
+
+          // check if memberInfo was fetched
+          if (!await this.memberInfo.get(room.id)) {
+            await this.refreshMemberInfo();
+          }
         }
-
-        // check if memberInfo was fetched
-        if (!await this.memberInfo.get(room.id)) {
-          await this.refreshMemberInfo();
-        }
+        intervalMS = initialIntervalMS;
+      } catch (err) {
+        console.error(err);
+        intervalMS += initialIntervalMS;
       }
-    }, 1000);
+    }, intervalMS);
+
     controls.startLoop();
 
     return controls;
   };
 
   [Symbol.dispose](): void {
-    console.log('DISPOSING!!!');
   }
 
   public resetDatabase = async () => {
