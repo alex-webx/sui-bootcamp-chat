@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import _, { add } from 'lodash';
 import Dexie, { liveQuery, Table } from 'dexie';
 export * from './useLiveQuery';
 import * as move from '../../move';
@@ -12,7 +12,7 @@ class SuiChatDB extends Dexie implements Disposable {
   profile!: Table<move.UserProfile, string>;
   room!: Table<move.ChatRoom, string>;
   message!: Table<move.Message, string>;
-  roomLastUpdate!: Table<number, string>;   // key: roomId
+  roomLastUpdate!: Table<Pick<move.ChatRoom, 'id' | 'updatedAt' | 'messageCount'>, string>;   // key: id
   messageRead!: Table<number, string>;     // key: roomId
   memberInfo!: Table<move.MemberInfo, string>; // key: roomId
 
@@ -24,7 +24,7 @@ class SuiChatDB extends Dexie implements Disposable {
       profile: '&owner, id, username, *roomsJoined',
       room: '&id, name, owner, roomType',
       message: '&id, roomId, messageNumber, sender, createdAt, replyTo, previousVersionId',
-      roomLastUpdate: '',
+      roomLastUpdate: '&id',
       messageRead: '',
       memberInfo: '&roomId'
     });
@@ -36,6 +36,7 @@ class SuiChatDB extends Dexie implements Disposable {
       await move.userProfileModule.getUsersProfilesFromAddresses();
 
     await this.profile.bulkPut(profiles);
+
     return profiles;
   };
 
@@ -57,9 +58,14 @@ class SuiChatDB extends Dexie implements Disposable {
     return rooms;
   }
 
-  public refreshUserChatRoomMessages = async (room: move.ChatRoom) => {
+  public refreshUserChatRoomMessages = async (room: move.ChatRoom, startIndex?: number) => {
     const messageIds = await move.chatRoomModule.getAllMessagesIds(room);
-    const messages = await move.chatRoomModule.getAllMessages(Object.values(messageIds));
+
+    const ids = startIndex ?
+      _.toPairs(messageIds).filter(pairs => Number(pairs[0]) >= startIndex).map(p => p[1]) :
+      Object.values(messageIds);
+
+    const messages = await move.chatRoomModule.getAllMessages(Object.values(ids));
     await this.message.bulkPut(messages);
   }
 
@@ -93,21 +99,33 @@ class SuiChatDB extends Dexie implements Disposable {
         const memberInfo = await this.refreshMemberInfo();
         const simpleRooms = await move.chatRoomModule.getChatRooms(memberInfo.map(m => m.roomId), false);
 
-        for (let room of simpleRooms) {
+        let roomsToUpdate: string[] = [];
 
+        for (let room of simpleRooms) {
           // check room updates
-          const lastUpdate = await this.roomLastUpdate.get(room.id) || 0;
-          if (room.updatedAt > lastUpdate) {
-            this.roomLastUpdate.put(room.updatedAt, room.id);
-            this.refreshUserRooms([ room.id ]);
-            await this.refreshUserChatRoomMessages(room);
+          const lastUpdate = await this.roomLastUpdate.get(room.id);
+          if (!lastUpdate || room.updatedAt > lastUpdate.updatedAt) {
+            roomsToUpdate.push(room.id);
+
+            await this.refreshUserChatRoomMessages(room, lastUpdate?.messageCount || 0);
           }
 
-          // check if memberInfo was fetched
           if (!await this.memberInfo.get(room.id)) {
             await this.refreshMemberInfo();
           }
         }
+
+        if (roomsToUpdate.length) {
+          const rooms = await this.refreshUserRooms(roomsToUpdate);
+          this.roomLastUpdate.bulkPut(rooms.map(r => ({ id: r.id, updatedAt: r.updatedAt, messageCount: r.messageCount })));
+
+          const addresses = _.uniq(rooms.flatMap(room => Object.keys(room.members)));
+          if (addresses.length) {
+            await this.refreshProfiles(addresses);
+          }
+
+        };
+
         intervalMS = initialIntervalMS;
       } catch (err) {
         console.error(err);
@@ -131,3 +149,4 @@ class SuiChatDB extends Dexie implements Disposable {
 }
 
 export const db = new SuiChatDB();
+(window as any).db = db;

@@ -35,9 +35,14 @@
         q-card-section.text-body1
           div Você ainda não aceitou o convite de #[span.text-weight-bold {{ dmUser?.username }}]
 
+        q-async-btn(
+          label="Entrar" color="medium-sea" push glossy
+          :handler="joinRoom"
+        )
 
-        q-card.rounded.bg-grey-2(flat bordered)
-          q-card-section.text-italic.text-caption Envie uma mensagem para iniciar a conversa!
+        q-card.rounded.bg-grey-2.q-mt-md(flat bordered)
+          q-card-section.text-italic.text-caption
+            | ...ou envie uma mensagem para começar a conversar com {{ dmUser?.username }}
 
 
 .q-pa-md.row.justify-center.full-width(
@@ -90,9 +95,11 @@ import { db, useLiveQuery } from '../../../utils/dexie';
 import { DirectMessageService } from '../../../utils/encrypt';
 import { type Message, EMessageType } from '../../../move';
 import MessageItem from './MessageItem.vue';
+import { useChat } from '../useChat';
 
 const userStore = useUserStore();
 const chatListStore = useChatListStore();
+const chatService = useChat();
 const uiStore = useUiStore();
 const { activeChat: room } = storeToRefs(chatListStore);
 const { bottomChatElement } = storeToRefs(uiStore);
@@ -105,6 +112,10 @@ const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(
 const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(room.value!.id) >= 0);
 
 const messages = useLiveQuery(() => db.message.where('roomId').equals(room.value!.id).filter(m => m.eventType === EMessageType.New).sortBy('messageNumber'));
+
+const joinRoom = async() => {
+  await chatService.joinRoom(room.value!);
+};
 
 watch(messages, async (msgs) => {
   if (msgs?.length) {

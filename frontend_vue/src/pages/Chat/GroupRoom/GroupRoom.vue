@@ -149,10 +149,6 @@ const joinRoom = async() => {
   await chatService.joinRoom(room.value!);
 };
 
-const longWait = async () => {
-  await new Promise(resolve => setTimeout(resolve, 10000));
-}
-
 const invite = async () => {
   const users = await db.profile.where('owner').noneOf(Object.keys(room.value?.members || {})).toArray();
 
