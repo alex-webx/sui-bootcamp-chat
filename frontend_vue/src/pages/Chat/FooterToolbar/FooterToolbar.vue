@@ -5,8 +5,9 @@ transition(
   leave-active-class="animated fadeOut slower"
 )
 
-  q-footer.bg-transparent(v-if="!canSendMessage")
-    q-toolbar
+  q-footer(v-if="!canSendMessage" style="background: rgba(0, 0, 0, 0.1)")
+    q-toolbar.flex-center.text-grey-7.text-caption.text-italic
+      div Somente leitura: você não possui permissões para enviar mensagens
 
   q-footer(v-else :class="newMessage.id || newMessage.replyTo ? 'footer-edit-mode' : 'bg-deep-sea'")
     q-form(@submit="sendMessage()" ref="form")
@@ -15,12 +16,30 @@ transition(
         .full-width.q-pl-sm.text-body1 Editar mensagem
         q-btn(icon="close" flat dense @click="clearNewMessage()")
 
-      template(v-else-if="newMessage.replyTo")
-        q-toolbar.text-white.row
-          .full-width.q-pl-sm.text-body1 Responder
-          q-btn(icon="close" flat dense @click="clearNewMessage()")
-        q-card.q-mx-md.q-mb-sm.text-caption(style="background: rgba(255, 255, 255, 0.2)" flat)
-          q-card-section.text-italic {{newMessage.replyToMessage.content}}
+      q-toolbar.flex-center(v-else-if="newMessage.replyTo")
+        q-card.q-px-md.q-py-sm.q-mx-md.q-mt-md.q-mb-sm.text-caption(
+          style="background: rgba(255, 255, 255, 0.2); border-left: 6px solid rgba(255, 255, 255, 0.4);"
+          :style="desktopMode ? 'width: 50%' : 'width: 100%'"
+          flat
+        )
+          .row
+            .col
+              .text-weight-bold {{ newMessage.replyToMessage.profile?.username }}
+
+          .row
+            .col
+              .text-italic {{newMessage.replyToMessage.content}}
+            .col-auto(v-if="newMessage.replyToMessage.mediaUrl.length")
+              video(
+                v-if="newMessage.replyToMessage.mediaUrl.length"
+                :key="newMessage.replyToMessage.mediaUrl[0]"
+                autoplay loop muted playisline
+                style="max-height: 100px" :ratio="1"
+              )
+                source(:src="newMessage.replyToMessage.mediaUrl[0]")
+
+        .absolute-right
+          q-btn(icon="close" round flat @click="clearNewMessage()")
 
 
       q-toolbar.justify-center.text-white.q-pt-md(v-if="newMessage.mediaUrl?.length")
@@ -82,11 +101,13 @@ transition(
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useChat } from '../useChat';
-import { db } from '../../../utils/dexie';
+import { useUiStore } from '../../../stores';
+import { storeToRefs } from 'pinia';
 
 const chatService = useChat();
+const { desktopMode } = storeToRefs(useUiStore());
 
-const { insertEmoji, insertGif, removeGif, getDmMemberUserAddress, clearNewMessage, canSendMessage } = chatService;
+const { insertEmoji, insertGif, removeGif, clearNewMessage, canSendMessage } = chatService;
 const { newMessage } = chatService;
 
 const sendingBusy = ref(false);

@@ -1,69 +1,60 @@
 <template lang="pug">
-//- .q-pa-md.row.justify-center.full-width(
-//-   v-if="dmUser && !dmUserJoined"
-//-   style="margin-top: auto; margin-bottom: auto"
-//- )
-//-   transition(
-//-     appear
-//-     enter-active-class="animated zoomIn slower"
-//-     leave-active-class="animated zoomInDown slower"
-//-   )
-//-     q-card.rounded.text-center(style="max-width: 360px")
-//-       .flex.flex-center.column.q-ma-lg
-//-         .relative-position
-//-           q-avatar.q-mt-xl(size="100px")
-//-             q-img(:src="dmUser?.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
-//-           div(style="position: absolute; top: 25px; right: -40px")
-//-             q-icon(name="mdi-chat-sleep-outline" size="50px" color="medium-sea")
-//-         q-card-section.text-body1
-//-           | #[span.text-weight-bold {{ dmUser?.username }}] ainda não aceitou o seu convite
-
-//- .q-pa-md.row.justify-center.full-width(
-//-   v-else-if="dmUser && !youJoined"
-//-   style="margin-top: auto; margin-bottom: auto"
-//- )
-//-   transition(
-//-     appear
-//-     enter-active-class="animated zoomIn slower"
-//-     leave-active-class="animated zoomInDown slower"
-//-   )
-//-     q-card.rounded.text-center(style="max-width: 360px")
-//-       .flex.flex-center.column.q-ma-lg
-//-         .relative-position
-//-           q-avatar.q-mt-xl(size="100px")
-//-             q-img(:src="dmUser?.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
-//-         q-card-section.text-body1
-//-           div Você ainda não aceitou o convite de #[span.text-weight-bold {{ dmUser?.username }}]
-
-
-//-         q-card.rounded.bg-grey-2(flat bordered)
-//-           q-card-section.text-italic.text-caption Envie uma mensagem para iniciar a conversa!
-
-
-//- .q-pa-md.row.justify-center.full-width(
-//-   v-else-if="activeChat.messageCount === 0"
-//-   style="margin-top: auto; margin-bottom: auto"
-//- )
-//-   transition(
-//-     appear
-//-     enter-active-class="animated zoomIn slower"
-//-     leave-active-class="animated zoomInDown slower"
-//-   )
-//-     q-card.rounded.text-center(style="max-width: 360px")
-//-       .flex.flex-center.column.q-ma-lg
-//-         .relative-position
-//-           q-avatar.q-mt-xl(size="100px")
-//-             q-img(:src="dmUser?.avatarUrl || '/user-circles-set-sm.png'" :ratio="1" fit="cover")
-//-           div(style="position: absolute; top: 25px; right: -40px")
-//-             q-icon(name="mdi-chat-sleep-outline" size="50px" color="medium-sea")
-//-         q-card-section.text-body1
-//-           | #[span.text-weight-bold Você e {{ dmUser?.username }}] ainda não trocaram mensagens
-
-q-page-sticky.z-top(position="top-right" :offset="[10, 10]" v-if="canInvite")
+q-page-sticky.z-top(position="top-right" :offset="[10, 10]" v-if="canInvite && youJoined")
   q-fab(icon="mdi-plus" direction="left" push glossy color="light-ocean" padding="sm")
     q-fab-action(icon="mdi-account-plus-outline" label="Convidar usuário" color="light-ocean" push @click="invite()")
 
+.q-pa-md.row.justify-center.full-width(
+  v-if="!youJoined"
+  style="margin-top: auto; margin-bottom: auto"
+)
+  transition(
+    appear
+    enter-active-class="animated zoomIn slower"
+    leave-active-class="animated zoomInDown slower"
+  )
+    q-card.rounded.text-center(style="max-width: 360px")
+      .flex.flex-center.column.q-ma-lg
+        .relative-position
+          q-avatar.q-mt-xl(size="100px")
+            q-img(:src="room.imageUrl || '/logo.png'" :ratio="1" fit="cover")
+        q-card-section.text-body1
+          div Você ainda não está participando do grupo #[span.text-weight-bold {{ room.name }}]
+
+        q-async-btn(
+          label="Entrar" color="medium-sea" push glossy
+          :handler="joinRoom"
+        )
+
+        q-card.rounded.bg-grey-2.q-mt-md(flat bordered v-if="canSendMessage")
+          q-card-section.text-italic.text-caption
+            | ...ou envie uma mensagem para começar a participar da conversa
+
+
+.q-pa-md.row.justify-center.full-width(
+  v-else-if="room.messageCount === 0"
+  style="margin-top: auto; margin-bottom: auto"
+)
+  transition(
+    appear
+    enter-active-class="animated zoomIn slower"
+    leave-active-class="animated zoomInDown slower"
+  )
+    q-card.rounded.text-center(style="max-width: 360px")
+      .flex.flex-center.column.q-ma-lg
+        .relative-position
+          q-avatar.q-mt-xl(size="100px")
+            q-img(:src="room.imageUrl || '/logo.png'" :ratio="1" fit="cover")
+          div(style="position: absolute; top: 25px; right: -40px")
+            q-icon(name="mdi-chat-sleep-outline" size="50px" color="medium-sea")
+
+        q-card-section.text-body1
+          span.text-weight-bold {{ room.name }}
+
+        q-card.rounded.bg-grey-2(flat bordered)
+          q-card-section.text-italic.text-caption Ninguém enviou mensagens até o momento.
+
 .row.justify-end(
+  v-else
   style="margin-top: auto"
 )
   .text-center.full-width.q-py-md
@@ -104,15 +95,14 @@ const uiStore = useUiStore();
 const chatListStore = useChatListStore();
 
 const { activeChat: room } = storeToRefs(chatListStore);
-const { getDmMemberUserAddress, canInvite } = chatService;
+const { canInvite, canSendMessage } = chatService;
 const { bottomChatElement } = storeToRefs(uiStore);
 
 const profile = computed(() => userStore.profile);
 const address = computed(() => profile.value?.owner!);
 
-// const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
-// const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(activeChat.value?.id || '') >= 0);
-// const memberInfo = computed(() => memberInfos.value[activeChatId.value!]);
+const youJoined = computed(() => (userStore.profile?.roomsJoined || []).indexOf(room.value?.id!) >= 0);
+const memberInfo = useLiveQuery(() => db.memberInfo.get(room.value?.id!));
 
 const messages = useLiveQuery(() => db.message.where('roomId').equals(room.value!.id).filter(m => m.eventType === EMessageType.New).sortBy('messageNumber'));
 const users = useLiveQuery(async () => {
@@ -129,7 +119,7 @@ watch(messages, async (msgs) => {
 const decryptService = computed(() => {
   if (room.value?.roomType === ERoomType.PrivateGroup) {
     const privKey = profile.value?.keyPrivDecoded!;
-    const roomKey = (room.value?.members[address.value] as MemberInfo).roomKey!;
+    const roomKey = memberInfo.value?.roomKey!;
     return new PrivateGroupService({ encodedAesKey: roomKey.encodedPrivKey, iv: roomKey.iv, inviterPublicKey: roomKey.pubKey }, privKey);
   } else if (room.value?.roomType == ERoomType.PublicGroup) {
     return new PublicChannelService(room.value.owner);
@@ -153,6 +143,10 @@ const decryptMessage = async (message: Message) => {
     }
   }));
   return { content, mediaUrl };
+};
+
+const joinRoom = async() => {
+  await chatService.joinRoom(room.value!);
 };
 
 const invite = async () => {
@@ -189,8 +183,7 @@ const invite = async () => {
       let roomKey: Parameters<typeof chatListStore.inviteMember>[0]['roomKey'];
 
       if (room.value?.roomType === ERoomType.PrivateGroup) {
-        const memberInfo = room.value.members[address.value] as MemberInfo;
-        const userRoomKey = memberInfo.roomKey!;
+        const userRoomKey = memberInfo.value?.roomKey!;
         const svc = new PrivateGroupService({ encodedAesKey: userRoomKey.encodedPrivKey, iv: userRoomKey.iv, inviterPublicKey: userRoomKey.pubKey }, privKey);
         const inviteKey = await PrivateGroupService.generateInvitationKey(
           (await svc.exportRoomAesKey())!,

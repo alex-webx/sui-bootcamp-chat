@@ -69,7 +69,7 @@ const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(pr
 const lastMessage = useLiveQuery(() => db.message.where('roomId').equals(room.id).sortBy('createdAt').then(m => m.slice(-1)[0]));
 const lastMessageUser = useLiveQuery(() => lastMessage.value?.sender ? db.profile.get(lastMessage.value.sender) : null, [lastMessage]);
 const isToday = (timestamp: number) => moment(Number(timestamp)).isSame(moment(), 'date');
-const memberInfo = computed(() => room.members[address.value] as MemberInfo);
+const memberInfo = useLiveQuery(() => db.memberInfo.get(room.id));
 
 const decryptService = computed(() => {
   if (room.roomType === ERoomType.DirectMessage) {

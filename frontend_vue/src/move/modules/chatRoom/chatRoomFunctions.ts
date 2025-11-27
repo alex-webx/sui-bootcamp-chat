@@ -25,9 +25,9 @@ export const txCreateRoom = (
       tx.pure.string(data.room.imageUrl),
       tx.pure.u64(data.room.maxMembers),
       tx.pure.u8(data.room.roomType),
-      tx.pure.vector('u8', data.roomKey.pubKey),
-      tx.pure.vector('u8', data.roomKey.iv),
-      tx.pure.vector('u8', data.roomKey.encodedPrivKey),
+      tx.pure.option('vector<u8>', data.roomKey?.pubKey as any),
+      tx.pure.option('vector<u8>', data.roomKey?.iv as any),
+      tx.pure.option('vector<u8>', data.roomKey?.encodedPrivKey as any),
       tx.pure.u8(data.room.permissionInvite),
       tx.pure.u8(data.room.permissionSendMessage),
       tx.object(config('SuiClockId')!)
@@ -58,25 +58,6 @@ export const txCreateDmRoom = (
   const parser = parsers.isCreated('chat_room::ChatRoom');
   return { tx, parser };
 };
-
-// export const txAcceptDmRoom = (
-//   data: {
-//     room: Pick<Models.ChatRoom, 'id'>,
-//     profile: Pick<Models.UserProfile, 'id'>
-//   }
-// ) => {
-//   const tx = new Transaction();
-//   tx.moveCall({
-//     target: `${config('PackageId')}::chat_room::accept_dm_room`,
-//     arguments: [
-//       tx.object(data.room.id),
-//       tx.object(data.profile.id),
-//       tx.object(config('SuiClockId')!)
-//     ],
-//   });
-
-//   return tx;
-// };
 
 export const txSendMessage = (
   userProfileId: string,
@@ -114,7 +95,7 @@ export const txEditMessage = (
       tx.object(message.id),
       tx.pure.string(newMessage.content),
       tx.pure.vector('string', newMessage.mediaUrl),
-      tx.pure.bool(false),
+      tx.pure.bool(true),
       tx.object(config('SuiClockId')!)
     ],
   });
@@ -133,7 +114,7 @@ export const txDeleteMessage = (
     arguments: [
       tx.object(message.roomId),
       tx.object(message.id),
-      tx.pure.bool(false),
+      tx.pure.bool(true),
       tx.object(config('SuiClockId')!)
     ],
   });
@@ -156,9 +137,28 @@ export const txInviteMember = (
       tx.object(chatRoom.id),
       tx.object(profile.id),
       tx.pure.address(inviteeAddress),
-      roomKey?.pubKey ? tx.pure.option('vector<u8>', roomKey.pubKey as any) : tx.pure.option('vector<u8>', undefined),
-      roomKey?.iv ? tx.pure.option('vector<u8>', roomKey.iv as any) : tx.pure.option('vector<u8>', undefined),
-      roomKey?.encodedPrivKey ? tx.pure.option('vector<u8>', roomKey.encodedPrivKey as any) : tx.pure.option('vector<u8>', undefined),
+      tx.pure.option('vector<u8>', roomKey?.pubKey as any),
+      tx.pure.option('vector<u8>', roomKey?.iv as any),
+      tx.pure.option('vector<u8>', roomKey?.encodedPrivKey as any),
+      tx.object(config('SuiClockId')!)
+    ],
+  });
+
+  return tx;
+};
+
+export const txJoinRoom = (
+  data: {
+    room: Pick<Models.ChatRoom, 'id'>,
+    profile: Pick<Models.UserProfile, 'id'>
+  }
+) => {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${config('PackageId')}::chat_room::join_room`,
+    arguments: [
+      tx.object(data.room.id),
+      tx.object(data.profile.id),
       tx.object(config('SuiClockId')!)
     ],
   });
@@ -226,7 +226,8 @@ export const txUnbanUser = (
     target: `${config('PackageId')}::chat_room::unban_user`,
     arguments: [
       tx.object(chatRoom.id),
-      tx.pure.address(userAddress)
+      tx.pure.address(userAddress),
+      tx.object(config('SuiClockId')!)
     ]
   });
 

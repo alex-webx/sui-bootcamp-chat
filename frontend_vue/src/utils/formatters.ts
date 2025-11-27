@@ -7,6 +7,13 @@ export const formatDate = (date: string | number) => moment(typeof date === 'str
 export const formatTime = (date: string | number) => moment(typeof date === 'string' ? Number(date) : date).format('HH[h]mm');
 export const formatFullDate = (date: string) => `${formatDate(date)} ${formatTime(date)}`;
 
+export const stamp = (timestamp: number) => {
+  const t = moment(Number(timestamp)).locale('pt-br');
+  if (t.isSame(moment(), 'day')) { return t.format('HH:mm'); }
+  else if (t.isSame(moment().add(-1, 'day'), 'day')) { return 'Ontem ' + t.format('HH:mm'); }
+  else { return `${t.fromNow()} ${t.format('HH:mm')}`; }
+};
+
 export const randomColor = (address: string) => {
   let min = 30;
   let max = 225;

@@ -1,49 +1,77 @@
-<template lang="pug">
-q-chat-message(
-  :sent="sent"
-  :bg-color="bgColor"
-  :text-color="textColor"
-  :class="{ 'is-first': isFirst, 'is-last': isLast }"
-  :id="'message_' + message.messageNumber"
-)
-  template(#name v-if="isFirst")
-    span.text-weight-bold(:class="sent ? 'text-ocean' : 'text-medium-sea'")
-      | {{ user.username }}
+  <template lang="pug">
+div
+  q-menu(context-menu touch-position v-model="isSelected" self="center middle" ref="menu")
+    q-list.bg-ocean(dark)
+      template(v-if="sent")
+        q-item(clickable v-close-popup @click="deleteMessage()" v-if="!message.deletedAt")
+          q-item-section(avatar style="min-width: auto")
+            q-icon(name="mdi-trash-can-outline")
+          q-item-section Excluir
+        q-item(clickable v-close-popup @click="startEditMessage()" v-if="!message.deletedAt")
+          q-item-section(avatar style="min-width: auto")
+            q-icon(name="mdi-pencil-outline")
+          q-item-section Editar
+      q-item(clickable v-close-popup @click="replyMessage()")
+        q-item-section(avatar style="min-width: auto")
+          q-icon(name="mdi-reply")
+        q-item-section Responder
 
-  template(#avatar)
-    q-avatar.q-mx-md
-      q-img(v-if="isLast" :src="user.avatarUrl || './logo.png'" :ratio="1" fit="cover")
 
-  template(#stamp)
-    .flex.items-center
-      q-icon(name="mdi-lock" v-if="roomType === 1")
-        q-tooltip
-          div Mensagem criptografada utilizando
-          div chave AES compartilhada por ECDH
-      q-icon(name="mdi-lock-open-outline" v-else-if="roomType === 2")
-        q-tooltip
-          div Mensagem criptografada utilizando
-          div chave AES compartilhada publicamente
-      span
-        q-badge(:color="bgColor" :text-color="textColor") {{ fromNow(message.createdAt) }}
-          q-tooltip {{ formatFullDate(message.createdAt) }}
-      q-space
-      q-badge(v-if="message.editedAt" label="editada" dense flat no-caps :color="bgColor" :text-color="textColor")
-        q-tooltip Editada em {{ formatFullDate(message.editedAt) }}
-      q-btn(icon="mdi-pound" dense size="xs" flat @click="exploreObject()")
-        q-tooltip Verificar mensagem no Suiscan
+  q-chat-message(
+    :sent="sent"
+    :bg-color="bgColor"
+    :text-color="textColor"
+    :class="{ 'is-first': isFirst, 'is-last': isLast }"
+    :id="'message_' + message.messageNumber"
+    @contextmenu.prevent="() => isSelected = true"
+    @dblclick="() => isSelected = true"
+  )
+    template(#name v-if="isFirst")
+      span.text-weight-bold(:class="sent ? 'text-ocean' : 'text-medium-sea'")
+        | {{ user.username }}
 
-  template(v-if="message.deletedAt")
-    .text-italic.text-caption.q-py-sm.q-px-md.rounded-borders.deleted-message
+    template(#avatar)
+      q-avatar.q-mx-md
+        q-img(v-if="isLast" :src="user.avatarUrl || './logo.png'" :ratio="1" fit="cover")
+
+    template(#stamp)
+      .flex.items-center
+        q-icon(name="mdi-lock" v-if="roomType === 1")
+          q-tooltip
+            div Mensagem criptografada utilizando
+            div chave AES compartilhada por ECDH
+        q-icon(name="mdi-lock-open-outline" v-else-if="roomType === 2")
+          q-tooltip
+            div Mensagem criptografada utilizando
+            div chave AES compartilhada publicamente
+        span
+          q-badge(:color="bgColor" :text-color="textColor") {{ stamp(message.createdAt) }}
+            q-tooltip {{ formatFullDate(message.createdAt) }}
+        q-space
+        q-badge(v-if="message.editedAt" label="editada" dense flat no-caps :color="bgColor" :text-color="textColor")
+          q-tooltip Editada em {{ formatFullDate(message.editedAt) }}
+        q-btn(icon="mdi-pound" dense size="xs" flat @click="exploreObject()")
+          q-tooltip Verificar mensagem no Suiscan
+
+
+    .text-italic.text-caption.q-py-sm.q-px-md.rounded-borders.deleted-message(
+      v-if="message.deletedAt"
+    )
       | mensagem removida
       q-tooltip Removida em {{ formatFullDate(message.deletedAd) }}
 
-  template(v-else)
-    .text-body1(
-      v-touch-hold.mouse="() => sent ? isSelected = true : undefined"
-      @contextmenu.prevent="() => sent ? isSelected = true : undefined"
-      @dblclick="() => sent ? isSelected = true : undefined"
-    )
+
+    .text-body1(v-else)
+
+      .rounded-borders.q-ma-xs.q-px-sm.q-py-xs.text-caption.cursor-pointer.text-left(
+        v-if="replyingTo"
+        style="background: rgba(255, 255, 255, 0.13); border-left: 4px solid rgba(255, 255, 255, 0.3)"
+        @click="scrollToReplyMessage()"
+      )
+        .text-weight-bold {{replyingToDecrypted.profile?.username}}
+        .text-italic {{replyingToDecrypted.content}}
+        .text-italic(v-if="replyingTo.deletedAt") mensagem removida
+
       video.fit(
         v-if="mediaUrl.length"
         :key="mediaUrl[0]"
@@ -55,31 +83,14 @@ q-chat-message(
       .q-px-sm(v-for="(line, iLine) in content.split('\\n')" :key="'line_' + iLine" :class="sent ? 'text-right' : 'text-left'")
         | {{ line }}
 
-      transition-group(
-        appear
-        enter-active-class="animated flipInX"
-        leave-active-class="animated flipOutX"
-      )
-        div(v-if="isSelected")
-          q-separator(dark spaced key="separator")
-          .flex.flex-center(key="buttons")
-            q-btn-group.bg-white(outline)
-              q-btn.bg-sea(icon="close" @click="isSelected = false" size="md" outline)
-              q-separator(vertical)
-              q-btn.bg-sea(icon="mdi-trash-can-outline" size="md" outline @click="deleteMessage()")
-              q-separator(vertical)
-              q-btn.bg-sea(icon="mdi-pencil-outline" size="md" outline @click="startEditMessage()")
-
-
 </template>
 <script setup lang="ts">
-import { computed, watchEffect, onMounted, ref, toRefs, type PropType, watch } from 'vue';
+import { computed, watchEffect, ref, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
-import { Dialog, openURL } from 'quasar';
+import { openURL, QMenu } from 'quasar';
 import { useChat } from '../useChat';
-import { shortenAddress, formatFullDate } from '../../../utils/formatters';
-import { type Message, type UserProfile, ERoomType, getNetwork } from '../../../move';
-import moment from 'moment';
+import { formatFullDate, stamp } from '../../../utils/formatters';
+import { type Message, type UserProfile, getNetwork, ERoomType } from '../../../move';
 import { db, useLiveQuery } from '../../../utils/dexie';
 
 const props = defineProps({
@@ -116,11 +127,16 @@ const chatService = useChat();
 const isSelected = ref(false);
 const bgColor = computed(() => sent.value ? 'primary' : 'white');
 const textColor = computed(() => sent.value ? 'white' : 'dark');
+const menu = ref<InstanceType<typeof QMenu>>();
 
 const content = ref('');
 const mediaUrl = ref<string[]>([]);
 
 const overwrites = useLiveQuery(() => message.value.editedAt ? db.message.where('previousVersionId').equals(message.value.id).sortBy('createdAt').then(ms => ms.slice(-1)?.[0]) : null, [ message ]);
+
+const replyingTo = useLiveQuery(() => message.value.replyTo ? db.message.get(message.value.replyTo) : null, [ message ]);
+const replyingToDecrypted = ref<Pick<Message, 'content' | 'mediaUrl'> & { profile?: UserProfile }>();
+
 
 watchEffect(async () => {
   const decrypted = await props.decryptMessage(overwrites.value || message.value);
@@ -128,7 +144,22 @@ watchEffect(async () => {
   mediaUrl.value = decrypted.mediaUrl;
 });
 
-const fromNow = (timestamp: number) => moment(Number(timestamp)).locale('pt-br').fromNow();
+watchEffect(async () => {
+  if (replyingTo.value) {
+    const decrypted = await props.decryptMessage(replyingTo.value);
+    replyingToDecrypted.value = {
+      content: decrypted.content,
+      mediaUrl: decrypted.mediaUrl,
+      profile: (await db.profile.get(replyingTo.value.sender))!
+    };
+  } else {
+    replyingToDecrypted.value = {
+      content: '',
+      mediaUrl: []
+    };
+  }
+});
+
 
 const exploreObject = () => {
   openURL(`https://suiscan.xyz/${getNetwork()}/object/${message.value.id}/fields`);
@@ -152,11 +183,34 @@ const startEditMessage = async () => {
   };
 };
 
+const replyMessage = async () => {
+  isSelected.value = false;
+  chatService.newMessage.value = {
+    id: '',
+    content: '',
+    mediaUrl: [],
+    replyTo: message.value.id,
+    replyToMessage: {
+      ...message.value,
+      content: content.value,
+      mediaUrl: mediaUrl.value,
+      profile: (await db.profile.get(message.value.sender))!
+    }
+  };
+};
+
+const scrollToReplyMessage = async () => {
+  const el = document.getElementById('message_' + replyingTo.value?.messageNumber);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
 
 </script>
 <style lang="scss" scoped>
 :deep(.q-message-text--sent .deleted-message) {
-  background: rgba(255,255,255, 0.2);
+  background: rgba(black, 0.05);
+  color: rgba(white, 0.8)
 }
 
 :deep(.q-message-text:last-child:before) {

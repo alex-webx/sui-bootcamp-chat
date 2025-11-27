@@ -1,5 +1,6 @@
 import { ref, computed, nextTick } from 'vue';
 import { Dialog, Notify } from 'quasar';
+import _ from 'lodash';
 import { useUserStore, useWalletStore, useChatListStore, useUiStore } from '../../stores';
 import CreateRoomDialog from './CreateRoomDialog.vue';
 import { type TenorResult }  from '../../components/TenorComponent.vue';
@@ -7,7 +8,7 @@ import { type ChatRoom, chatRoomModule, EPermission, ERoomType, type MemberInfo,
 import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
 import { db } from '../../utils/dexie';
 
-const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { username: string } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
+const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { profile: UserProfile } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
 
 export function useChat() {
 
@@ -15,12 +16,6 @@ export function useChat() {
   const userStore = useUserStore();
   const chatListStore = useChatListStore();
   const uiStore = useUiStore();
-
-  const createRoom = async () => {
-    Dialog.create({
-      component: CreateRoomDialog
-    });
-  };
 
   const insertGif = async (gif: TenorResult) => {
     newMessage.value.mediaUrl = [];
@@ -53,7 +48,7 @@ export function useChat() {
       switch(activeChat.roomType) {
         case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
-          const dmUserAddress = getDmMemberUserAddress(activeChat);
+          const dmUserAddress = _.findKey(activeChat?.members, (v, k) => k !== profile.owner);
           const dmUser = await db.profile.get(dmUserAddress!);
           const svc = new DirectMessageService(privKey!, dmUser?.keyPub!);
           encryptMessage = svc.encryptMessage.bind(svc);
@@ -61,11 +56,11 @@ export function useChat() {
         }
         case ERoomType.PrivateGroup: {
           const privKey = await userStore.ensurePrivateKey();
-          const roomKey = (activeChat.members[profile.owner] as MemberInfo)?.roomKey;
+          const memberInfo = await db.memberInfo.get(activeChat.id);
           const svc = new PrivateGroupService({
-            encodedAesKey: roomKey?.encodedPrivKey!,
-            inviterPublicKey: roomKey?.pubKey!,
-            iv: roomKey?.iv!
+            encodedAesKey: memberInfo?.roomKey?.encodedPrivKey!,
+            inviterPublicKey: memberInfo?.roomKey?.pubKey!,
+            iv: memberInfo?.roomKey?.iv!
           }, privKey!);
           encryptMessage = svc.encryptMessage.bind(svc);
           break;
@@ -112,15 +107,6 @@ export function useChat() {
       }
     }
   }
-
-
-  const getDmMemberUserAddress = (room: ChatRoom | null) => {
-    if (room?.roomType === ERoomType.DirectMessage) {
-      return Object.keys(room.members).find(id => id !== userStore.profile?.owner)!;
-    } else {
-      return null;
-    }
-  };
 
   const clearNewMessage = () => { newMessage.value = { id: '', content: '', mediaUrl: [], replyTo: '' }; };
 
@@ -175,13 +161,69 @@ export function useChat() {
             color: 'positive'
           })
           await userStore.fetchCurrentUserProfile();
-          // const room = rooms[chatRoomId];
-          // if (room) {
-          //   await selectChatRoom(room);
-          // }
+          await db.refreshUserRooms([chatRoomId]);
+          await selectChatRoom({ id: chatRoomId });
         }
       });
     }
+  };
+
+  const createChatRoom = async (newChatRoom: Parameters<typeof chatListStore.createChatRoom>[0]) => {
+    const notif = Notify.create({
+      message: 'Criando sala de chat...',
+      caption: 'Por favor, assine a transação em sua carteira.',
+      color: 'primary',
+      spinner: true,
+      group: false,
+      timeout: 0
+    });
+
+      try {
+
+        if (!newChatRoom.isRestricted) {
+          newChatRoom.inviteLevel = 'all';
+        }
+
+        const chatRoomId = await chatListStore.createChatRoom(newChatRoom);
+
+        if (chatRoomId) {
+          await userStore.fetchCurrentUserProfile();
+          await db.refreshUserRooms([chatRoomId]);
+          await selectChatRoom({ id: chatRoomId })
+
+          notif({
+            message: 'Sala de chat criada com sucesso',
+            caption: '',
+            timeout: 2500,
+            spinner: false,
+            icon: 'done',
+            color: 'positive'
+          });
+
+          return true;
+        } else {
+          notif({
+            message: 'Não foi possível criar a sala de chat',
+            caption: '',
+            timeout: 2500,
+            spinner: false,
+            icon: 'done',
+            color: 'negative'
+          });
+          return false;
+        }
+      } catch (exc) {
+        console.log({exc});
+        notif({
+          message: 'Não foi possível criar a sala de chat',
+          caption: 'Ocorreu um erro: ' + exc,
+          timeout: 2500,
+          spinner: false,
+          icon: 'done',
+          color: 'negative'
+        });
+        return false;
+      }
   };
 
   const deleteMessage = async (
@@ -246,13 +288,18 @@ export function useChat() {
     return false;
   };
 
+  const joinRoom = async(room: Pick<ChatRoom, 'id'>) => {
+    await chatListStore.joinRoom({ room: room! });
+    await userStore.fetchCurrentUserProfile();
+  };
+
   const canInvite = computed(() => checkPermission(chatListStore.activeChat?.permissionInvite || EPermission.Nobody));
   const canSendMessage = computed(() => checkPermission(chatListStore.activeChat?.permissionSendMessage || EPermission.Nobody));
 
   return {
     newMessage,
 
-    createRoom,
+    createChatRoom,
     selectChatRoom,
     selectUser,
 
@@ -262,8 +309,7 @@ export function useChat() {
     sendMessage,
     deleteMessage,
     clearNewMessage,
-
-    getDmMemberUserAddress,
+    joinRoom,
 
     canInvite,
     canSendMessage

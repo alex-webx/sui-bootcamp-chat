@@ -70,7 +70,7 @@ q-drawer.bg-grey-2(
 </template>
 
 <script setup lang="ts">
-import { useQuasar, openURL } from 'quasar';
+import { useQuasar, openURL, Dialog } from 'quasar';
 import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useWalletStore, useUserStore, useUiStore } from '../../../stores';
@@ -80,15 +80,13 @@ import { getFaucet, getNetwork } from '../../../move';
 
 import ExploreList from './ExploreList.vue';
 import ChatList from './ChatList.vue';
+import CreateRoomDialog from '../CreateRoomDialog.vue';
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
 
-const chatService = useChat();
-
 const { disconnect, deleteProfile, editProfile } = useProfile();
-const { createRoom } = chatService;
 const { breakpoint, drawerWidth, leftDrawerOpen } = storeToRefs(uiStore);
 
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
@@ -108,6 +106,12 @@ const getSuiFaucet = async () => {
     }
   }
 }
+
+const createRoom = async () => {
+  Dialog.create({
+    component: CreateRoomDialog
+  });
+};
 </script>
 
 <style lang="scss" scoped>

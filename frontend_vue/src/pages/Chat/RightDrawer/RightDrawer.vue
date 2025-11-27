@@ -21,7 +21,9 @@ q-drawer.bg-grey-3.text-dark(
 
   .q-ma-none.flex.column.q-px-md.q-py-md.q-gutter-y-sm.card-box.text-caption(style="line-height: 11px")
     div Criado em: {{ formatFullDate(activeChat.createdAt) }}
-    div(@click="openURL(`https://suiscan.xyz/devnet/object/${activeChat.id}/fields`)") ID do chat: {{ shortenAddress(activeChat.id) }}
+    div.cursor-pointer(@click="openURL(`https://suiscan.xyz/devnet/object/${activeChat.id}/fields`)")
+      | ID do chat: {{ shortenAddress(activeChat.id) }}
+      q-icon.q-ml-xs(name="mdi-open-in-new")
     div Tipo: {{ roomTypeToString(activeChat.roomType) }}
     div Convites: {{ permissionToString(activeChat.permissionInvite).join(', ') }}
     div Enviar mensagem: {{ permissionToString(activeChat.permissionSendMessage).join(', ') }}
@@ -47,6 +49,7 @@ q-drawer.bg-grey-3.text-dark(
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import _ from 'lodash';
+import { openURL } from 'quasar';
 import formatters from '../../../utils/formatters';
 import { useChatListStore, useUiStore, useUserStore } from '../../../stores';
 import { EPermission, ERoomType, type UserProfile } from '../../../move';

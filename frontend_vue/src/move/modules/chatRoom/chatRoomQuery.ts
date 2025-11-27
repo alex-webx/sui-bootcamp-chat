@@ -49,16 +49,16 @@ export const parseMemberInfo = (response: SuiObjectResponse): Models.MemberInfo 
   };
 }
 
-export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models.ChatRoom> => {
+export const parseChatRoom = async (response: SuiObjectResponse, deep = true): Promise<Models.ChatRoom> => {
   if (!response.data?.content || response.data.content.dataType !== 'moveObject') {
     throw new Error('Invalid ChatRoom');
   }
 
   const fields = response.data.content.fields as any;
 
-  const membersTable = await getFullTable(fields.members) as Record<string, string>;
+  const membersTable = deep ? await getFullTable(fields.members) as Record<string, string> : {};
 
-  const moderatorsTable = await getFullTable(fields.moderators);
+  const moderatorsTable = deep ? await getFullTable(fields.moderators) : {};
   const moderators = _.mapValues(moderatorsTable, (item: any) => {
     const info: Models.ModeratorInfo = {
       addedBy: item.fields.added_by,
@@ -67,7 +67,7 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
     return info;
   });
 
-  const bannedUsersTable = await getFullTable(fields.banned_users);
+  const bannedUsersTable = deep ? await getFullTable(fields.banned_users) : {};
   const bannedUsers = _.mapValues(bannedUsersTable, (item: any) => {
     const info: Models.BanInfo = {
       bannedBy: item.fields.added_by,
@@ -75,9 +75,6 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
     };
     return info;
   });
-
-
-  // const msgs = await getFullTable(fields.messages);
 
   return {
     id: response.data.objectId,
@@ -88,6 +85,7 @@ export const parseChatRoom = async (response: SuiObjectResponse): Promise<Models
     eventCount: Number(fields.event_count),
     messages: fields.messages.fields.id.id,
     createdAt: Number(fields.created_at),
+    updatedAt: Number(fields.updated_at),
     bannedUsers: bannedUsers,
     moderators: moderators,
     maxMembers: Number(fields.max_members),
@@ -141,19 +139,19 @@ export const getUsersMemberInfosById = async (membersInfosIds: string[]) => {
   return memberInfos;
 };
 
-export const getAllChatRooms = async (getRooms: boolean = true, getDmRooms: boolean = true) => {
+export const getAllChatRooms = async (getRooms: boolean = true, getDmRooms: boolean = true, deep = true) => {
   const chatRoomRegistry = await getChatRoomRegistry();
   const ids = [];
   if (getRooms) { ids.push(...chatRoomRegistry.rooms); }
   if (getDmRooms) { ids.push(...chatRoomRegistry.dmRooms); }
   const roomsObjsRes = await getMultiObjects({ ids: ids });
-  const rooms = await Promise.all(roomsObjsRes.map(async room => await parseChatRoom(room)));
+  const rooms = await Promise.all(roomsObjsRes.map(async room => await parseChatRoom(room, deep)));
   return rooms;
 };
 
-export const getChatRooms = async (chatRoomsIds: string[]) => {
+export const getChatRooms = async (chatRoomsIds: string[], deep = true) => {
   const roomsObjsRes = await getMultiObjects({ ids: chatRoomsIds });
-  const rooms = await Promise.all(roomsObjsRes.map(async room => await parseChatRoom(room)));
+  const rooms = await Promise.all(roomsObjsRes.map(async room => await parseChatRoom(room, deep)));
   return rooms;
 };
 
