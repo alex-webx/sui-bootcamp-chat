@@ -1,4 +1,6 @@
 {
     "TenorClientKey": "sui-chat-1763032146947",
-    "TenorApiKey": "AIzaSyCcrtqXLxjmVYnbFmBHZhuwwALVf88nwPg"
+    "TenorApiKey": "AIzaSyCcrtqXLxjmVYnbFmBHZhuwwALVf88nwPg",
+    "WalrusAggregator": "https://aggregator.walrus-testnet.walrus.space",
+    "WalrusPublished": "https://publisher.walrus-testnet.walrus.space"
 }

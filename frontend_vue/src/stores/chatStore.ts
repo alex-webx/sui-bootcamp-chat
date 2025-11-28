@@ -6,12 +6,16 @@ import { useUserStore, useWalletStore,  useUiStore } from '.';
 import { type TenorResult }  from '../components/TenorComponent.vue';
 import { type ChatRoom, chatRoomModule, EPermission, ERoomType, type RoomKey, type Message, type UserProfile } from '../move';
 import { db, useLiveQuery } from '../utils/dexie';
+import * as walrus from '../utils/walrus';
 import * as encrypt from '../utils/encrypt';
+import * as imageUtils from '../utils/image';
 
+type NewMessage = Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> &
+  { replyToMessage?: Message & { profile: UserProfile } };
 
 export const useChatStore = defineStore('chatStore', () => {
 
-  const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { profile: UserProfile } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
+  const newMessage = ref<NewMessage>({ id: '', content: '', mediaUrl: [], replyTo: '' });
   const activeChatId = ref('');
   const activeChat = useLiveQuery(() => db.room.get(activeChatId.value!), [activeChatId]);
 
@@ -31,6 +35,44 @@ export const useChatStore = defineStore('chatStore', () => {
   const insertEmoji = (emoji: { i: string }) => {
     newMessage.value.content += emoji.i;
   }
+
+  const insertImage = async () => {
+    const file = await new Promise<File | undefined>((resolve, reject) => {
+      const input = document.createElement('input');
+      input.accept = '.png, .jpg, .jpeg, .gif';
+      input.type = 'file';
+      input.addEventListener('change', async evt => {
+        resolve(input.files?.[0]);
+      });
+      input.click();
+    });
+
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        Notify.create({
+          message: 'Por favor, selecione uma imagem com no máximo 2MB',
+          caption: `O arquivo "${file.name}" possui ${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          color: 'negative'
+        });
+        return;
+      }
+
+      if (!await imageUtils.isValidImage(file)) {
+        Notify.create({
+          message: 'O arquivo não é uma imagem válida.',
+          caption: `São aceitos imagens no formato PNG, JPG/JPEG, GIF e WEBP`,
+          color: 'negative'
+        });
+        return;
+      }
+
+      newMessage.value.mediaUrl = [ URL.createObjectURL(new Blob([await file.arrayBuffer()], { type: file.type })) ];
+    }
+  }
+
+  const removeImage = async () => {
+    newMessage.value.mediaUrl = [];
+  };
 
   const sendMessage = async () => {
     const profile = userStore.profile;
@@ -78,6 +120,18 @@ export const useChatStore = defineStore('chatStore', () => {
         content = JSON.stringify([encContent.iv, encContent.ciphertext]);
       }
       if (mediaUrl.length) {
+
+        //upload custom image conditional
+        for (let urlIndex = 0; urlIndex < mediaUrl.length; urlIndex++) {
+          const url = mediaUrl[urlIndex]!;
+          if (url.startsWith('blob:')) {
+            const blob = await fetch(url).then(r => r.blob());
+            const encryptedBlob = JSON.stringify(await encryptMessage(await walrus.blobToBase64(blob)));
+            const walrusObj = await walrus.uploadImage(new TextEncoder().encode(encryptedBlob).buffer);
+            mediaUrl[urlIndex] = 'walrus://' + await walrus.getImageUrl(walrusObj.newlyCreated.blobObject.blobId || walrusObj.alreadyCertified.blobId);
+          }
+        }
+
         const encMedia = await Promise.all(mediaUrl.map(mediaUrl => encryptMessage(mediaUrl)));
         mediaUrl = encMedia.map(media => JSON.stringify([ media.iv, media.ciphertext ]));
       }
@@ -309,10 +363,16 @@ export const useChatStore = defineStore('chatStore', () => {
         color: 'medium-sea'
       });
 
-      const { tx, parser } = await chatRoomModule.txDeleteMessage(message);
-      const success = parser(await walletStore.signAndExecuteTransaction(tx));
+      let success: string | undefined = undefined;
+
+      try {
+        const { tx, parser } = await chatRoomModule.txDeleteMessage(message);
+        success = parser(await walletStore.signAndExecuteTransaction(tx));
+      } catch {
+      }
 
       if (success) {
+        await db.refreshUserChatRoomMessages(activeChat.value!);
         notif({
           message: 'Mensagem apagada com sucesso',
           caption: '',
@@ -397,6 +457,8 @@ export const useChatStore = defineStore('chatStore', () => {
     insertGif,
     removeGif,
     insertEmoji,
+    insertImage,
+    removeImage,
     sendMessage,
     deleteMessage,
     clearNewMessage,
