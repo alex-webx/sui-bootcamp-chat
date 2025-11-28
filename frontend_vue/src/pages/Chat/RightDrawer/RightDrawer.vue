@@ -34,7 +34,15 @@ q-drawer.bg-grey-3.text-dark(
 
       q-item Membros ({{members.length}})
 
-      q-item(v-for="member in members" :key="member.owner")
+      q-item(
+        v-for="member in members" :key="member.owner"
+        :class=`isDM ? {} : {
+          'bg-member': true,
+          'bg-admin': activeChat.owner === member.owner,
+          'bg-moderator': !!activeChat.moderators[member.owner],
+          'bg-banned': !!activeChat.bannedUsers[member.owner]
+        }`
+      )
 
         q-item-section(avatar)
           q-avatar
@@ -52,12 +60,12 @@ q-drawer.bg-grey-3.text-dark(
             q-item-label(v-if="activeChat.owner === member.owner")
               q-chip(size="sm" color="green-7" dark) ADM
             q-item-label(v-else-if="!!activeChat.moderators[member.owner]")
-              q-chip(size="sm" color="blue" dark) MOD
+              q-chip(size="sm" color="sea" dark) MOD
             q-item-label(v-if="!!activeChat.bannedUsers[member.owner]")
               q-chip(size="sm" color="red" outline dark) BAN
 
-          q-item-section(side)
-            q-btn(v-if="member.owner === profile.owner" flat round dense readonly)
+          q-item-section(side v-if="canBanUnban || canManagerModerators")
+            q-btn(v-if="member.owner === profile.owner || member.owner === activeChat.owner" flat round dense readonly)
             q-btn(v-else icon="mdi-dots-vertical" flat round dense)
               q-menu(auto-close)
                 q-list.bg-ocean(dark)
@@ -203,4 +211,19 @@ watch(() => activeChat.value?.members, async (newMembers) => {
 </script>
 
 <style lang="scss" scoped>
+.bg-member {
+  background: rgba(white, 1);
+}
+.bg-admin {
+  background: rgba($green, 0.1);
+}
+.bg-moderator {
+  background: rgba($blue, 0.1);
+}
+.bg-banned {
+  background: white;
+  :deep(img) {
+    filter: grayscale(1);
+  }
+}
 </style>
