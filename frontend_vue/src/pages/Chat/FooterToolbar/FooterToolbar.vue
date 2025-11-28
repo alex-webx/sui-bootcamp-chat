@@ -100,11 +100,11 @@ transition(
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useChat } from '../useChat';
+import { useChatStore } from '../../../stores/chatStore';
 import { useUiStore } from '../../../stores';
 import { storeToRefs } from 'pinia';
 
-const chatService = useChat();
+const chatService = useChatStore();
 const { desktopMode } = storeToRefs(useUiStore());
 
 const { insertEmoji, insertGif, removeGif, clearNewMessage, canSendMessage } = chatService;

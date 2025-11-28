@@ -1,20 +1,22 @@
 import { ref, computed, nextTick } from 'vue';
 import { Dialog, Notify } from 'quasar';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import _ from 'lodash';
-import { useUserStore, useWalletStore, useChatListStore, useUiStore } from '../../stores';
-import CreateRoomDialog from './CreateRoomDialog.vue';
-import { type TenorResult }  from '../../components/TenorComponent.vue';
-import { type ChatRoom, chatRoomModule, EPermission, ERoomType, type MemberInfo, type Message, type UserProfile } from '../../move';
-import { DirectMessageService, PrivateGroupService, PublicChannelService } from '../../utils/encrypt';
-import { db } from '../../utils/dexie';
+import { useUserStore, useWalletStore,  useUiStore } from '.';
+import { type TenorResult }  from '../components/TenorComponent.vue';
+import { type ChatRoom, chatRoomModule, EPermission, ERoomType, type RoomKey, type Message, type UserProfile } from '../move';
+import { db, useLiveQuery } from '../utils/dexie';
+import * as encrypt from '../utils/encrypt';
 
-const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { profile: UserProfile } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
 
-export function useChat() {
+export const useChatStore = defineStore('chatStore', () => {
+
+  const newMessage = ref<Pick<Message, 'content' | 'mediaUrl' | 'replyTo' | 'id'> & { replyToMessage?: Message & { profile: UserProfile } }>({ id: '', content: '', mediaUrl: [], replyTo: '' });
+  const activeChatId = ref('');
+  const activeChat = useLiveQuery(() => db.room.get(activeChatId.value!), [activeChatId]);
 
   const walletStore = useWalletStore();
   const userStore = useUserStore();
-  const chatListStore = useChatListStore();
   const uiStore = useUiStore();
 
   const insertGif = async (gif: TenorResult) => {
@@ -32,7 +34,6 @@ export function useChat() {
 
   const sendMessage = async () => {
     const profile = userStore.profile;
-    const activeChat = chatListStore.activeChat;
 
     if (profile && activeChat) {
 
@@ -43,21 +44,21 @@ export function useChat() {
         return;
       }
 
-      let encryptMessage: (plaintext: string) => Promise<{ iv: string, ciphertext: string }>;
+      let encryptMessage!: (plaintext: string) => Promise<{ iv: string, ciphertext: string }>;
 
-      switch(activeChat.roomType) {
+      switch(activeChat.value?.roomType) {
         case ERoomType.DirectMessage: {
           const privKey = await userStore.ensurePrivateKey();
-          const dmUserAddress = _.findKey(activeChat?.members, (v, k) => k !== profile.owner);
+          const dmUserAddress = _.findKey(activeChat.value?.members, (v, k) => k !== profile.owner);
           const dmUser = await db.profile.get(dmUserAddress!);
-          const svc = new DirectMessageService(privKey!, dmUser?.keyPub!);
+          const svc = new encrypt.DirectMessageService(privKey!, dmUser?.keyPub!);
           encryptMessage = svc.encryptMessage.bind(svc);
           break;
         }
         case ERoomType.PrivateGroup: {
           const privKey = await userStore.ensurePrivateKey();
-          const memberInfo = await db.memberInfo.get(activeChat.id);
-          const svc = new PrivateGroupService({
+          const memberInfo = await db.memberInfo.get(activeChat.value.id);
+          const svc = new encrypt.PrivateGroupService({
             encodedAesKey: memberInfo?.roomKey?.encodedPrivKey!,
             inviterPublicKey: memberInfo?.roomKey?.pubKey!,
             iv: memberInfo?.roomKey?.iv!
@@ -66,7 +67,7 @@ export function useChat() {
           break;
         }
         case ERoomType.PublicGroup: {
-          const svc = new PublicChannelService(activeChat.owner!);
+          const svc = new encrypt.PublicChannelService(activeChat.value.owner!);
           encryptMessage = svc.encryptMessage.bind(svc);
           break;
         }
@@ -82,11 +83,11 @@ export function useChat() {
       }
 
       if (isEdit) {
-        const { tx, parser } = await chatRoomModule.txEditMessage({ id: newMessage.value.id, roomId: chatListStore.activeChatId! }, { content, mediaUrl });
+        const { tx, parser } = await chatRoomModule.txEditMessage({ id: newMessage.value.id, roomId: activeChatId.value! }, { content, mediaUrl });
         const messageId = parser(await walletStore.signAndExecuteTransaction(tx));
       } else {
         const { tx, parser } = chatRoomModule.txSendMessage(profile.id, {
-          roomId: chatListStore.activeChat!.id,
+          roomId: activeChatId.value!,
           content: content!,
           replyTo: replyTo!,
           mediaUrl: mediaUrl || []
@@ -95,12 +96,12 @@ export function useChat() {
       }
 
       clearNewMessage();
-      if ((profile.roomsJoined || []).indexOf(chatListStore.activeChatId) < 0) {
+      if ((profile.roomsJoined || []).indexOf(activeChatId.value) < 0) {
         await userStore.fetchCurrentUserProfile();
       }
 
-      await db.refreshUserChatRoomMessages(chatListStore.activeChat!);
-      await db.refreshUserRooms([chatListStore.activeChatId]);
+      await db.refreshUserChatRoomMessages(activeChat.value!);
+      await db.refreshUserRooms([activeChatId.value]);
 
       if (!isEdit) {
         uiStore.scrollTo('bottom');
@@ -115,13 +116,13 @@ export function useChat() {
 
     nextTick(() => {
       if (uiStore.desktopMode) {
-        if (chatListStore.activeChatId === chatRoom.id) {
-          chatListStore.activeChatId = '';
+        if (activeChatId.value === chatRoom.id) {
+          activeChatId.value = '';
         } else {
-          chatListStore.activeChatId = chatRoom.id;
+          activeChatId.value = chatRoom.id;
         }
       } else {
-        chatListStore.activeChatId = chatRoom.id;
+        activeChatId.value = chatRoom.id;
         uiStore.leftDrawerOpen = false;
       }
     });
@@ -152,9 +153,14 @@ export function useChat() {
           color: 'primary'
         }
       }).onOk(async () => {
-        const chatRoomId = await chatListStore.createDmRoom({
-          inviteeUserProfile: user
+
+        const { tx, parser } = chatRoomModule.txCreateDmRoom({
+          userProfile: userStore.profile!,
+          inviteeAddress: user.owner
         });
+
+        const chatRoomId = parser(await walletStore.signAndExecuteTransaction(tx));
+
         if (chatRoomId) {
           Notify.create({
             message: 'Sala criada com sucesso!',
@@ -168,7 +174,15 @@ export function useChat() {
     }
   };
 
-  const createChatRoom = async (newChatRoom: Parameters<typeof chatListStore.createChatRoom>[0]) => {
+  const createChatRoom = async (newChatRoom: {
+    name: string,
+    imageUrl: string,
+    maxMembers: number,
+    isRestricted: boolean,
+    isAnnouncements: boolean,
+    inviteLevel: 'administrator' | 'moderators' | 'all'
+  }) => {
+
     const notif = Notify.create({
       message: 'Criando sala de chat...',
       caption: 'Por favor, assine a transação em sua carteira.',
@@ -184,7 +198,44 @@ export function useChat() {
           newChatRoom.inviteLevel = 'all';
         }
 
-        const chatRoomId = await chatListStore.createChatRoom(newChatRoom);
+        const profile = userStore.profile!;
+
+        const inviteObj = await encrypt.PrivateGroupService.generateInvitationKey(
+          await encrypt.PrivateGroupService.generateRoomKeyMaterial(),
+          profile.keyPrivDecoded!,
+          profile.keyPub,
+          profile.keyPub
+        );
+
+        const roomKey: RoomKey = {
+          encodedPrivKey: inviteObj.encodedAesKey,
+          iv: inviteObj.iv,
+          pubKey: inviteObj.inviterPublicKey
+        };
+
+        const permissionInvite = EPermission.Admin |
+          (newChatRoom.inviteLevel === 'moderators' ? EPermission.Moderators : 0) |
+          (newChatRoom.inviteLevel === 'all' ? (EPermission.Moderators | EPermission.Members | EPermission.Anyone) : 0);
+
+        const permissionSendMessage = EPermission.Admin |
+          (newChatRoom.isAnnouncements ? EPermission.Moderators : (EPermission.Moderators | EPermission.Members | EPermission.Anyone));
+
+        const roomType = newChatRoom.isRestricted ? ERoomType.PrivateGroup : ERoomType.PublicGroup;
+
+        const { tx, parser } = chatRoomModule.txCreateRoom({
+          userProfile: profile,
+          room: {
+            name: newChatRoom.name,
+            imageUrl: newChatRoom.imageUrl,
+            maxMembers: newChatRoom.maxMembers,
+            permissionInvite,
+            permissionSendMessage,
+            roomType
+          },
+          roomKey
+        });
+
+        const chatRoomId = parser(await walletStore.signAndExecuteTransaction(tx));
 
         if (chatRoomId) {
           await userStore.fetchCurrentUserProfile();
@@ -275,29 +326,39 @@ export function useChat() {
     });
   };
 
+  const inviteMember = async (args: {
+    room: Pick<ChatRoom, 'id'>,
+    inviteeAddress: string,
+    roomKey?: RoomKey | undefined
+  }) => {
+    const tx = chatRoomModule.txInviteMember(userStore.profile!, args.room, args.inviteeAddress, args.roomKey);
+    return await walletStore.signAndExecuteTransaction(tx);
+  };
 
   const checkPermission = (permissionValue: EPermission) => {
     const profileOwner = userStore.profile?.owner;
-    const room = chatListStore.activeChat;
 
     if (permissionValue! === EPermission.Nobody) { return false; }
     if ((permissionValue! & EPermission.Anyone) === EPermission.Anyone) { return true; }
-    if ((permissionValue! & EPermission.Admin) === EPermission.Admin && profileOwner === room?.owner) { return true; }
-    if ((permissionValue! & EPermission.Moderators) === EPermission.Moderators && !!room?.moderators?.[profileOwner!]) { return true; }
-    if ((permissionValue! & EPermission.Members) === EPermission.Members && !!room?.members?.[profileOwner!]) { return true; }
+    if ((permissionValue! & EPermission.Admin) === EPermission.Admin && profileOwner === activeChat.value?.owner) { return true; }
+    if ((permissionValue! & EPermission.Moderators) === EPermission.Moderators && !!activeChat.value?.moderators?.[profileOwner!]) { return true; }
+    if ((permissionValue! & EPermission.Members) === EPermission.Members && !!activeChat.value?.members?.[profileOwner!]) { return true; }
     return false;
   };
 
   const joinRoom = async(room: Pick<ChatRoom, 'id'>) => {
-    await chatListStore.joinRoom({ room: room! });
+    const tx = await chatRoomModule.txJoinRoom({ room, profile: userStore.profile! });
+    await walletStore.signAndExecuteTransaction(tx);
     await userStore.fetchCurrentUserProfile();
   };
 
-  const canInvite = computed(() => checkPermission(chatListStore.activeChat?.permissionInvite || EPermission.Nobody));
-  const canSendMessage = computed(() => checkPermission(chatListStore.activeChat?.permissionSendMessage || EPermission.Nobody));
+  const canInvite = computed(() => checkPermission(activeChat.value?.permissionInvite || EPermission.Nobody));
+  const canSendMessage = computed(() => checkPermission(activeChat.value?.permissionSendMessage || EPermission.Nobody));
 
   return {
     newMessage,
+    activeChat,
+    activeChatId,
 
     createChatRoom,
     selectChatRoom,
@@ -309,9 +370,22 @@ export function useChat() {
     sendMessage,
     deleteMessage,
     clearNewMessage,
+
+    inviteMember,
     joinRoom,
 
     canInvite,
-    canSendMessage
+    canSendMessage,
+
+    resetState: async () => {
+      newMessage.value = { content: '', id: '', mediaUrl: [], replyTo: '' };
+      activeChatId.value = '';
+    }
   };
-};
+
+});
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useChatStore, import.meta.hot));
+}
+

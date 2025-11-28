@@ -75,7 +75,7 @@ import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useWalletStore, useUserStore, useUiStore } from '../../../stores';
 import { useProfile } from '../useProfile';
-import { useChat } from '../useChat';
+import { useChatStore } from '../../../stores/chatStore';
 import { getFaucet, getNetwork } from '../../../move';
 
 import ExploreList from './ExploreList.vue';

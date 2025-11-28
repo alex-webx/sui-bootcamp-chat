@@ -34,12 +34,12 @@ q-header(elevated dark)
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import _ from 'lodash';
-import { useChatListStore, useUiStore, useUserStore } from '../../../stores';
+import { useChatStore, useUiStore, useUserStore } from '../../../stores';
 import { db, useLiveQuery } from '../../../utils/dexie';
 import { ERoomType } from '../../../move';
 
 const userStore = useUserStore();
-const chatListStore = useChatListStore();
+const chatStore = useChatStore();
 const uiStore = useUiStore();
 
 const { desktopMode, leftDrawerOpen, rightDrawerOpen } = storeToRefs(uiStore);
@@ -47,7 +47,7 @@ const { desktopMode, leftDrawerOpen, rightDrawerOpen } = storeToRefs(uiStore);
 const toggleLeftDrawer = () => { leftDrawerOpen.value = !leftDrawerOpen.value; };
 const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
 
-const { activeChat } = storeToRefs(chatListStore);
+const { activeChat } = storeToRefs(chatStore);
 
 const isDM = computed(() => activeChat.value?.roomType === ERoomType.DirectMessage);
 const dmUserAddress = computed(() => isDM.value ? _.findKey(activeChat.value?.members, (v, k) => k !== userStore.profile?.owner) : null);

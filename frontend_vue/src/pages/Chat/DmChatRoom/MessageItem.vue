@@ -84,7 +84,7 @@ div
 import { computed, watchEffect, ref, toRefs, type PropType } from 'vue';
 import _ from 'lodash';
 import { openURL, QMenu } from 'quasar';
-import { useChat } from '../useChat';
+import { useChatStore } from '../../../stores/chatStore';
 import { formatFullDate, stamp } from '../../../utils/formatters';
 import { type Message, type UserProfile, getNetwork } from '../../../move';
 import { db, useLiveQuery } from '../../../utils/dexie';
@@ -115,7 +115,7 @@ const props = defineProps({
 });
 
 const { message, user, sent, isFirst, isLast } = toRefs(props);
-const chatService = useChat();
+const chatService = useChatStore();
 const isSelected = ref(false);
 const bgColor = computed(() => sent.value ? 'primary' : 'white');
 const textColor = computed(() => sent.value ? 'white' : 'dark');

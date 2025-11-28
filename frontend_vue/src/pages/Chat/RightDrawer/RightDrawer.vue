@@ -51,12 +51,12 @@ import { storeToRefs } from 'pinia';
 import _ from 'lodash';
 import { openURL } from 'quasar';
 import formatters from '../../../utils/formatters';
-import { useChatListStore, useUiStore, useUserStore } from '../../../stores';
+import { useChatStore, useUiStore, useUserStore } from '../../../stores';
 import { EPermission, ERoomType, type UserProfile } from '../../../move';
 import { db, useLiveQuery } from '../../../utils/dexie';
 import { computed, ref, watch } from 'vue';
 
-const chatListStore = useChatListStore();
+const chatStore = useChatStore();
 const uiStore = useUiStore();
 const userStore = useUserStore();
 
@@ -65,7 +65,7 @@ const { breakpoint, drawerWidth, rightDrawerOpen } = storeToRefs(uiStore);
 
 const toggleRighttDrawer = () => { rightDrawerOpen.value = !rightDrawerOpen.value; };
 
-const { activeChat } = storeToRefs(chatListStore);
+const { activeChat } = storeToRefs(chatStore);
 const isDM = computed(() => activeChat.value?.roomType === ERoomType.DirectMessage);
 const dmUserAddress = computed(() => isDM.value ? _.findKey(activeChat.value?.members, (v, k) => k !== userStore.profile?.owner) : null);
 const dmUser = useLiveQuery(() => dmUserAddress.value ? db.profile.get(dmUserAddress.value) : null, [ dmUserAddress ]);

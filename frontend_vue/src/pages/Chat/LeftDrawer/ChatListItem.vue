@@ -41,7 +41,7 @@ import { formatDate, formatTime } from '../../../utils/formatters';
 import { type ChatRoom, type MemberInfo, ERoomType } from '../../../move';
 import { db, useLiveQuery } from '../../../utils/dexie';
 import * as encrypt from '../../../utils/encrypt';
-import { useChatListStore } from '../../../stores';
+import { useChatStore } from '../../../stores';
 import { storeToRefs } from 'pinia';
 
 const props = defineProps({
@@ -54,7 +54,7 @@ const props = defineProps({
 const { room } = props;
 
 const userStore = useUserStore();
-const chatStore = useChatListStore();
+const chatStore = useChatStore();
 
 const { activeChatId } = storeToRefs(chatStore);
 

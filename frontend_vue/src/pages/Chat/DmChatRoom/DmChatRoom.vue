@@ -90,18 +90,16 @@ div(ref="bottomChatElement")
 import { computed, watch  } from 'vue';
 import { storeToRefs } from 'pinia';
 import _ from 'lodash';
-import { useUserStore, useChatListStore, useUiStore } from '../../../stores';
+import { useUserStore, useChatStore, useUiStore } from '../../../stores';
 import { db, useLiveQuery } from '../../../utils/dexie';
 import { DirectMessageService } from '../../../utils/encrypt';
 import { type Message, EMessageType } from '../../../move';
 import MessageItem from './MessageItem.vue';
-import { useChat } from '../useChat';
 
 const userStore = useUserStore();
-const chatListStore = useChatListStore();
-const chatService = useChat();
+const chatStore = useChatStore();
 const uiStore = useUiStore();
-const { activeChat: room } = storeToRefs(chatListStore);
+const { activeChat: room } = storeToRefs(chatStore);
 const { bottomChatElement } = storeToRefs(uiStore);
 
 const profile = computed(() => userStore.profile);
@@ -114,7 +112,7 @@ const dmUserJoined = computed(() => (dmUser.value?.roomsJoined || []).indexOf(ro
 const messages = useLiveQuery(() => db.message.where('roomId').equals(room.value!.id).filter(m => m.eventType === EMessageType.New).sortBy('messageNumber'));
 
 const joinRoom = async() => {
-  await chatService.joinRoom(room.value!);
+  await chatStore.joinRoom(room.value!);
 };
 
 watch(messages, async (msgs) => {

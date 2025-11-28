@@ -188,7 +188,7 @@ q-dialog(ref="dialogRef" @hide="onDialogHide" persistent)
 <script setup lang="ts">
 import { ref } from 'vue';
 import { QForm, useDialogPluginComponent } from 'quasar';
-import { useChat } from './useChat';
+import { useChatStore } from '../../stores/chatStore';
 
 const step = ref(1);
 
@@ -196,7 +196,7 @@ const emits = defineEmits({
   ...useDialogPluginComponent.emitsObject
 });
 
-const chatService = useChat();
+const chatService = useChatStore();
 const formStep1 = ref<InstanceType<typeof QForm>>();
 const busy = ref(false);
 

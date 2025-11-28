@@ -29,20 +29,14 @@ q-list.text-dark
 
 </template>
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import _ from 'lodash';
 import { storeToRefs } from 'pinia';
-import { useUserStore, useChatListStore } from '../../../stores';
-import { useChat } from '../useChat';
+import { useUserStore } from '../../../stores';
 import ChatListItem from './ChatListItem.vue';
-import { type ChatRoom, ERoomType } from '../../../move';
 import { db, useLiveQuery } from '../../../utils/dexie';
 
 const userStore = useUserStore();
-// const chatService = useChat();
-// const chatListStore = useChatListStore();
-
-// const { chats, activeChatId } = storeToRefs(chatListStore);
 
 const { profile } = storeToRefs(userStore);
 
@@ -51,7 +45,7 @@ const loading = ref(false);
 
 const refreshChatList = async () => {
   // await userStore.fetchCurrentUserProfile();
-  // await chatListStore.refreshRooms();
+  // await refreshRooms();
 }
 
 </script>

@@ -1,15 +1,15 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { useUiStore, useUserStore, useWalletStore, useChatListStore } from './';
+import { useUiStore, useUserStore, useWalletStore, useChatStore } from './';
 import { userProfileModule, chatRoomModule } from '../move';
 
 export const useAppStore = defineStore('appStore', () => {
-  const chatListStore = useChatListStore();
+  const chatStore = useChatStore();
   const uiStore = useUiStore();
   const userStore = useUserStore();
   const walletStore = useWalletStore();
 
   const resetState = async () => {
-    await chatListStore.resetState();
+    await chatStore.resetState();
     await uiStore.resetState();
     await userStore.resetState();
     await walletStore.resetState();
