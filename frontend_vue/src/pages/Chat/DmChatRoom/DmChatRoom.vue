@@ -94,6 +94,7 @@ import { useUserStore, useChatStore, useUiStore } from '../../../stores';
 import { db, useLiveQuery } from '../../../utils/dexie';
 import { DirectMessageService } from '../../../utils/encrypt';
 import { type Message, EMessageType } from '../../../move';
+import * as walrus from '../../../utils/walrus';
 import MessageItem from './MessageItem.vue';
 
 const userStore = useUserStore();
@@ -130,12 +131,23 @@ const decryptMessage = async (message: Message) => {
     const obj = JSON.parse(content) as [ iv: string, ciphertext: string ];
     content = await decryptService.value.decryptMessage({ iv: obj[0], ciphertext: obj[1] });
   } catch {}
-  mediaUrl = await Promise.all((mediaUrl || []).map(async url => {
+
+  mediaUrl = await Promise.all((mediaUrl || []).map(async encUrl => {
     try {
-      const content = JSON.parse(url) as [iv: string, ciphertext: string];
-      return await decryptService.value.decryptMessage({ iv: content[0], ciphertext: content[1] });
-    } catch {
+      const content = JSON.parse(encUrl) as [iv: string, ciphertext: string];
+      let url = await decryptService.value.decryptMessage({ iv: content[0], ciphertext: content[1] });
+
+      if (url.startsWith('walrus://')) {
+        url = url.replace('walrus://', '');
+        const encryptedContent = await fetch(url).then(res => res.arrayBuffer());
+        const encryptedContentData = JSON.parse(new TextDecoder().decode(encryptedContent)) as { iv: string, ciphertext: string };
+        const decrypted = await decryptService.value!.decryptMessage(encryptedContentData);
+        url = URL.createObjectURL(await walrus.base64ToBlob(decrypted));
+      }
+
       return url;
+    } catch {
+      return encUrl;
     }
   }));
   return { content, mediaUrl };

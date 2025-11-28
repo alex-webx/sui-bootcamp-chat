@@ -68,13 +68,20 @@ div
         .text-italic {{replyingToDecrypted.content}}
         .text-italic(v-if="replyingTo.deletedAt") mensagem removida
 
-      video.fit(
-        v-if="mediaUrl.length"
-        :key="mediaUrl[0]"
-        autoplay loop muted playisline
-        style="max-width: 250px"
-      )
-        source(:src="mediaUrl[0]")
+      template(v-if="mediaUrl.length")
+        img(
+          v-if="mediaUrl[0].startsWith('blob:')"
+          :src="mediaUrl[0]"
+          style="max-width: 250px"
+        )
+        video.fit(
+          v-else
+          :key="mediaUrl[0]"
+          autoplay loop muted playisline
+          style="max-width: 250px"
+        )
+          source(:src="mediaUrl[0]")
+
 
       .q-px-sm(v-for="(line, iLine) in content.split('\\n')" :key="'line_' + iLine" :class="sent ? 'text-right' : 'text-left'")
         | {{ line }}

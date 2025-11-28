@@ -72,13 +72,19 @@ div
         .text-italic {{replyingToDecrypted.content}}
         .text-italic(v-if="replyingTo.deletedAt") mensagem removida
 
-      video.fit(
-        v-if="mediaUrl.length"
-        :key="mediaUrl[0]"
-        autoplay loop muted playisline
-        style="max-width: 250px"
-      )
-        source(:src="mediaUrl[0]")
+      template(v-if="mediaUrl.length")
+        img(
+          v-if="mediaUrl[0].startsWith('blob:')"
+          :src="mediaUrl[0]"
+          style="max-width: 250px"
+        )
+        video.fit(
+          v-else
+          :key="mediaUrl[0]"
+          autoplay loop muted playisline
+          style="max-width: 250px"
+        )
+          source(:src="mediaUrl[0]")
 
       .q-px-sm(v-for="(line, iLine) in content.split('\\n')" :key="'line_' + iLine" :class="sent ? 'text-right' : 'text-left'")
         | {{ line }}
@@ -139,14 +145,14 @@ const replyingToDecrypted = ref<Pick<Message, 'content' | 'mediaUrl'> & { profil
 
 
 watchEffect(async () => {
-  const decrypted = await props.decryptMessage(overwrites.value || message.value);
+  const decrypted = await props.decryptMessage(overwrites.value || message.value) as Pick<Message, 'content' | 'mediaUrl'>;
   content.value = decrypted.content;
   mediaUrl.value = decrypted.mediaUrl;
 });
 
 watchEffect(async () => {
   if (replyingTo.value) {
-    const decrypted = await props.decryptMessage(replyingTo.value);
+    const decrypted = await props.decryptMessage(replyingTo.value!);
     replyingToDecrypted.value = {
       content: decrypted.content,
       mediaUrl: decrypted.mediaUrl,

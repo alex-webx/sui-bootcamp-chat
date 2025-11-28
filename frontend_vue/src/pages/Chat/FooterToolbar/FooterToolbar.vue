@@ -27,11 +27,18 @@ transition(
               .text-weight-bold {{ newMessage.replyToMessage.profile?.username }}
 
           .row
-            .col
+            .col(v-if="newMessage.replyToMessage.content")
               .text-italic {{newMessage.replyToMessage.content}}
             .col-auto(v-if="newMessage.replyToMessage.mediaUrl.length")
+
+              img(
+                v-if="newMessage.replyToMessage.mediaUrl[0].startsWith('blob:')"
+                :src="newMessage.replyToMessage.mediaUrl[0]"
+                style="max-width: 250px"
+              )
+
               video(
-                v-if="newMessage.replyToMessage.mediaUrl.length"
+                v-else
                 :key="newMessage.replyToMessage.mediaUrl[0]"
                 autoplay loop muted playisline
                 style="max-height: 100px" :ratio="1"
@@ -43,7 +50,16 @@ transition(
 
 
       q-toolbar.justify-center.text-white.q-pt-md(v-if="newMessage.mediaUrl?.length")
-        .text-white(style="max-width: 30%")
+
+        .text-white(style="max-width: 30%" v-if="newMessage.mediaUrl[0].startsWith('blob:')")
+          .flex.row
+            .col
+              img.fit(style="max-height: 50vh" :src="newMessage.mediaUrl[0]")
+
+            .col-auto
+              q-btn(icon="close" flat dense round @click="removeImage()")
+
+        .text-white(style="max-width: 30%" v-else)
           .flex.row
             .col
               video.fit(autoplay loop muted playisline style="max-height: 50vh")
@@ -52,14 +68,17 @@ transition(
               q-btn(icon="close" flat dense round @click="removeGif()")
 
       q-toolbar.text-white.row.q-py-xs
-        q-btn(icon="mdi-file-gif-box" flat round :disabled="sendingBusy")
+
+        q-btn(icon="mdi-file-gif-box" dense flat round :disabled="sendingBusy")
           q-menu(ref="tenorMenu")
             q-card.bg-white(style="width: 300px; max-height: 400px")
               TenorComponent(@select="ev => { $refs.tenorMenu.hide(); insertGif(ev) }")
 
-        q-btn(icon="mdi-emoticon-happy-outline" flat round :disabled="sendingBusy")
+        q-btn(icon="mdi-emoticon-happy-outline" dense flat round :disabled="sendingBusy")
           q-menu
             EmojiPicker(:native="true" @select="insertEmoji" theme="light")
+
+        q-btn(icon="mdi-image" dense flat round :disabled="sendingBusy" @click="insertImage()")
 
         q-input.q-ml-sm(
           v-if="!newMessage.id"
@@ -107,7 +126,7 @@ import { storeToRefs } from 'pinia';
 const chatStore = useChatStore();
 const { desktopMode } = storeToRefs(useUiStore());
 
-const { insertEmoji, insertGif, removeGif, clearNewMessage, canSendMessage } = chatStore;
+const { insertEmoji, insertGif, removeGif, clearNewMessage, insertImage, removeImage, canSendMessage } = chatStore;
 const { newMessage } = storeToRefs(chatStore);
 
 const sendingBusy = ref(false);
