@@ -1,5 +1,5 @@
 import type { Config, Context } from '@netlify/edge-functions';
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+// import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 // import { walrus } from '@mysten/walrus';
 
 export const config: Config = { path: '/hello' };
