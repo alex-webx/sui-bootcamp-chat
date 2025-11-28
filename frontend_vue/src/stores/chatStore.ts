@@ -96,6 +96,7 @@ export const useChatStore = defineStore('chatStore', () => {
       }
 
       clearNewMessage();
+
       if ((profile.roomsJoined || []).indexOf(activeChatId.value) < 0) {
         await userStore.fetchCurrentUserProfile();
       }
@@ -109,7 +110,14 @@ export const useChatStore = defineStore('chatStore', () => {
     }
   }
 
-  const clearNewMessage = () => { newMessage.value = { id: '', content: '', mediaUrl: [], replyTo: '' }; };
+  const clearNewMessage = () => {
+    newMessage.value = {
+      id: '',
+      content: '',
+      mediaUrl: [],
+      replyTo: ''
+    };
+  };
 
   const selectChatRoom = (chatRoom: Pick<ChatRoom, 'id'>) => {
     clearNewMessage();
@@ -335,6 +343,32 @@ export const useChatStore = defineStore('chatStore', () => {
     return await walletStore.signAndExecuteTransaction(tx);
   };
 
+  const joinRoom = async(room: Pick<ChatRoom, 'id'>) => {
+    const tx = await chatRoomModule.txJoinRoom({ room, profile: userStore.profile! });
+    await walletStore.signAndExecuteTransaction(tx);
+    await userStore.fetchCurrentUserProfile();
+  };
+
+  const banUnbanUser = async (user: Pick<UserProfile, 'owner'>, action: 'ban' | 'unban') => {
+    const tx = action === 'ban' ?
+      await chatRoomModule.txBanUser(activeChat.value!, user.owner) :
+      await chatRoomModule.txUnbanUser(activeChat.value!, user.owner);
+
+    await walletStore.signAndExecuteTransaction(tx);
+
+    await db.refreshUserRooms([ activeChat.value?.id! ]);
+  }
+
+  const addRemoveModerator = async (user: Pick<UserProfile, 'owner'>, action: 'add' | 'remove') => {
+    const tx = action === 'add' ?
+      await chatRoomModule.txAddModerator(activeChat.value!, user.owner) :
+      await chatRoomModule.txRemoveModerator(activeChat.value!, user.owner);
+
+    await walletStore.signAndExecuteTransaction(tx);
+
+    await db.refreshUserRooms([ activeChat.value?.id! ]);
+  }
+
   const checkPermission = (permissionValue: EPermission) => {
     const profileOwner = userStore.profile?.owner;
 
@@ -346,14 +380,10 @@ export const useChatStore = defineStore('chatStore', () => {
     return false;
   };
 
-  const joinRoom = async(room: Pick<ChatRoom, 'id'>) => {
-    const tx = await chatRoomModule.txJoinRoom({ room, profile: userStore.profile! });
-    await walletStore.signAndExecuteTransaction(tx);
-    await userStore.fetchCurrentUserProfile();
-  };
-
   const canInvite = computed(() => checkPermission(activeChat.value?.permissionInvite || EPermission.Nobody));
   const canSendMessage = computed(() => checkPermission(activeChat.value?.permissionSendMessage || EPermission.Nobody));
+  const canBanUnban = computed(() => activeChat.value?.owner === userStore.profile?.owner || !!activeChat.value?.moderators?.[userStore.profile?.owner!]);
+  const canManagerModerators = computed(() => activeChat.value?.owner === userStore.profile?.owner);
 
   return {
     newMessage,
@@ -373,9 +403,13 @@ export const useChatStore = defineStore('chatStore', () => {
 
     inviteMember,
     joinRoom,
+    banUnbanUser,
+    addRemoveModerator,
 
     canInvite,
     canSendMessage,
+    canBanUnban,
+    canManagerModerators,
 
     resetState: async () => {
       newMessage.value = { content: '', id: '', mediaUrl: [], replyTo: '' };

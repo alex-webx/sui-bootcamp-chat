@@ -104,17 +104,17 @@ import { useChatStore } from '../../../stores/chatStore';
 import { useUiStore } from '../../../stores';
 import { storeToRefs } from 'pinia';
 
-const chatService = useChatStore();
+const chatStore = useChatStore();
 const { desktopMode } = storeToRefs(useUiStore());
 
-const { insertEmoji, insertGif, removeGif, clearNewMessage, canSendMessage } = chatService;
-const { newMessage } = chatService;
+const { insertEmoji, insertGif, removeGif, clearNewMessage, canSendMessage } = chatStore;
+const { newMessage } = storeToRefs(chatStore);
 
 const sendingBusy = ref(false);
 const sendMessage = async () => {
   sendingBusy.value = true;
   try {
-    await chatService.sendMessage();
+    await chatStore.sendMessage();
   } finally {
     sendingBusy.value = false;
   }

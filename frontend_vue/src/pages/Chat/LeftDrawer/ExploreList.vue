@@ -97,7 +97,6 @@ import { db, useLiveQuery } from '../../../utils/dexie';
 const userStore = useUserStore();
 const chatStore = useChatStore();
 
-const { selectChatRoom } = chatStore;
 const { profile } = storeToRefs(userStore);
 
 const searchText = ref('');

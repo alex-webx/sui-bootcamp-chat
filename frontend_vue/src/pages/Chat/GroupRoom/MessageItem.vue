@@ -123,7 +123,7 @@ const props = defineProps({
 });
 
 const { message, user, sent, isFirst, isLast, roomType } = toRefs(props);
-const chatService = useChatStore();
+const chatStore = useChatStore();
 const isSelected = ref(false);
 const bgColor = computed(() => sent.value ? 'primary' : 'white');
 const textColor = computed(() => sent.value ? 'white' : 'dark');
@@ -167,7 +167,7 @@ const exploreObject = () => {
 
 const deleteMessage = async () => {
   try {
-    await chatService.deleteMessage(message.value);
+    await chatStore.deleteMessage(message.value);
   } finally {
     isSelected.value = false;
   }
@@ -175,7 +175,7 @@ const deleteMessage = async () => {
 
 const startEditMessage = async () => {
   isSelected.value = false;
-  chatService.newMessage.value = {
+  chatStore.newMessage = {
     id: message.value.id,
     content: content.value || '',
     mediaUrl: mediaUrl.value || [],
@@ -185,7 +185,7 @@ const startEditMessage = async () => {
 
 const replyMessage = async () => {
   isSelected.value = false;
-  chatService.newMessage.value = {
+  chatStore.newMessage = {
     id: '',
     content: '',
     mediaUrl: [],
