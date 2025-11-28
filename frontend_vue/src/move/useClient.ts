@@ -14,7 +14,7 @@ export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']
 export const getNetwork = () => (localStorage.getItem('SUI_NETWORK') || 'devnet') as Network;
 export const setNetwork = (network: Network) => localStorage.setItem('SUI_NETWORK', network);
 
-export const client = new SuiClient({ url: getFullnodeUrl(getNetwork()) }).$extend(walrus({ network: 'testnet' }));
+export const client = new SuiClient({ url: getFullnodeUrl(getNetwork()) }); //.$extend(walrus({ network: 'testnet' }));
 
 const getObjectType = (
     structName: 'user_profile::UserProfile' | 'user_profile::UserProfileRegistry' | 'chat_room::ChatRoom' | 'chat_room::ChatRoomRegistry' | 'chat_room::Message'
