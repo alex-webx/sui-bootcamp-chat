@@ -27,11 +27,18 @@ transition(
               .text-weight-bold {{ newMessage.replyToMessage.profile?.username }}
 
           .row
-            .col
+            .col(v-if="newMessage.replyToMessage.content")
               .text-italic {{newMessage.replyToMessage.content}}
             .col-auto(v-if="newMessage.replyToMessage.mediaUrl.length")
+
+              img(
+                v-if="newMessage.replyToMessage.mediaUrl[0].startsWith('blob:')"
+                :src="newMessage.replyToMessage.mediaUrl[0]"
+                style="max-width: 250px"
+              )
+
               video(
-                v-if="newMessage.replyToMessage.mediaUrl.length"
+                v-else
                 :key="newMessage.replyToMessage.mediaUrl[0]"
                 autoplay loop muted playisline
                 style="max-height: 100px" :ratio="1"
