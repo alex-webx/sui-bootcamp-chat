@@ -336,6 +336,18 @@
     "@mysten/walrus-wasm" "0.1.1"
     dataloader "^2.2.3"
 
+"@netlify/functions@^5.1.0":
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/@netlify/functions/-/functions-5.1.0.tgz#c11159b4eae3b91854bf96359717f4d708c1e320"
+  integrity sha512-LZtiQtf/QzPHIeNDZuIBxx04kmU7lCipWqZ26ejX7mYSB3yj2wvpZfF49kD8B8FoKTydSvgFmBpIcCO5FvpEXA==
+  dependencies:
+    "@netlify/types" "2.2.0"
+
+"@netlify/types@2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@netlify/types/-/types-2.2.0.tgz#ea9ee1001c944fe9543161cccd8876e85d2a4c06"
+  integrity sha512-XOWlZ2wPpdRKkAOcQbjIf/Qz7L4RjcSVINVNQ9p3F6U8V6KSEOsB3fPrc6Ly8EOeJioHUepRPuzHzJE/7V5EsA==
+
 "@noble/curves@=1.9.4":
   version "1.9.4"
   resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.9.4.tgz#a748c6837ee7854a558cc3b951aedd87a5e7d6a5"
