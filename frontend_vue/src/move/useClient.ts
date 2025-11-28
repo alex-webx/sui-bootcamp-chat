@@ -1,10 +1,7 @@
 import _ from 'lodash';
 import { DynamicFieldInfo, SuiClient, SuiObjectChange, SuiObjectResponse, SuiTransactionBlockResponse, getFullnodeUrl } from '@mysten/sui/client';
+import { walrus, WalrusFile } from '@mysten/walrus';
 import { type Network, useConfig } from '../../configs';
-
-export const getNetwork = () => (localStorage.getItem('SUI_NETWORK') || 'devnet') as Network;
-export const setNetwork = (network: Network) => localStorage.setItem('SUI_NETWORK', network);
-export const client = new SuiClient({ url: getFullnodeUrl(getNetwork()) });
 
 export type SuiObjectChangeCreated = Extract<SuiObjectChange, { type: 'created' }>;
 export type SuiObjectChangePublished = Extract<SuiObjectChange, { type: 'published' }>;
@@ -14,6 +11,10 @@ export type SuiObjectChangeDeleted = Extract<SuiObjectChange, { type: 'deleted' 
 export type SuiObjectChangeWrapped = Extract<SuiObjectChange, { type: 'wrapped' }>;
 
 export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
+export const getNetwork = () => (localStorage.getItem('SUI_NETWORK') || 'devnet') as Network;
+export const setNetwork = (network: Network) => localStorage.setItem('SUI_NETWORK', network);
+
+export const client = new SuiClient({ url: getFullnodeUrl(getNetwork()) }).$extend(walrus());
 
 const getObjectType = (
     structName: 'user_profile::UserProfile' | 'user_profile::UserProfileRegistry' | 'chat_room::ChatRoom' | 'chat_room::ChatRoomRegistry' | 'chat_room::Message'

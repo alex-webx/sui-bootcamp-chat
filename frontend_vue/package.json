@@ -16,6 +16,7 @@
   "dependencies": {
     "@mysten/sui": "^1.45.0",
     "@mysten/wallet-standard": "^0.19.6",
+    "@mysten/walrus": "^0.8.4",
     "@quasar/extras": "^1.16.4",
     "decimal.js": "^10.6.0",
     "dexie": "^4.2.1",
