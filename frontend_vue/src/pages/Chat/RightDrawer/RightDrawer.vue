@@ -46,43 +46,45 @@ q-drawer.bg-grey-3.text-dark(
           q-item-label(caption)
             | {{ member.owner === profile.owner ? 'você' : shortenAddress(member.owner) }}
 
-        q-item-section(side)
-          q-item-label(v-if="!isDM && activeChat.owner === member.owner")
-            q-chip(size="sm" color="green-7" dark) ADM
-          q-item-label(v-else-if="!!activeChat.moderators[member.owner]")
-            q-chip(size="sm" color="blue" dark) MOD
-          q-item-label(v-if="!!activeChat.bannedUsers[member.owner]")
-            q-chip(size="sm" color="red" outline dark) BAN
+        template(v-if="!isDM")
 
-        q-item-section(side)
-          q-btn(v-if="member.owner === profile.owner" flat round dense readonly)
-          q-btn(v-else icon="mdi-dots-vertical" flat round dense)
-            q-menu(auto-close)
-              q-list.bg-ocean(dark)
+          q-item-section(side)
+            q-item-label(v-if="activeChat.owner === member.owner")
+              q-chip(size="sm" color="green-7" dark) ADM
+            q-item-label(v-else-if="!!activeChat.moderators[member.owner]")
+              q-chip(size="sm" color="blue" dark) MOD
+            q-item-label(v-if="!!activeChat.bannedUsers[member.owner]")
+              q-chip(size="sm" color="red" outline dark) BAN
 
-                template(v-if="canManagerModerators")
+          q-item-section(side)
+            q-btn(v-if="member.owner === profile.owner" flat round dense readonly)
+            q-btn(v-else icon="mdi-dots-vertical" flat round dense)
+              q-menu(auto-close)
+                q-list.bg-ocean(dark)
 
-                  q-item(v-if="!activeChat.moderators[member.owner]" clickable @click="manageModerator(member, 'add')")
-                    q-item-section(avatar style="min-width: auto")
-                      q-icon(name="mdi-account-tie")
-                    q-item-section Tornar Moderador
+                  template(v-if="canManagerModerators")
 
-                  q-item(v-else clickable @click="manageModerator(member, 'remove')")
-                    q-item-section(avatar style="min-width: auto")
-                      q-icon(name="mdi-account-tie")
-                    q-item-section Remover cargo de Moderador
+                    q-item(v-if="!activeChat.moderators[member.owner]" clickable @click="manageModerator(member, 'add')")
+                      q-item-section(avatar style="min-width: auto")
+                        q-icon(name="mdi-account-tie")
+                      q-item-section Tornar Moderador
 
-                template(v-if="canBanUnban")
+                    q-item(v-else clickable @click="manageModerator(member, 'remove')")
+                      q-item-section(avatar style="min-width: auto")
+                        q-icon(name="mdi-account-tie")
+                      q-item-section Remover cargo de Moderador
 
-                  q-item(v-if="!activeChat.bannedUsers[member.owner]" clickable @click="manageBan(member, 'ban')")
-                    q-item-section(avatar style="min-width: auto")
-                      q-icon(name="mdi-account-off-outline")
-                    q-item-section Banir usuário
+                  template(v-if="canBanUnban")
 
-                  q-item(v-else clickable @click="manageBan(member, 'unban')")
-                    q-item-section(avatar style="min-width: auto")
-                      q-icon(name="mdi-account-outline")
-                    q-item-section Desbanir usuário
+                    q-item(v-if="!activeChat.bannedUsers[member.owner]" clickable @click="manageBan(member, 'ban')")
+                      q-item-section(avatar style="min-width: auto")
+                        q-icon(name="mdi-account-off-outline")
+                      q-item-section Banir usuário
+
+                    q-item(v-else clickable @click="manageBan(member, 'unban')")
+                      q-item-section(avatar style="min-width: auto")
+                        q-icon(name="mdi-account-outline")
+                      q-item-section Desbanir usuário
 
 
 </template>
