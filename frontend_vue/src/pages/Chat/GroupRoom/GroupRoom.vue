@@ -80,22 +80,19 @@ import { computed, watch, ref, onMounted } from 'vue';
 import { Notify, Dialog } from 'quasar';
 import _ from 'lodash';
 import { storeToRefs } from 'pinia';
-import { useChat } from '../useChat';
 import { EPermission, ERoomType } from '../../../move';
 import { PrivateGroupService, PublicChannelService } from '../../../utils/encrypt';
 import { shortenAddress } from '../../../utils/formatters';
-import { useUserStore, useChatListStore, useUiStore } from '../../../stores';
+import { useUserStore, useChatStore, useUiStore } from '../../../stores';
 import { db, useLiveQuery } from '../../../utils/dexie';
 import { type Message, type UserProfile, type MemberInfo, EMessageType } from '../../../move';
 import MessageItem from './MessageItem.vue';
 
-const chatService = useChat();
+const chatStore = useChatStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
-const chatListStore = useChatListStore();
 
-const { activeChat: room } = storeToRefs(chatListStore);
-const { canInvite, canSendMessage } = chatService;
+const { activeChat: room, canInvite, canSendMessage } = storeToRefs(chatStore);
 const { bottomChatElement } = storeToRefs(uiStore);
 
 const profile = computed(() => userStore.profile);
@@ -146,7 +143,7 @@ const decryptMessage = async (message: Message) => {
 };
 
 const joinRoom = async() => {
-  await chatService.joinRoom(room.value!);
+  await chatStore.joinRoom(room.value!);
 };
 
 const invite = async () => {
@@ -180,7 +177,7 @@ const invite = async () => {
 
     try {
       const privKey = userStore.profile?.keyPrivDecoded!;
-      let roomKey: Parameters<typeof chatListStore.inviteMember>[0]['roomKey'];
+      let roomKey: Parameters<typeof chatStore.inviteMember>[0]['roomKey'];
 
       if (room.value?.roomType === ERoomType.PrivateGroup) {
         const userRoomKey = memberInfo.value?.roomKey!;
@@ -200,7 +197,7 @@ const invite = async () => {
         // no room key needed
       }
 
-      const res = await chatListStore.inviteMember({
+      const res = await chatStore.inviteMember({
         room: room.value!,
         inviteeAddress: user.owner,
         roomKey

@@ -68,10 +68,10 @@
 </template>
 
 <script setup lang="ts">
-import { Loading, useQuasar, Screen } from 'quasar';
+import { Loading, Screen } from 'quasar';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useWalletStore, useUserStore, useChatListStore, useUiStore } from '../../stores';
+import { useWalletStore, useUserStore, useChatStore } from '../../stores';
 import { db } from '../../utils/dexie';
 
 import HeaderToolbar from './HeaderToolbar/HeaderToolbar.vue';
@@ -83,13 +83,13 @@ import GroupRoom from './GroupRoom/GroupRoom.vue';
 
 const walletStore = useWalletStore();
 const userStore = useUserStore();
-const chatListStore = useChatListStore();
+const chatStore = useChatStore();
 
 const style = computed(() => ({ height: Screen.height + 'px' }));
 const loading = ref(true);
 
 const { profile } = storeToRefs(userStore);
-const { activeChat } = storeToRefs(chatListStore);
+const { activeChat } = storeToRefs(chatStore);
 const dbControls = ref<Awaited<ReturnType<typeof db.initDatabase>>>();
 
 onMounted(async () => {

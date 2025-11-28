@@ -1,14 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { useUserStore, useWalletStore, useChatListStore } from './';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { Dialog, Notify, Screen } from 'quasar';
+import { Screen } from 'quasar';
 
 export const useUiStore = defineStore('uiStore', () => {
-  const userStore = useUserStore();
-  const walletStore = useWalletStore();
-  const chatListStore = useChatListStore();
-
   const breakpoint = 800;
   const screenWidth = computed(() => Screen.width);
   const desktopMode = computed(() => Screen.width > breakpoint);
