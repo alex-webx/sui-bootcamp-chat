@@ -51,6 +51,7 @@ export type ChatRoom = {
   messages: string;
   imageUrl: string;
   bannedUsers: Record<string, BanInfo>;
+  mutedUsers: Record<string, number>;
   moderators: Record<string, ModeratorInfo>;
   members: Record<string, string>;
   maxMembers: number;

@@ -425,7 +425,12 @@ export const useChatStore = defineStore('chatStore', () => {
       await chatRoomModule.txRemoveModerator(activeChat.value!, user.owner);
 
     await walletStore.signAndExecuteTransaction(tx);
+    await db.refreshUserRooms([ activeChat.value?.id! ]);
+  }
 
+  const manageMuteUser = async (user: Pick<UserProfile, 'owner'>, muteFor: number | null) => {
+    const tx = await chatRoomModule.txMuteUser(activeChat.value!, user.owner, muteFor);
+    await walletStore.signAndExecuteTransaction(tx);
     await db.refreshUserRooms([ activeChat.value?.id! ]);
   }
 
@@ -443,6 +448,7 @@ export const useChatStore = defineStore('chatStore', () => {
   const canInvite = computed(() => checkPermission(activeChat.value?.permissionInvite || EPermission.Nobody));
   const canSendMessage = computed(() => checkPermission(activeChat.value?.permissionSendMessage || EPermission.Nobody));
   const canBanUnban = computed(() => activeChat.value?.owner === userStore.profile?.owner || !!activeChat.value?.moderators?.[userStore.profile?.owner!]);
+  const canSilenceUsers = computed(() => activeChat.value?.owner === userStore.profile?.owner || !!activeChat.value?.moderators?.[userStore.profile?.owner!]);
   const canManagerModerators = computed(() => activeChat.value?.owner === userStore.profile?.owner);
 
   return {
@@ -467,9 +473,11 @@ export const useChatStore = defineStore('chatStore', () => {
     joinRoom,
     banUnbanUser,
     addRemoveModerator,
+    manageMuteUser,
 
     canInvite,
     canSendMessage,
+    canSilenceUsers,
     canBanUnban,
     canManagerModerators,
 

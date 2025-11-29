@@ -22,6 +22,8 @@ const getObjectType = (
   return `${config('PackageId')}::${structName}`;
 };
 
+export const getCurrentTimestampMs = async () => client.getCheckpoint({ id: await client.getLatestCheckpointSequenceNumber() }).then(r => r.timestampMs);
+
 export const parsers = {
   isDeleted: (objectId: string) => {
     return (res: SuiTransactionBlockResponse) => {

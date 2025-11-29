@@ -100,10 +100,16 @@ class SuiChatDB extends Dexie implements Disposable {
         const simpleRooms = await move.chatRoomModule.getChatRooms(memberInfo.map(m => m.roomId), false);
 
         let roomsToUpdate: string[] = [];
+        let newRoomFound = false;
 
         for (let room of simpleRooms) {
           // check room updates
           const lastUpdate = await this.roomLastUpdate.get(room.id);
+
+          if (!lastUpdate) {
+            newRoomFound = true;
+          }
+
           if (!lastUpdate || room.updatedAt > lastUpdate.updatedAt) {
             roomsToUpdate.push(room.id);
 
@@ -123,8 +129,11 @@ class SuiChatDB extends Dexie implements Disposable {
           if (addresses.length) {
             await this.refreshProfiles(addresses);
           }
-
         };
+
+        if (newRoomFound) {
+
+        }
 
         intervalMS = initialIntervalMS;
       } catch (err) {

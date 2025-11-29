@@ -2,6 +2,8 @@ import { defineBoot } from '#q-app/wrappers';
 
 import moment from 'moment';
 import 'moment/dist/locale/pt-br';
+import momentdurationFormatSetp from 'moment-duration-format';
+momentdurationFormatSetp(moment);
 
 import VueJsonPretty from 'vue-json-pretty';
 import 'vue-json-pretty/lib/styles.css';

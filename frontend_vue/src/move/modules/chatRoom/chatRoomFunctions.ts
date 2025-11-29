@@ -158,8 +158,7 @@ export const txJoinRoom = (
     target: `${config('PackageId')}::chat_room::join_room`,
     arguments: [
       tx.object(data.room.id),
-      tx.object(data.profile.id),
-      tx.object(config('SuiClockId')!)
+      tx.object(data.profile.id)
     ],
   });
 
@@ -233,3 +232,23 @@ export const txUnbanUser = (
 
   return tx;
 };
+
+export const txMuteUser = (
+  chatRoom: Pick<Models.ChatRoom, 'id'>,
+  userAddress: string,
+  muteFor: number | null | undefined
+) => {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${config('PackageId')}::chat_room::mute_user`,
+    arguments: [
+      tx.object(chatRoom.id),
+      tx.pure.address(userAddress),
+      tx.pure.option('u64', muteFor),
+      tx.object(config('SuiClockId')!)
+    ]
+  })
+
+  return tx;
+}
