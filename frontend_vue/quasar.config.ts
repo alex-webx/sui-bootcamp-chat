@@ -46,7 +46,8 @@ export default defineConfig((/* ctx */) => {
       },
 
       env: {
-        COMMIT_REF: process.env.COMMIT_REF
+        COMMIT_REF: process.env.COMMIT_REF,
+        NETWORK_DEFAULT_ENVIRONMENT: process.env.NETWORK_DEFAULT_ENVIRONMENT
       },
 
       typescript: {
