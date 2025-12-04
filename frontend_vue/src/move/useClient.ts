@@ -11,7 +11,10 @@ export type SuiObjectChangeDeleted = Extract<SuiObjectChange, { type: 'deleted' 
 export type SuiObjectChangeWrapped = Extract<SuiObjectChange, { type: 'wrapped' }>;
 
 export const config = (arg: Parameters<ReturnType<typeof useConfig>['getConfig']>[0]) => useConfig().getConfig(arg);
-export const getNetwork = () => (localStorage.getItem('SUI_NETWORK') || process.env.NETWORK_DEFAULT_ENVIRONMENT || 'devnet') as Network;
+export const getNetwork = () => {
+  debugger;
+  return (localStorage.getItem('SUI_NETWORK') || process.env.NETWORK_DEFAULT_ENVIRONMENT || 'devnet') as Network;
+};
 export const setNetwork = (network: Network) => localStorage.setItem('SUI_NETWORK', network);
 
 export const client = new SuiClient({ url: getFullnodeUrl(getNetwork()) }); //.$extend(walrus({ network: 'testnet' }));

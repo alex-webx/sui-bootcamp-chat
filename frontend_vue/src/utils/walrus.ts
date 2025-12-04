@@ -2,7 +2,7 @@ import { useConfig } from '../../configs';
 
 const config = useConfig();
 
-type WalrusPublishedResponse = {
+type WalrusPublisherResponse = {
   alreadyCertified: {
     blobId: string;
     endEpoch: number;
@@ -31,10 +31,10 @@ type WalrusPublishedResponse = {
 };
 
 export const uploadImage = async (file: File | ArrayBuffer) => {
-  const url = `${config.getConfig('WalrusPublished')}/v1/blobs?permanent=true`;
+  const url = `${config.getConfig('WalrusPublisher')}/v1/blobs?permanent=true`;
   return fetch(url, {
     method: 'PUT', body: file
-  }).then(async res => <WalrusPublishedResponse> await res.json());
+  }).then(async res => <WalrusPublisherResponse> await res.json());
 };
 
 export const getImageUrl = async (blobId: string) => `${config.getConfig('WalrusAggregator')}/v1/blobs/${blobId}`;
