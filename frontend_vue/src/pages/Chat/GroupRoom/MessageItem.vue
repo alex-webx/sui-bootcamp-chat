@@ -70,19 +70,32 @@ div
       )
         .text-weight-bold {{replyingToDecrypted.profile?.username}}
         .text-italic {{replyingToDecrypted.content}}
+        template(v-if="replyingToDecrypted.mediaUrl?.length")
+          img(
+            v-if="replyingToDecrypted.mediaUrl[0].startsWith('blob:')"
+            :src="replyingToDecrypted.mediaUrl[0]"
+            style="max-width: 80px; max-height: 80px"
+          )
+          video.fit(
+            v-else
+            :key="replyingToDecrypted.mediaUrl[0]"
+            autoplay loop muted playisline
+            style="max-width: 80px; max-height: 80px"
+          )
+            source(:src="replyingToDecrypted.mediaUrl[0]")
         .text-italic(v-if="replyingTo.deletedAt") mensagem removida
 
       template(v-if="mediaUrl.length")
         img(
           v-if="mediaUrl[0].startsWith('blob:')"
           :src="mediaUrl[0]"
-          style="max-width: 250px"
+          style="max-width: 350px; max-height: 300px"
         )
         video.fit(
           v-else
           :key="mediaUrl[0]"
           autoplay loop muted playisline
-          style="max-width: 250px"
+          style="max-width: 350px; max-height: 300px"
         )
           source(:src="mediaUrl[0]")
 

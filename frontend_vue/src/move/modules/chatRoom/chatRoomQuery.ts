@@ -76,6 +76,8 @@ export const parseChatRoom = async (response: SuiObjectResponse, deep = true): P
     return info;
   });
 
+  const mutedUsers = _.mapValues(await getFullTable(fields.muted_users) as Record<string, string>, mutedUser => Number(mutedUser));
+
   return {
     id: response.data.objectId,
     owner: fields.owner,
@@ -88,6 +90,7 @@ export const parseChatRoom = async (response: SuiObjectResponse, deep = true): P
     updatedAt: Number(fields.updated_at),
     bannedUsers: bannedUsers,
     moderators: moderators,
+    mutedUsers: mutedUsers,
     maxMembers: Number(fields.max_members),
     members: membersTable,
     roomType: Number(fields.room_type),

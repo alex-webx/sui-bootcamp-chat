@@ -46,19 +46,19 @@ export const txUpdateUserProfile = (
   return { tx, parser };
 };
 
-export const txDeleteUserProfile = (userProfileId: string) => {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${config('PackageId')}::user_profile::delete_user_profile`,
-    arguments: [
-      tx.object(config('UserProfileRegistryId')!),
-      tx.object(userProfileId)
-    ],
-  });
+// export const txDeleteUserProfile = (userProfileId: string) => {
+//   const tx = new Transaction();
+//   tx.moveCall({
+//     target: `${config('PackageId')}::user_profile::delete_user_profile`,
+//     arguments: [
+//       tx.object(config('UserProfileRegistryId')!),
+//       tx.object(userProfileId)
+//     ],
+//   });
 
-  const parser = parsers.isDeleted(userProfileId);
-  return { tx, parser };
-};
+//   const parser = parsers.isDeleted(userProfileId);
+//   return { tx, parser };
+// };
 
 export const txJoinRoom = (profile: Pick<Models.UserProfile, 'id'>, chatRoom: Pick<Models.ChatRoom, 'id'>) => {
   const tx = new Transaction();

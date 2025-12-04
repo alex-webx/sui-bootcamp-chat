@@ -1,3 +1,4 @@
+import { SUI_CLOCK_OBJECT_ID } from '@mysten/sui/utils';
 import { getNetwork } from '../src/move';
 import configMoveDevnet from './.move.devnet.json';
 import configMoveTestnet from './.move.testnet.json';
@@ -28,7 +29,7 @@ export function useConfig() {
   type ConfigKey = MoveConfigKey | ClientConfigKey;
 
   const defaultValues: Partial<Record<MoveConfigKey, string>> = {
-    SuiClockId: '0x6'
+    SuiClockId: SUI_CLOCK_OBJECT_ID
   };
 
   const networkConfigs: Record<Network, Partial<Record<MoveConfigKey, any>>> = {

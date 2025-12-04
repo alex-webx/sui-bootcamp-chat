@@ -5,9 +5,10 @@ transition(
   leave-active-class="animated fadeOut slower"
 )
 
-  q-footer(v-if="!canSendMessage" style="background: rgba(0, 0, 0, 0.1)")
-    q-toolbar.flex-center.text-grey-7.text-caption.text-italic
-      div Somente leitura: você não possui permissões para enviar mensagens
+  q-footer.bg-transparent(v-if="!canSendMessage" )
+    q-toolbar.flex-center
+      q-badge.text-italic(color="grey-4" text-color="grey-7" rounded)
+        | Somente leitura: você não possui permissões para enviar mensagens
 
   q-footer(v-else :class="newMessage.id || newMessage.replyTo ? 'footer-edit-mode' : 'bg-deep-sea'")
     q-form(@submit="sendMessage()" ref="form")
@@ -126,8 +127,8 @@ import { storeToRefs } from 'pinia';
 const chatStore = useChatStore();
 const { desktopMode } = storeToRefs(useUiStore());
 
-const { insertEmoji, insertGif, removeGif, clearNewMessage, insertImage, removeImage, canSendMessage } = chatStore;
-const { newMessage } = storeToRefs(chatStore);
+const { canSendMessage, newMessage } = storeToRefs(chatStore);
+const { insertEmoji, insertGif, removeGif, clearNewMessage, insertImage, removeImage } = chatStore;
 
 const sendingBusy = ref(false);
 const sendMessage = async () => {

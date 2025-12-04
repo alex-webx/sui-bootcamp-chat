@@ -7,7 +7,7 @@ use sui::table::{Self, Table};
 
 const EUserNotOwnerOfUserProfile    : u64 = 001;
 const EUserProfileAlreadyExists     : u64 = 002;
-const EUserProfileNotExists         : u64 = 003;
+// const EUserProfileNotExists         : u64 = 003;
 const EEmptyString                  : u64 = 004;
 const EEmptyVector                  : u64 = 005;
 
@@ -38,10 +38,10 @@ public struct UserProfileUpdatedEvent has copy, drop {
     owner: address,
     profile_id: ID   
 }
-public struct UserProfileDeletedEvent has copy, drop {
-    owner: address,
-    profile_id: ID   
-}
+// public struct UserProfileDeletedEvent has copy, drop {
+//     owner: address,
+//     profile_id: ID   
+// }
 
 fun init(ctx: &mut TxContext) {
     let user_registry = UserProfileRegistry {
@@ -122,28 +122,28 @@ public fun update_user_profile(
     });
 }
 
-public fun delete_user_profile(
-    user_profile_registry: &mut UserProfileRegistry,
-    profile: UserProfile, 
-    ctx: &mut TxContext
-) {
-    let sender = tx_context::sender(ctx);
+// public fun delete_user_profile(
+//     user_profile_registry: &mut UserProfileRegistry,
+//     profile: UserProfile, 
+//     ctx: &mut TxContext
+// ) {
+//     let sender = tx_context::sender(ctx);
 
-    assert!(profile.owner == sender, EUserNotOwnerOfUserProfile);
-    assert!(table::contains(&user_profile_registry.users, sender), EUserProfileNotExists);
+//     assert!(profile.owner == sender, EUserNotOwnerOfUserProfile);
+//     assert!(table::contains(&user_profile_registry.users, sender), EUserProfileNotExists);
 
-    let UserProfile { id: profile_uid, .. } = profile;
+//     let UserProfile { id: profile_uid, .. } = profile;
 
-    let profile_id = profile_uid.to_inner();
+//     let profile_id = profile_uid.to_inner();
     
-    table::remove(&mut user_profile_registry.users, sender);
-    object::delete(profile_uid);
+//     table::remove(&mut user_profile_registry.users, sender);
+//     object::delete(profile_uid);
 
-    event::emit(UserProfileDeletedEvent {        
-        profile_id,
-        owner: sender        
-    });
-}
+//     event::emit(UserProfileDeletedEvent {        
+//         profile_id,
+//         owner: sender        
+//     });
+// }
 
 public fun add_user_profile_rooms_joined(profile: &mut UserProfile, room_id: ID) {
     if (!vector::contains(&profile.rooms_joined, &room_id)) {

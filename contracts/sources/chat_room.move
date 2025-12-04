@@ -9,12 +9,14 @@ use sui::bcs;
 use chat::user_profile::{Self, UserProfile};
 
 const EUserBanned                 : u64 = 001;
-const ENotAuthorized              : u64 = 002;
-const EEmptyMessage               : u64 = 003;
-const EInvalidMaxMembers          : u64 = 004;
-const EMaxRoomMembersLimit        : u64 = 005;
-const ENotAuthorizedToSendMessage : u64 = 006;
-const ENotAuthorizedToInvite      : u64 = 007;
+const EUserMuted                  : u64 = 002;
+const ENotAuthorized              : u64 = 003;
+const EEmptyMessage               : u64 = 004;
+const EInvalidMaxMembers          : u64 = 005;
+const EMaxRoomMembersLimit        : u64 = 006;
+const ENotAuthorizedToSendMessage : u64 = 007;
+const ENotAuthorizedToInvite      : u64 = 008;
+const EInvalidOperation           : u64 = 009;
 
 const ROOM_TYPE_PRIVATE_GROUP : u8 = 1;
 const ROOM_TYPE_PUBLIC_GROUP  : u8 = 2;
@@ -64,6 +66,7 @@ public struct ChatRoom has key, store {
     messages: Table<u64, ID>,
     image_url: String,    
     banned_users: Table<address, BanInfo>,
+    muted_users: Table<address, u64>, // user (address) -> until (timestamp)
     moderators: Table<address, ModeratorInfo>, 
     members: Table<address, ID>,
     max_members: u64,
@@ -100,16 +103,6 @@ public struct Message has key, store {
 public struct ChatRoomCreatedEvent has copy, drop {    
     room_id: ID,    
     owner: address
-}
-
-public struct UserBannedEvent has copy, drop {
-    room_id: ID,
-    user: address,
-}
-
-public struct UserUnbannedEvent has copy, drop {
-    room_id: ID,
-    user: address,
 }
 
 fun init(ctx: &mut TxContext) {
@@ -157,6 +150,7 @@ public fun create_room(
         event_count: 0,
         messages: table::new(ctx),
         banned_users: table::new(ctx),
+        muted_users: table::new(ctx),
         moderators: table::new(ctx),
         members: table::new(ctx),
         max_members,
@@ -241,6 +235,7 @@ public fun create_dm_room(
         event_count: 0,
         messages: table::new(ctx),
         banned_users: table::new(ctx),
+        muted_users: table::new(ctx),
         moderators: table::new(ctx),
         members: table::new(ctx),
         max_members: 2,
@@ -382,12 +377,17 @@ public fun send_message(
     ctx: &mut TxContext
 ): ID {
     let sender = tx_context::sender(ctx);
+    let timestamp = clock.timestamp_ms();
 
-    assert!(!table::contains(&room.banned_users, sender), EUserBanned);
+    assert!(!table::contains(&room.banned_users, sender), EUserBanned);    
     assert!(!string::is_empty(&content) || !vector::is_empty(&media_url), EEmptyMessage);
     assert!(has_room_permission(room, sender, room.permission_send_message), ENotAuthorizedToSendMessage);
 
-    let timestamp = clock.timestamp_ms();
+    if (table::contains(&room.muted_users, sender)) {
+        let muted_until = table::borrow<address, u64>(&room.muted_users, sender);
+        assert!(*muted_until != 0 && *muted_until <= timestamp, EUserMuted);
+    };
+
     let room_id = room.id.uid_to_inner();
 
     // só para public faz sentido adicionar o usuário automaticamente como membro (pois não precisa de room_key própria)
@@ -430,8 +430,14 @@ public fun edit_message(
 
     assert!(message.sender == sender, ENotAuthorized);
     assert!(!string::is_empty(&new_content) || vector::length(&new_media_url) > 0, EEmptyMessage);    
+    assert!(!message.deleted_at.is_some(), EInvalidOperation);
 
     let timestamp = clock.timestamp_ms();
+
+    if (table::contains(&room.muted_users, sender)) {
+        let muted_until = table::borrow<address, u64>(&room.muted_users, sender);
+        assert!(*muted_until != 0 && *muted_until <= timestamp, EUserMuted);
+    };
 
     if (mutate_original) {
         message.content = new_content;    
@@ -453,7 +459,7 @@ public fun delete_message(
 ): ID {
     let sender = tx_context::sender(ctx);
 
-    assert!(!message.deleted_at.is_some(), ENotAuthorized);
+    assert!(!message.deleted_at.is_some(), EInvalidOperation);
 
     if (room.room_type == ROOM_TYPE_DM) {
         assert!(message.sender == sender, ENotAuthorized);
@@ -488,8 +494,16 @@ public fun invite_member(
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
+    let timestamp = clock.timestamp_ms();
     
     assert!(has_room_permission(room, sender, room.permission_invite), ENotAuthorizedToInvite);
+    assert!(!table::contains(&room.members, invitee_address), EInvalidOperation);
+    assert!(!table::contains(&room.banned_users, sender), EInvalidOperation);
+
+    if (table::contains(&room.muted_users, sender)) {
+        let muted_until = table::borrow<address, u64>(&room.muted_users, sender);
+        assert!(*muted_until != 0 && *muted_until <= timestamp, EUserMuted);
+    };
 
     if (!table::contains(&room.members, invitee_address)) {
         assert!(room.max_members == 0 || room.max_members >= table::length(&room.members) + 1, EMaxRoomMembersLimit);
@@ -497,8 +511,7 @@ public fun invite_member(
         let member_info: MemberInfo;
         let member_info_uid = object::new(ctx);
         let member_info_id = member_info_uid.uid_to_inner();
-        let timestamp = clock.timestamp_ms();
-
+        
         if (room.room_type == ROOM_TYPE_PUBLIC_GROUP) {
             member_info = MemberInfo {
                 id: member_info_uid,
@@ -542,7 +555,6 @@ public fun invite_member(
 public fun join_room(
     room: &mut ChatRoom,
     profile: &mut UserProfile,
-    clock: &Clock,
     ctx: &mut TxContext
 ) {
     let sender = tx_context::sender(ctx);
@@ -623,16 +635,10 @@ public fun ban_user(
         };
         table::add(&mut room.banned_users, user, info);
 
-        room.updated_at = timestamp;
-        
-        event::emit(UserBannedEvent {
-            room_id: object::uid_to_inner(&room.id),
-            user,
-        });
+        room.updated_at = timestamp;  
     };
 }
 
-/// Desbanir usuário
 public fun unban_user(
     room: &mut ChatRoom,
     user: address,
@@ -652,10 +658,46 @@ public fun unban_user(
         table::remove(&mut room.banned_users, user);
 
         room.updated_at = clock.timestamp_ms();
-
-        event::emit(UserUnbannedEvent {            
-            room_id: object::uid_to_inner(&room.id),
-            user,
-        });
     };    
+}
+
+public fun mute_user(
+    room: &mut ChatRoom,
+    user: address,
+    mute_for: &mut Option<u64>,
+    clock: &Clock,
+    ctx: &mut TxContext
+) {
+    assert!(room.room_type != ROOM_TYPE_DM, ENotAuthorized);
+    assert!(user != room.owner, ENotAuthorized);
+    assert!(!table::contains(&room.moderators, user), ENotAuthorized);
+    assert!(table::contains(&room.members, user), ENotAuthorized);
+
+    let sender = tx_context::sender(ctx);
+    let is_authorized = room.owner == sender || 
+                        table::contains(&room.moderators, sender);
+    
+    assert!(is_authorized, ENotAuthorized);    
+
+    let timestamp = clock.timestamp_ms();
+
+    if (option::is_some(mute_for)) {
+        let mute_for_value = option::extract(mute_for);
+        let new_time = if (mute_for_value == 0) {
+            0
+        } else {
+            timestamp + mute_for_value
+        };
+
+        if (table::contains(&room.muted_users, user)) {
+            let time: &mut u64 = table::borrow_mut<address, u64>(&mut room.muted_users, user);        
+            *time = new_time;
+        } else {
+            table::add(&mut room.muted_users, user, new_time);
+        };
+    } else if (table::contains(&room.muted_users, user)) {
+        table::remove(&mut room.muted_users, user);
+    };
+
+    room.updated_at = timestamp;
 }
